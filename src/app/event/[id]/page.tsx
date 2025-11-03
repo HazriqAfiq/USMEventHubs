@@ -13,18 +13,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import type { Event } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
-export default function EventDetailPage({ params }: { params: { id: string } }) {
+export default function EventDetailPage() {
+  const params = useParams();
+  const eventId = params.id as string;
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const eventId = params.id;
 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
 

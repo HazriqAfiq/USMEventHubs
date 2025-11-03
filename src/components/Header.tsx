@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { CalendarDays, LogIn, LogOut, UserCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useEventFilters } from '@/hooks/use-event-filters';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 export function Header() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
+
+  const isHomepage = pathname === '/';
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -38,6 +44,30 @@ export function Header() {
           <span>USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-4">
+           {isHomepage && (
+             <div className="hidden sm:flex items-center gap-2">
+                <Select value={priceFilter} onValueChange={(value) => setPriceFilter(value as any)}>
+                  <SelectTrigger className="w-full sm:w-[150px] text-xs h-9">
+                    <SelectValue placeholder="By Price" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as any)}>
+                  <SelectTrigger className="w-full sm:w-[150px] text-xs h-9">
+                    <SelectValue placeholder="By Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="physical">Physical</SelectItem>
+                  </SelectContent>
+                </Select>
+             </div>
+           )}
           {!loading && (
             <>
               {user ? (

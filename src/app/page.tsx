@@ -6,21 +6,13 @@ import { db } from '@/lib/firebase';
 import EventCard from '@/components/EventCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Event } from '@/types';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Card } from '@/components/ui/card';
+import { useEventFilters } from '@/hooks/use-event-filters';
 
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [priceFilter, setPriceFilter] = useState('all'); // 'all', 'free', 'paid'
-  const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'online', 'physical'
+  const { priceFilter, typeFilter } = useEventFilters();
 
   useEffect(() => {
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
@@ -68,32 +60,6 @@ export default function Home() {
           Discover our curated list of events. Something new and exciting is always around the corner!
         </p>
       </div>
-      
-      <Card className="p-4 mb-8 flex flex-col sm:flex-row items-center gap-4 justify-center">
-        <h3 className="font-semibold text-lg shrink-0">Filter Events</h3>
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-           <Select value={priceFilter} onValueChange={setPriceFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="By Price" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Prices</SelectItem>
-              <SelectItem value="free">Free</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="By Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="physical">Physical</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </Card>
       
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
+  const { id: eventId } = params;
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
@@ -26,7 +27,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const router = useRouter();
 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
-  const eventId = params.id;
 
   useEffect(() => {
     if (eventId) {

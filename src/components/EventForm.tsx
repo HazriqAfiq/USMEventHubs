@@ -226,17 +226,6 @@ export default function EventForm() {
                 <FormItem className="flex flex-col flex-grow">
                   <FormLabel className="flex items-center justify-between">
                     <span>Event Description</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleGenerateDescription}
-                      disabled={isGenerating}
-                      className="text-primary bg-primary/10 hover:bg-primary/20"
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      {isGenerating ? 'Generating...' : 'Generate with AI'}
-                    </Button>
                   </FormLabel>
                   <FormControl className="flex-grow">
                     <Textarea
@@ -295,17 +284,6 @@ export default function EventForm() {
                 <FormItem>
                   <FormLabel className="flex items-center justify-between w-full">
                     <span>Keywords</span>
-                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleGenerateKeywords}
-                      disabled={isGeneratingKeywords}
-                      className="text-primary bg-primary/10 hover:bg-primary/20"
-                    >
-                      <Wand2 className="mr-2 h-4 w-4" />
-                      {isGeneratingKeywords ? 'Generating...' : 'Suggest with AI'}
-                    </Button>
                   </FormLabel>
                   <FormControl>
                     <div className="rounded-md border min-h-[60px] p-2 flex flex-wrap gap-2 bg-background">

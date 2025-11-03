@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "tech-conference",
+      "description": "A bustling tech conference.",
+      "imageUrl": "https://images.unsplash.com/photo-1600320261634-78edd477fa1e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dGVjaCUyMGNvbmZlcmVuY2V8ZW58MHx8fHwxNzYyMDg1NDg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tech conference"
+    },
+    {
+      "id": "music-festival",
+      "description": "A vibrant music festival at sunset.",
+      "imageUrl": "https://images.unsplash.com/photo-1522601157550-4282ae97472d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtdXNpYyUyMGZlc3RpdmFsfGVufDB8fHx8MTc2MjEyNjc4MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music festival"
+    },
+    {
+      "id": "art-exhibition",
+      "description": "An elegant art exhibition.",
+      "imageUrl": "https://images.unsplash.com/photo-1503293050619-6048ffad0dc5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxhcnQlMjBleGhpYml0aW9ufGVufDB8fHx8MTc2MjE0MDMwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "art exhibition"
+    },
+    {
+      "id": "food-market",
+      "description": "A lively outdoor food market.",
+      "imageUrl": "https://images.unsplash.com/photo-1488459716781-31db52582fe9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmb29kJTIwbWFya2V0fGVufDB8fHx8MTc2MjE0MDMwMnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "food market"
+    },
+    {
+      "id": "charity-run",
+      "description": "Participants in a charity run.",
+      "imageUrl": "https://images.unsplash.com/photo-1746377827630-a608bfae1a9b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjaGFyaXR5JTIwcnVufGVufDB8fHx8MTc2MjEyMzUyOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "charity run"
+    }
+  ]
 }

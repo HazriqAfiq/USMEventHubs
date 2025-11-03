@@ -9,6 +9,7 @@ export interface Event {
   location: string;
   isFree: boolean;
   price?: number;
+  eventType: 'online' | 'physical';
   registrationLink?: string;
   registrations?: string[];
 }

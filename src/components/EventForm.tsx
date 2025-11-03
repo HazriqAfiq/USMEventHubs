@@ -37,6 +37,7 @@ const formSchema = z.object({
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
+  eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
   registrationLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
@@ -56,6 +57,7 @@ export default function EventForm() {
       isFree: 'free',
       registrationLink: '',
       price: 0,
+      eventType: undefined,
     },
   });
 
@@ -70,6 +72,7 @@ export default function EventForm() {
       location: '',
       isFree: 'free',
       price: 0,
+      eventType: undefined,
       registrationLink: '',
     });
     setPreviewImage(null);
@@ -85,6 +88,7 @@ export default function EventForm() {
         imageUrl: data.imageUrl,
         location: data.location,
         isFree: data.isFree === 'free',
+        eventType: data.eventType,
         registrationLink: data.registrationLink,
         createdAt: serverTimestamp(),
       };
@@ -167,40 +171,76 @@ export default function EventForm() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="isFree"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Price</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex items-center space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="free" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Free
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="paid" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Paid
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="isFree"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Price</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="free" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Free
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="paid" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Paid
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="eventType"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Event Type</FormLabel>
+                    <FormControl>
+                       <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="online" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Online
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="physical" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Physical
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             {isPaid && (
               <FormField
                 control={form.control}
@@ -209,7 +249,7 @@ export default function EventForm() {
                   <FormItem>
                     <FormLabel>Amount (RM)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g., 50.00" {...field} />
+                      <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

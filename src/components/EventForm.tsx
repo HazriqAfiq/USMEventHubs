@@ -26,6 +26,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
+import { generateEventDescription } from '@/ai/flows/generate-event-description';
+import { suggestEventKeywords } from '@/ai/flows/suggest-event-keywords';
+import { Sparkles } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -43,7 +46,6 @@ const formSchema = z.object({
       (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       ".jpg, .jpeg, .png and .webp files are accepted."
     ),
-  imageHint: z.string().optional(),
   keywords: z.array(z.string()).default([]),
 });
 
@@ -52,6 +54,7 @@ type EventFormValues = z.infer<typeof formSchema>;
 export default function EventForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const form = useForm<EventFormValues>({
@@ -69,11 +72,73 @@ export default function EventForm() {
       description: '',
       date: undefined,
       image: undefined,
-      imageHint: undefined,
       keywords: []
     });
     setPreviewImage(null);
   }
+
+  const handleGenerateDescription = async () => {
+    const title = form.getValues('title');
+    const date = form.getValues('date');
+    if (!title || !date) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please provide a title and date to generate a description.',
+      });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const result = await generateEventDescription({ title, date: date.toISOString() });
+      form.setValue('description', result.description, { shouldValidate: true });
+      toast({
+        title: 'Description Generated!',
+        description: 'The AI has written a description for your event.',
+      });
+    } catch (error) {
+      console.error('AI description generation error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'AI Generation Failed',
+        description: 'Could not generate a description at this time.',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSuggestKeywords = async () => {
+    const title = form.getValues('title');
+    const description = form.getValues('description');
+    if (!title || !description) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please provide a title and description to suggest keywords.',
+      });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const result = await suggestEventKeywords({ title, description });
+      form.setValue('keywords', result.keywords, { shouldValidate: true });
+      toast({
+        title: 'Keywords Suggested!',
+        description: 'The AI has suggested some relevant keywords.',
+      });
+    } catch (error) {
+      console.error('AI keyword suggestion error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'AI Suggestion Failed',
+        description: 'Could not suggest keywords at this time.',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
@@ -88,7 +153,6 @@ export default function EventForm() {
         date: data.date,
         description: data.description,
         imageUrl: imageUrl,
-        imageHint: data.imageHint || '',
         keywords: data.keywords,
         createdAt: serverTimestamp(),
       });
@@ -175,6 +239,17 @@ export default function EventForm() {
                 <FormItem className="flex flex-col flex-grow">
                   <FormLabel className="flex items-center justify-between">
                     <span>Event Description</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGenerateDescription}
+                      disabled={isGenerating || !form.watch('title') || !form.watch('date')}
+                      className="text-primary bg-primary/10 hover:bg-primary/20"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      {isGenerating ? 'Generating...' : 'Generate with AI'}
+                    </Button>
                   </FormLabel>
                   <FormControl className="flex-grow">
                     <Textarea
@@ -228,6 +303,17 @@ export default function EventForm() {
                 <FormItem>
                   <FormLabel className="flex items-center justify-between w-full">
                     <span>Keywords</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSuggestKeywords}
+                      disabled={isGenerating || !form.watch('title') || !form.watch('description')}
+                      className="text-primary bg-primary/10 hover:bg-primary/20"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      {isGenerating ? 'Suggesting...' : 'Suggest with AI'}
+                    </Button>
                   </FormLabel>
                   <FormControl>
                     <div className="rounded-md border min-h-[60px] p-2 flex flex-wrap gap-2 bg-background">
@@ -252,7 +338,7 @@ export default function EventForm() {
               <Trash2 className="mr-2 h-4 w-4"/>
               Clear Form
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || isGenerating}>
               {isSubmitting ? 'Creating Event...' : 'Create Event'}
             </Button>
         </div>

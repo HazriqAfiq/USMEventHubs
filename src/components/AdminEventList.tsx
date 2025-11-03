@@ -81,7 +81,7 @@ export default function AdminEventList() {
         events.map((event) => (
           <Card key={event.id} className="flex items-center p-4 gap-4 transition-all hover:shadow-md">
             <div className="relative h-16 w-16 md:h-20 md:w-28 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-              <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} data-ai-hint={event.imageHint} />
+              <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
             </div>
             <div className="flex-grow overflow-hidden">
               <h3 className="font-bold truncate">{event.title}</h3>

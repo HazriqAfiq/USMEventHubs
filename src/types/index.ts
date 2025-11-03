@@ -6,6 +6,5 @@ export interface Event {
   date: Timestamp;
   description: string;
   imageUrl: string;
-  imageHint: string;
   keywords?: string[];
 }

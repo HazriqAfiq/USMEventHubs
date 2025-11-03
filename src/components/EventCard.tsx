@@ -13,7 +13,7 @@ export default function EventCard({ event }: EventCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden h-full transition-all hover:shadow-xl hover:-translate-y-1">
       <div className="relative aspect-video w-full">
-        <Image src={event.imageUrl} alt={event.title} fill style={{objectFit: 'cover'}} data-ai-hint={event.imageHint} />
+        <Image src={event.imageUrl} alt={event.title} fill style={{objectFit: 'cover'}} />
       </div>
       <CardHeader>
         <CardTitle className="font-headline text-xl">{event.title}</CardTitle>

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, collectionGroup } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -29,6 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -134,8 +136,8 @@ export default function EventForm({ event }: EventFormProps) {
 
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
-    try {
-      const eventData: any = {
+    
+    const eventData: any = {
         title: data.title,
         date: data.date,
         description: data.description,
@@ -144,6 +146,7 @@ export default function EventForm({ event }: EventFormProps) {
         isFree: data.isFree === 'free',
         eventType: data.eventType,
         registrationLink: data.registrationLink,
+        registrations: [],
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
@@ -151,31 +154,52 @@ export default function EventForm({ event }: EventFormProps) {
         eventData.price = 0;
       }
 
+    try {
       if (isEditMode && event) {
         const eventRef = doc(db, 'events', event.id);
-        await updateDoc(eventRef, eventData);
+        await updateDoc(eventRef, eventData).catch(err => {
+            const permissionError = new FirestorePermissionError({
+                path: eventRef.path,
+                operation: 'update',
+                requestResourceData: eventData
+            }, err);
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
+
         toast({
           title: 'Event Updated!',
           description: `"${data.title}" has been updated successfully.`,
         });
         router.push('/admin');
+
       } else {
         eventData.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'events'), eventData);
+        const collectionRef = collection(db, 'events');
+        await addDoc(collectionRef, eventData).catch(err => {
+            const permissionError = new FirestorePermissionError({
+                path: collectionRef.path,
+                operation: 'create',
+                requestResourceData: eventData
+            }, err);
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
+        
         toast({
           title: 'Event Created!',
           description: `"${data.title}" has been added successfully.`,
         });
         handleReset();
       }
-
-    } catch (error) {
-      console.error('Submission error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: `Could not ${isEditMode ? 'update' : 'save'} the event. Please check the console for more details.`,
-      });
+    } catch (error: any) {
+       if (!(error instanceof FirestorePermissionError)) {
+          toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: error.message || `Could not ${isEditMode ? 'update' : 'save'} the event.`,
+          });
+       }
     } finally {
       setIsSubmitting(false);
     }

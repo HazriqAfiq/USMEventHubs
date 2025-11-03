@@ -26,9 +26,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const router = useRouter();
 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
+  const eventId = params.id;
 
   useEffect(() => {
-    const eventId = params.id;
     if (eventId) {
       const fetchEvent = async () => {
         try {
@@ -50,7 +50,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
       fetchEvent();
     }
-  }, [params.id]);
+  }, [eventId]);
   
   const handleRegistration = async () => {
     if (!user) {

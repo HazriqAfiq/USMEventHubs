@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firest
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import Link from 'next/link';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -32,12 +33,14 @@ export default function EventDetailPage() {
   useEffect(() => {
     if (eventId) {
       const fetchEvent = async () => {
+        setLoading(true);
         try {
           const docRef = doc(db, 'events', eventId);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
             setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
+            setEventExists(true);
           } else {
             setEventExists(false);
           }
@@ -134,8 +137,6 @@ export default function EventDetailPage() {
   }
   
   if (!event) {
-    // This case should ideally not be reached if loading is false and eventExists is true,
-    // but it's good for robustness.
     return null;
   }
 
@@ -144,6 +145,14 @@ export default function EventDetailPage() {
       <Card className="overflow-hidden">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
+          {user && (
+            <Button asChild className="absolute top-4 right-4" variant="secondary">
+              <Link href={`/admin/edit/${event.id}`}>
+                <FilePenLine className="mr-2 h-4 w-4" />
+                Edit Event
+              </Link>
+            </Button>
+          )}
         </div>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">

@@ -58,8 +58,9 @@ export default function Home() {
       <div className="text-center mb-8">
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">Upcoming Events</h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          Discover our curated list of events. Something new and exciting is always around the corner!
+          Join events conducted in USM and get your MyCSD points.
         </p>
+        <p className="text-sm text-muted-foreground mt-2">Powered and developed by Chillframe.</p>
       </div>
 
        <div className="sm:hidden mb-6 space-y-4 p-4 border rounded-lg bg-card">

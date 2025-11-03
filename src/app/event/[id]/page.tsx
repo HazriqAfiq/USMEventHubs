@@ -24,11 +24,11 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const eventId = params.id;
 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
 
   useEffect(() => {
-    const eventId = params.id;
     if (eventId) {
       const fetchEvent = async () => {
         try {
@@ -50,7 +50,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
       fetchEvent();
     }
-  }, [params.id]);
+  }, [eventId]);
   
   const handleRegistration = async () => {
     if (!user) {

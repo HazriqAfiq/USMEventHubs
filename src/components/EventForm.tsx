@@ -17,31 +17,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { generateEventDescription } from '@/ai/flows/generate-event-description';
-import { suggestEventKeywords } from '@/ai/flows/suggest-event-keywords';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
   date: z.date({ required_error: 'A date is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  imageUrl: z.string({ required_error: 'Please select an image.'}).url({ message: 'Please select a valid image.' }),
-  imageHint: z.string(),
+  image: z
+    .any()
+    .refine((files) => files?.length == 1, "Image is required.")
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      ".jpg, .jpeg, .png and .webp files are accepted."
+    ),
+  imageHint: z.string().optional(),
   keywords: z.array(z.string()).default([]),
 });
 
@@ -50,8 +52,7 @@ type EventFormValues = z.infer<typeof formSchema>;
 export default function EventForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(formSchema),
@@ -62,85 +63,33 @@ export default function EventForm() {
     },
   });
 
-  const handleGenerateDescription = async () => {
-    const title = form.getValues('title');
-    const date = form.getValues('date');
-    if (!title || !date) {
-      toast({
-        variant: 'destructive',
-        title: 'Title and Date required',
-        description: 'Please enter a title and select a date before generating a description.',
-      });
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const result = await generateEventDescription({ title, date: format(date, 'PPP') });
-      form.setValue('description', result.description, { shouldValidate: true });
-      toast({
-        title: 'Description Generated!',
-        description: 'The AI has crafted a description for your event.',
-      });
-    } catch (error) {
-      console.error('AI error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Generation Failed',
-        description: 'Could not generate a description at this time.',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGenerateKeywords = async () => {
-    const title = form.getValues('title');
-    const description = form.getValues('description');
-    if (!title || !description) {
-      toast({
-        variant: 'destructive',
-        title: 'Title and Description required',
-        description: 'Please provide a title and description before generating keywords.',
-      });
-      return;
-    }
-    setIsGeneratingKeywords(true);
-    try {
-      const result = await suggestEventKeywords({ title, description });
-      form.setValue('keywords', result.keywords, { shouldValidate: true });
-      toast({
-        title: 'Keywords Suggested!',
-        description: 'The AI has suggested some keywords for your event.',
-      });
-    } catch (error) {
-      console.error('AI keyword error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Keyword Generation Failed',
-        description: 'Could not suggest keywords at this time.',
-      });
-    } finally {
-      setIsGeneratingKeywords(false);
-    }
-  };
-
-
   const handleReset = () => {
     form.reset({
       title: '',
       description: '',
       date: undefined,
-      imageUrl: undefined,
+      image: undefined,
       imageHint: undefined,
       keywords: []
     });
+    setPreviewImage(null);
   }
 
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
     try {
+      const imageFile = data.image[0] as File;
+      const storageRef = ref(storage, `event_images/${Date.now()}_${imageFile.name}`);
+      const uploadResult = await uploadBytes(storageRef, imageFile);
+      const imageUrl = await getDownloadURL(uploadResult.ref);
+
       await addDoc(collection(db, 'events'), {
-        ...data,
+        title: data.title,
+        date: data.date,
+        description: data.description,
+        imageUrl: imageUrl,
+        imageHint: data.imageHint || '',
+        keywords: data.keywords,
         createdAt: serverTimestamp(),
       });
       toast({
@@ -149,18 +98,18 @@ export default function EventForm() {
       });
       handleReset();
     } catch (error) {
-      console.error('Firestore error:', error);
+      console.error('Submission error:', error);
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: 'Could not save the event to the database.',
+        description: 'Could not save the event. Please check the console for more details.',
       });
     } finally {
       setIsSubmitting(false);
     }
   }
-  
-  const selectedImage = PlaceHolderImages.find(p => p.imageUrl === form.watch('imageUrl'));
+
+  const imageRef = form.register("image");
 
   return (
     <Form {...form}>
@@ -240,40 +189,35 @@ export default function EventForm() {
             />
           </div>
           <div className="space-y-4">
-            <FormField
+             <FormField
               control={form.control}
-              name="imageUrl"
+              name="image"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Event Image</FormLabel>
-                  <Select onValueChange={(value) => {
-                    const img = PlaceHolderImages.find(p => p.imageUrl === value);
-                    if (img) {
-                      field.onChange(value);
-                      form.setValue('imageHint', img.imageHint);
-                    }
-                  }} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an image for the event" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PlaceHolderImages.map((image) => (
-                        <SelectItem key={image.id} value={image.imageUrl}>
-                          {image.description}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                   <FormControl>
+                    <Input 
+                      type="file" 
+                      accept="image/png, image/jpeg"
+                      {...imageRef}
+                      onChange={(e) => {
+                        field.onChange(e.target.files);
+                        if (e.target.files && e.target.files[0]) {
+                          setPreviewImage(URL.createObjectURL(e.target.files[0]));
+                        } else {
+                          setPreviewImage(null);
+                        }
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
             <div className="aspect-video w-full relative rounded-md overflow-hidden border bg-muted">
-                {selectedImage && (
-                  <Image src={selectedImage.imageUrl} alt={selectedImage.description} fill style={{objectFit: 'cover'}} data-ai-hint={selectedImage.imageHint}/>
+                {previewImage && (
+                  <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
                 )}
             </div>
 

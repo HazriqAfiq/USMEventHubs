@@ -200,12 +200,6 @@ export default function EventDetailPage() {
              </Button>
           )}
 
-           {!user && !authLoading && (
-             <p className="text-sm text-muted-foreground">
-                <button onClick={() => router.push('/login')} className="text-primary underline">Log in</button> to register for this event.
-             </p>
-           )}
-
         </CardContent>
       </Card>
     </div>

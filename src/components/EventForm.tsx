@@ -35,6 +35,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
   date: z.date({ required_error: 'A date is required.' }),
+  startTime: z.string({ required_error: 'A start time is required.' }),
+  endTime: z.string({ required_error: 'An end time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   imageUrl: z.string({ required_error: 'Please select an image for the event.' }),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
@@ -78,6 +80,8 @@ export default function EventForm({ event }: EventFormProps) {
       eventType: event?.eventType,
       imageUrl: event?.imageUrl,
       date: event?.date?.toDate(),
+      startTime: event?.startTime || '',
+      endTime: event?.endTime || '',
     },
   });
   
@@ -92,6 +96,8 @@ export default function EventForm({ event }: EventFormProps) {
         eventType: event.eventType,
         imageUrl: event.imageUrl,
         date: event.date?.toDate(),
+        startTime: event.startTime,
+        endTime: event.endTime,
         registrationLink: event.registrationLink || '',
       });
       setPreviewImage(event.imageUrl);
@@ -113,6 +119,8 @@ export default function EventForm({ event }: EventFormProps) {
                 eventType: event.eventType,
                 imageUrl: event.imageUrl,
                 date: event.date?.toDate(),
+                startTime: event.startTime,
+                endTime: event.endTime,
                 registrationLink: event.registrationLink || '',
             });
             setPreviewImage(event.imageUrl);
@@ -123,6 +131,8 @@ export default function EventForm({ event }: EventFormProps) {
             title: '',
             description: '',
             date: undefined,
+            startTime: '',
+            endTime: '',
             imageUrl: undefined,
             location: '',
             isFree: 'free',
@@ -140,6 +150,8 @@ export default function EventForm({ event }: EventFormProps) {
     const eventData: any = {
         title: data.title,
         date: data.date,
+        startTime: data.startTime,
+        endTime: data.endTime,
         description: data.description,
         imageUrl: data.imageUrl,
         location: data.location,
@@ -162,7 +174,7 @@ export default function EventForm({ event }: EventFormProps) {
                 path: eventRef.path,
                 operation: 'update',
                 requestResourceData: eventData
-            }, err);
+            });
             errorEmitter.emit('permission-error', permissionError);
             throw permissionError;
         });
@@ -176,12 +188,12 @@ export default function EventForm({ event }: EventFormProps) {
       } else {
         eventData.createdAt = serverTimestamp();
         const collectionRef = collection(db, 'events');
-        await addDoc(collectionRef, eventData).catch(err => {
+        const docRef = await addDoc(collectionRef, eventData).catch(err => {
             const permissionError = new FirestorePermissionError({
                 path: collectionRef.path,
                 operation: 'create',
                 requestResourceData: eventData
-            }, err);
+            });
             errorEmitter.emit('permission-error', permissionError);
             throw permissionError;
         });
@@ -223,7 +235,7 @@ export default function EventForm({ event }: EventFormProps) {
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
               name="date"
               render={({ field }) => (
@@ -262,6 +274,34 @@ export default function EventForm({ event }: EventFormProps) {
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

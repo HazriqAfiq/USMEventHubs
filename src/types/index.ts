@@ -4,6 +4,8 @@ export interface Event {
   id: string;
   title: string;
   date: Timestamp;
+  startTime: string;
+  endTime: string;
   description: string;
   imageUrl: string;
   location: string;

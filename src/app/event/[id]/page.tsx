@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firest
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,17 @@ import { useRouter, useParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import Link from 'next/link';
+
+// Helper function to format time string (HH:mm) to AM/PM format
+const formatTime = (timeString: string) => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':');
+  const date = new Date();
+  date.setHours(parseInt(hours, 10));
+  date.setMinutes(parseInt(minutes, 10));
+  return format(date, 'p'); // 'p' is for locale-dependent time format (e.g., 2:30 PM)
+};
+
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -168,6 +179,10 @@ export default function EventDetailPage() {
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
                   <span>{event.date ? format(event.date.toDate(), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
+                </div>
+                 <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-2" />
+                  <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-2" />

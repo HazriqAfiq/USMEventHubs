@@ -3,12 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyD2ZyNo4wtHRTUFDKnGMGHf5PdiP7o7_tE",
+  authDomain: "eventusm-hub.firebaseapp.com",
+  projectId: "eventusm-hub",
+  storageBucket: "eventusm-hub.firebasestorage.app",
+  messagingSenderId: "736547595867",
+  appId: "1:736547595867:web:021cd9560caa1ecd5f817e",
+  measurementId: "G-K49XKX3M3E"
 };
 
 // Initialize Firebase

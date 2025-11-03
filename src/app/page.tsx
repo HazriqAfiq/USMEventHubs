@@ -7,12 +7,13 @@ import EventCard from '@/components/EventCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Event } from '@/types';
 import { useEventFilters } from '@/hooks/use-event-filters';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const { priceFilter, typeFilter } = useEventFilters();
+  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
 
   useEffect(() => {
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
@@ -60,6 +61,38 @@ export default function Home() {
           Discover our curated list of events. Something new and exciting is always around the corner!
         </p>
       </div>
+
+       <div className="sm:hidden mb-6 space-y-4 p-4 border rounded-lg bg-card">
+          <h3 className="font-semibold text-lg">Filter Events</h3>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm font-medium">Price</label>
+              <Select value={priceFilter} onValueChange={(value) => setPriceFilter(value as any)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="By Price" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Prices</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-sm font-medium">Type</label>
+              <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as any)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="By Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="physical">Physical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
       
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

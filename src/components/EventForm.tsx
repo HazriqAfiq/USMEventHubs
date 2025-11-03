@@ -40,6 +40,14 @@ const formSchema = z.object({
   isFree: z.enum(['free', 'paid']).default('free'),
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
   registrationLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+}).refine(data => {
+    if (data.isFree === 'paid') {
+        return data.price !== undefined && data.price > 0;
+    }
+    return true;
+}, {
+    message: 'Price must be greater than 0 for paid events.',
+    path: ['price'],
 });
 
 type EventFormValues = z.infer<typeof formSchema>;

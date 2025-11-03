@@ -35,7 +35,7 @@ export function Header() {
       <div className="container mx-auto px-4 flex justify-between items-center h-16">
         <Link href="/" className="flex items-center gap-2 font-headline text-xl font-bold text-primary">
           <CalendarDays className="h-6 w-6" />
-          <span>Event Manager Pro</span>
+          <span>USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-4">
           {!loading && (

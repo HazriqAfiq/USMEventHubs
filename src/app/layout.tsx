@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Event Manager Pro',
+  title: 'USM Event Hub',
   description: 'Manage your events with ease.',
 };
 

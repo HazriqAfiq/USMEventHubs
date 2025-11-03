@@ -18,7 +18,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
-  const { id: eventId } = params;
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
@@ -29,6 +28,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
 
   useEffect(() => {
+    const eventId = params.id;
     if (eventId) {
       const fetchEvent = async () => {
         try {
@@ -50,7 +50,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
 
       fetchEvent();
     }
-  }, [eventId]);
+  }, [params.id]);
   
   const handleRegistration = async () => {
     if (!user) {

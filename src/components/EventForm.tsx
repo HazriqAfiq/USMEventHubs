@@ -20,14 +20,15 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import Link from 'next/link';
+import type { Event } from '@/types';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -43,39 +44,84 @@ const formSchema = z.object({
 
 type EventFormValues = z.infer<typeof formSchema>;
 
-export default function EventForm() {
+interface EventFormProps {
+  event?: Event;
+}
+
+export default function EventForm({ event }: EventFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(event?.imageUrl || null);
+  
+  const isEditMode = !!event;
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: '',
-      description: '',
-      location: '',
-      isFree: 'free',
-      registrationLink: '',
-      price: 0,
-      eventType: undefined,
+      title: event?.title || '',
+      description: event?.description || '',
+      location: event?.location || '',
+      isFree: event?.isFree ? 'free' : 'paid',
+      registrationLink: event?.registrationLink || '',
+      price: event?.price || 0,
+      eventType: event?.eventType,
+      imageUrl: event?.imageUrl,
+      date: event?.date?.toDate(),
     },
   });
+  
+  useEffect(() => {
+    if (event) {
+      form.reset({
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        isFree: event.isFree ? 'free' : 'paid',
+        price: event.price || 0,
+        eventType: event.eventType,
+        imageUrl: event.imageUrl,
+        date: event.date?.toDate(),
+        registrationLink: event.registrationLink || '',
+      });
+      setPreviewImage(event.imageUrl);
+    }
+  }, [event, form]);
 
   const isPaid = form.watch('isFree') === 'paid';
 
   const handleReset = () => {
-    form.reset({
-      title: '',
-      description: '',
-      date: undefined,
-      imageUrl: undefined,
-      location: '',
-      isFree: 'free',
-      price: 0,
-      eventType: undefined,
-      registrationLink: '',
-    });
-    setPreviewImage(null);
+    if (isEditMode) {
+        // If in edit mode, reset to original event data
+         if (event) {
+            form.reset({
+                title: event.title,
+                description: event.description,
+                location: event.location,
+                isFree: event.isFree ? 'free' : 'paid',
+                price: event.price || 0,
+                eventType: event.eventType,
+                imageUrl: event.imageUrl,
+                date: event.date?.toDate(),
+                registrationLink: event.registrationLink || '',
+            });
+            setPreviewImage(event.imageUrl);
+        }
+    } else {
+        // If in create mode, reset to empty form
+        form.reset({
+            title: '',
+            description: '',
+            date: undefined,
+            imageUrl: undefined,
+            location: '',
+            isFree: 'free',
+            price: 0,
+            eventType: undefined,
+            registrationLink: '',
+        });
+        setPreviewImage(null);
+    }
   }
 
   async function onSubmit(data: EventFormValues) {
@@ -90,24 +136,37 @@ export default function EventForm() {
         isFree: data.isFree === 'free',
         eventType: data.eventType,
         registrationLink: data.registrationLink,
-        createdAt: serverTimestamp(),
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
+      } else {
+        eventData.price = 0;
       }
 
-      await addDoc(collection(db, 'events'), eventData);
-      toast({
-        title: 'Event Created!',
-        description: `"${data.title}" has been added successfully.`,
-      });
-      handleReset();
+      if (isEditMode && event) {
+        const eventRef = doc(db, 'events', event.id);
+        await updateDoc(eventRef, eventData);
+        toast({
+          title: 'Event Updated!',
+          description: `"${data.title}" has been updated successfully.`,
+        });
+        router.push('/admin');
+      } else {
+        eventData.createdAt = serverTimestamp();
+        await addDoc(collection(db, 'events'), eventData);
+        toast({
+          title: 'Event Created!',
+          description: `"${data.title}" has been added successfully.`,
+        });
+        handleReset();
+      }
+
     } catch (error) {
       console.error('Submission error:', error);
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: 'Could not save the event. Please check the console for more details.',
+        description: `Could not ${isEditMode ? 'update' : 'save'} the event. Please check the console for more details.`,
       });
     } finally {
       setIsSubmitting(false);
@@ -181,7 +240,7 @@ export default function EventForm() {
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="flex items-center space-x-4"
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
@@ -215,7 +274,7 @@ export default function EventForm() {
                     <FormControl>
                        <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="flex items-center space-x-4"
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
@@ -316,7 +375,7 @@ export default function EventForm() {
                       const selectedImage = PlaceHolderImages.find(img => img.imageUrl === value);
                       setPreviewImage(selectedImage?.imageUrl || null);
                     }}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -340,20 +399,29 @@ export default function EventForm() {
             />
             
             <div className="aspect-video w-full relative rounded-md overflow-hidden border bg-muted">
-                {previewImage && (
+                {previewImage ? (
                   <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">Select an image to see a preview</div>
                 )}
             </div>
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
-              <Trash2 className="mr-2 h-4 w-4"/>
-              Clear Form
-            </Button>
+            {!isEditMode && (
+              <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
+                <Trash2 className="mr-2 h-4 w-4"/>
+                Clear Form
+              </Button>
+            )}
+            {isEditMode && (
+                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                    Cancel
+                </Button>
+            )}
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Event...' : 'Create Event'}
+              {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
             </Button>
         </div>
       </form>

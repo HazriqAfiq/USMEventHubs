@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Trash2 } from 'lucide-react';
+import { FilePenLine, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
 import type { Event } from '@/types';
+import Link from 'next/link';
 
 
 export default function AdminEventList() {
@@ -87,28 +88,36 @@ export default function AdminEventList() {
               <h3 className="font-bold truncate">{event.title}</h3>
               <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon" className='flex-shrink-0'>
-                  <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">Delete Event</span>
+            <div className='flex gap-2 flex-shrink-0'>
+              <Link href={`/admin/edit/${event.id}`}>
+                <Button variant="outline" size="icon">
+                  <FilePenLine className="h-4 w-4" />
+                  <span className="sr-only">Edit Event</span>
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the event "{event.title}".
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDelete(event.id, event.title)}>
-                    Continue
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </Link>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="icon">
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete Event</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the event "{event.title}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(event.id, event.title)}>
+                      Continue
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </Card>
         ))
       )}

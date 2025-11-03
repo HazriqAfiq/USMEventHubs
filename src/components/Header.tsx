@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, LogIn, LogOut, UserCircle } from 'lucide-react';
+import { CalendarDays, LogIn, LogOut, UserCircle, DollarSign, Laptop, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEventFilters } from '@/hooks/use-event-filters';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+
 
 export function Header() {
   const { user, loading } = useAuth();
@@ -46,26 +47,31 @@ export function Header() {
         <div className="flex items-center gap-2 sm:gap-4">
            {isHomepage && (
              <div className="hidden sm:flex items-center gap-2">
-                <Select value={priceFilter} onValueChange={(value) => setPriceFilter(value as any)}>
-                  <SelectTrigger className="w-[150px] text-xs h-9">
-                    <SelectValue placeholder="By Price" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Prices</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                  </SelectContent>
-                </Select>
-                 <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as any)}>
-                  <SelectTrigger className="w-[150px] text-xs h-9">
-                    <SelectValue placeholder="By Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="online">Online</SelectItem>
-                    <SelectItem value="physical">Physical</SelectItem>
-                  </SelectContent>
-                </Select>
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={priceFilter}
+                  onValueChange={(value) => setPriceFilter(value as any || 'all')}
+                  aria-label="Filter by price"
+                >
+                  <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
+                  <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
+                  <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1"/>Paid</ToggleGroupItem>
+                </ToggleGroup>
+
+                 <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={typeFilter}
+                  onValueChange={(value) => setTypeFilter(value as any || 'all')}
+                  aria-label="Filter by type"
+                >
+                  <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
+                  <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
+                  <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1"/>Physical</ToggleGroupItem>
+                </ToggleGroup>
               </div>
            )}
           {!loading && (

@@ -55,6 +55,7 @@ export default function EventForm() {
       location: '',
       isFree: 'free',
       registrationLink: '',
+      price: 0,
     },
   });
 

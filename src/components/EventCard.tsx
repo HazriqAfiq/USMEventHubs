@@ -2,13 +2,24 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Laptop, MapPin, Users } from 'lucide-react';
+import { Calendar, Laptop, MapPin, Users, Clock } from 'lucide-react';
 import type { Event } from '@/types';
 import { Badge } from './ui/badge';
 
 interface EventCardProps {
   event: Event;
 }
+
+// Helper function to format time string (HH:mm) to AM/PM format
+const formatTime = (timeString: string) => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':');
+  const date = new Date();
+  date.setHours(parseInt(hours, 10));
+  date.setMinutes(parseInt(minutes, 10));
+  return format(date, 'p'); // 'p' is for locale-dependent time format (e.g., 2:30 PM)
+};
+
 
 export default function EventCard({ event }: EventCardProps) {
   return (
@@ -39,6 +50,10 @@ export default function EventCard({ event }: EventCardProps) {
           <CardDescription className="flex items-center pt-1 text-sm">
             <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
             <span>{event.date ? format(event.date.toDate(), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
+          </CardDescription>
+           <CardDescription className="flex items-center pt-1 text-sm">
+            <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
           </CardDescription>
            <CardDescription className="flex items-center pt-1 text-sm">
             <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />

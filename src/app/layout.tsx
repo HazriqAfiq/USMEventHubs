@@ -26,6 +26,11 @@ export default function RootLayout({
         <Providers>
           <Header />
           <main className="flex-grow">{children}</main>
+          <footer className="py-4 bg-card border-t">
+            <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+              <p>Powered and developed by Chillframe.</p>
+            </div>
+          </footer>
           <Toaster />
         </Providers>
       </body>

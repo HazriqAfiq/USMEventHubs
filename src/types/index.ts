@@ -6,5 +6,9 @@ export interface Event {
   date: Timestamp;
   description: string;
   imageUrl: string;
-  keywords?: string[];
+  location: string;
+  isFree: boolean;
+  price?: number;
+  registrationLink?: string;
+  registrations?: string[];
 }

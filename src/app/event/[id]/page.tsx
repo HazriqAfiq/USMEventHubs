@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar, MapPin, UserCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
@@ -28,10 +28,11 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
 
   useEffect(() => {
-    if (params.id) {
+    const eventId = params.id;
+    if (eventId) {
       const fetchEvent = async () => {
         try {
-          const docRef = doc(db, 'events', params.id);
+          const docRef = doc(db, 'events', eventId);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {

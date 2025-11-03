@@ -249,7 +249,7 @@ export default function EventForm() {
                   <FormItem>
                     <FormLabel>Amount (RM)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                      <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -98,6 +98,7 @@ export default function AdminEventList() {
           variant="outline"
           value={filter}
           onValueChange={(value) => setFilter(value as any || 'upcoming')}
+          className="text-white"
         >
           <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
           <ToggleGroupItem value="past">Past</ToggleGroupItem>

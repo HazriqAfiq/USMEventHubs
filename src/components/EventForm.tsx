@@ -209,7 +209,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Event Title</FormLabel>
+                  <FormLabel className="text-white">Event Title</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Annual Tech Summit" {...field} />
                   </FormControl>
@@ -222,7 +222,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Event Date</FormLabel>
+                  <FormLabel className="text-white">Event Date</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -262,7 +262,7 @@ export default function EventForm({ event }: EventFormProps) {
                   name="startTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel className="text-white">Start Time</FormLabel>
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
@@ -275,7 +275,7 @@ export default function EventForm({ event }: EventFormProps) {
                   name="endTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Time</FormLabel>
+                      <FormLabel className="text-white">End Time</FormLabel>
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
@@ -290,7 +290,7 @@ export default function EventForm({ event }: EventFormProps) {
                 name="isFree"
                 render={({ field }) => (
                   <FormItem className="space-y-3">
-                    <FormLabel>Price</FormLabel>
+                    <FormLabel className="text-white">Price</FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
@@ -301,7 +301,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="free" />
                           </FormControl>
-                          <FormLabel className="font-normal">
+                          <FormLabel className="font-normal text-white">
                             Free
                           </FormLabel>
                         </FormItem>
@@ -309,7 +309,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="paid" />
                           </FormControl>
-                          <FormLabel className="font-normal">
+                          <FormLabel className="font-normal text-white">
                             Paid
                           </FormLabel>
                         </FormItem>
@@ -324,7 +324,7 @@ export default function EventForm({ event }: EventFormProps) {
                 name="eventType"
                 render={({ field }) => (
                   <FormItem className="space-y-3">
-                    <FormLabel>Event Type</FormLabel>
+                    <FormLabel className="text-white">Event Type</FormLabel>
                     <FormControl>
                        <RadioGroup
                         onValueChange={field.onChange}
@@ -335,7 +335,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="online" />
                           </FormControl>
-                          <FormLabel className="font-normal">
+                          <FormLabel className="font-normal text-white">
                             Online
                           </FormLabel>
                         </FormItem>
@@ -343,7 +343,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="physical" />
                           </FormControl>
-                          <FormLabel className="font-normal">
+                          <FormLabel className="font-normal text-white">
                             Physical
                           </FormLabel>
                         </FormItem>
@@ -360,7 +360,7 @@ export default function EventForm({ event }: EventFormProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormLabel className="text-white">Amount (RM)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                     </FormControl>
@@ -374,7 +374,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel className="text-white">Location</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Virtual or Specific Venue" {...field} />
                   </FormControl>
@@ -387,7 +387,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="description"
               render={({ field }) => (
                 <FormItem className="flex flex-col flex-grow">
-                  <FormLabel>Event Description</FormLabel>
+                  <FormLabel className="text-white">Event Description</FormLabel>
                   <FormControl className="flex-grow">
                     <Textarea
                       placeholder="Describe the event, what it's about, and who should attend."
@@ -404,7 +404,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="registrationLink"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Registration Link</FormLabel>
+                  <FormLabel className="text-white">Registration Link</FormLabel>
                   <FormControl>
                     <Input placeholder="https://forms.gle/your-form-link" {...field} />
                   </FormControl>
@@ -422,7 +422,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Event Image</FormLabel>
+                  <FormLabel className="text-white">Event Image</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);

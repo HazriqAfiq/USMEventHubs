@@ -228,7 +228,7 @@ export default function RegistrationForm({
         {step === 2 && isPaidEvent && (
             <div className="space-y-4">
                  <div className="flex justify-center">
-                  <div className="relative h-64 w-64 rounded-md overflow-hidden border bg-white">
+                  <div className="relative h-80 w-80 rounded-md overflow-hidden border bg-white">
                     <Image src={eventQrCodeUrl} alt="Payment QR Code" layout="fill" objectFit="contain" />
                   </div>
                 </div>

@@ -20,15 +20,13 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased min-h-screen flex flex-col')}>
         <Providers>
           <Header />
           <main className="flex-grow bg-[url('/images/usmbg.jpg')] bg-cover bg-center bg-no-repeat">
-            <div className="bg-background/30 min-h-full">
-              {children}
-            </div>
+            {children}
           </main>
           <footer className="py-4 bg-primary text-primary-foreground border-t border-primary-foreground/20">
             <div className="container mx-auto px-4 text-center text-sm">

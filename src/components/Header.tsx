@@ -41,9 +41,9 @@ export function Header() {
   return (
     <header className="bg-card text-card-foreground border-b sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-20">
-        <Link href="/" className="flex items-center gap-2 font-headline text-xl font-bold">
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold">
           <Image src="/images/usm.png" alt="USM Event Hub Logo" width={120} height={120} />
-          <span className="hidden sm:inline">USM Event Hub</span>
+          <span className="hidden sm:inline font-fancy">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
            {isHomepage && (

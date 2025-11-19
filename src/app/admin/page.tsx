@@ -16,14 +16,12 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !isAdmin) {
       // If not loading and not an admin, redirect to homepage.
       // This also handles the case where the user is not logged in.
-      if (!isAdmin) {
-        router.push('/');
-      }
+      router.push('/');
     }
-  }, [user, isAdmin, loading, router]);
+  }, [isAdmin, loading, router]);
 
   // Show skeleton loader while checking auth state
   if (loading) {

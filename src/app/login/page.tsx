@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,10 +12,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/hooks/use-auth';
-
-// The designated admin email. In a real app, this would be managed more securely.
-const ADMIN_EMAIL = 'admin@example.com';
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -30,20 +27,17 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      const user = userCredential.user;
-
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      
       toast({
         title: 'Login successful!',
         description: 'Redirecting...',
       });
       
-      // Check if the logged-in user is the admin
-      if (user && user.email === ADMIN_EMAIL) {
-         router.push('/admin');
-      } else {
-         router.push('/');
-      }
+      // The useAuth hook will handle role check and redirection
+      // For a slightly better UX, we could try to predict the role, but for now
+      // a simple push to home is fine. The auth provider will redirect to /admin if needed.
+      router.push('/');
      
     } catch (error: any) {
       console.error('Login error:', error);
@@ -68,7 +62,16 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+      const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+      const user = userCredential.user;
+
+      // Create a user profile document in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        role: 'student', // Default role for new users
+      });
+      
       toast({
         title: 'Registration successful!',
         description: 'You are now logged in. Redirecting to homepage...',

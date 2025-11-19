@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function EditEventPage() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -22,13 +22,11 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !isAdmin) {
       // If not loading and not an admin, redirect to homepage.
-      if (!isAdmin) {
-        router.push('/');
-      }
+      router.push('/');
     }
-  }, [user, isAdmin, authLoading, router]);
+  }, [isAdmin, authLoading, router]);
   
   useEffect(() => {
     if (eventId && isAdmin) { // Only fetch if user is an admin

@@ -3,42 +3,71 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-// In a production app, you would manage admins more securely,
-// for example, using Firebase Custom Claims or a database role system.
-// For this example, we'll use a simple array of admin emails.
-const ADMIN_EMAILS = ['admin@example.com'];
+interface UserProfile {
+  uid: string;
+  email: string | null;
+  role: 'admin' | 'student';
+}
 
 interface AuthContextType {
   user: User | null;
+  userProfile: UserProfile | null;
   isAdmin: boolean;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  userProfile: null,
   isAdmin: false,
   loading: true,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      // Check if the logged-in user's email is in our admin list
-      setIsAdmin(!!user && ADMIN_EMAILS.includes(user.email || ''));
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
+      if (user) {
+        setUser(user);
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const profile = userDocSnap.data() as UserProfile;
+          setUserProfile(profile);
+          setIsAdmin(profile.role === 'admin');
+        } else {
+          // If user exists in Auth but not in Firestore, create their profile
+          // This can happen for users created before this system was in place
+          const newProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email,
+            role: 'student', // Default to student
+          };
+          await setDoc(userDocRef, newProfile);
+          setUserProfile(newProfile);
+          setIsAdmin(false);
+        }
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const value = { user, loading, isAdmin };
+  const value = { user, userProfile, loading, isAdmin };
 
   return (
     <AuthContext.Provider value={value}>

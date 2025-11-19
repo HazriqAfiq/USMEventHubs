@@ -20,7 +20,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 
 export function Header() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, userProfile, isAdmin, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
@@ -76,7 +76,7 @@ export function Header() {
            )}
           {!loading && (
             <>
-              {user ? (
+              {user && userProfile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -89,7 +89,7 @@ export function Header() {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{isAdmin ? 'Admin' : 'Student'}</p>
+                        <p className="text-sm font-medium leading-none capitalize">{userProfile.role}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>

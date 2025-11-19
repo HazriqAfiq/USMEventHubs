@@ -54,7 +54,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       setLoading(false);
     }, (serverError) => {
       const permissionError = new FirestorePermissionError({
-        path: registrationsQuery.path,
+        path: 'registrations', // Fix: Use collection group name as path for context
         operation: 'list',
       }, serverError);
       errorEmitter.emit('permission-error', permissionError);

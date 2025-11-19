@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -30,38 +30,49 @@ export default function UserEventList({ userId }: UserEventListProps) {
       return;
     }
 
-    const registrationsQuery = query(collectionGroup(db, 'registrations'), where('id', '==', userId));
+    const fetchRegisteredEvents = async () => {
+      setLoading(true);
+      try {
+        const eventsQuery = query(collection(db, 'events'));
+        const eventsSnapshot = await getDocs(eventsQuery);
+        
+        const registeredEventsPromises = eventsSnapshot.docs.map(async (eventDoc) => {
+          const eventId = eventDoc.id;
+          const registrationRef = doc(db, 'events', eventId, 'registrations', userId);
+          const registrationSnap = await getDoc(registrationRef).catch(() => null); // Catch potential permission errors on individual docs
+          
+          if (registrationSnap && registrationSnap.exists()) {
+            return { id: eventId, ...eventDoc.data() } as Event;
+          }
+          return null;
+        });
 
-    const unsubscribe = onSnapshot(registrationsQuery, async (registrationsSnapshot) => {
-      const eventIds = registrationsSnapshot.docs.map(doc => doc.ref.parent.parent?.id).filter(id => id);
-      
-      if (eventIds.length === 0) {
-        setEvents([]);
+        const registeredEvents = (await Promise.all(registeredEventsPromises)).filter(event => event !== null) as Event[];
+        
+        registeredEvents.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
+        setEvents(registeredEvents);
+
+      } catch (serverError) {
+         const permissionError = new FirestorePermissionError({
+            path: 'events', 
+            operation: 'list',
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+      } finally {
         setLoading(false);
-        return;
       }
-      
-      const eventsQuery = query(collection(db, 'events'), where('__name__', 'in', eventIds));
-      const eventsSnapshot = await getDocs(eventsQuery);
-
-      const eventsData: Event[] = [];
-      eventsSnapshot.forEach((doc) => {
-        eventsData.push({ id: doc.id, ...doc.data() } as Event);
-      });
-
-      eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
-      setEvents(eventsData);
-      setLoading(false);
-    }, (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'registrations', // Fix: Use collection group name as path for context
-        operation: 'list',
-      }, serverError);
-      errorEmitter.emit('permission-error', permissionError);
-      setLoading(false);
+    };
+    
+    fetchRegisteredEvents();
+    
+    // We can add a listener to all events to update the dashboard, but it might be inefficient.
+    // For now, we fetch once. A pull-to-refresh or a re-fetch on navigation might be better.
+    const unsubscribe = onSnapshot(collection(db, 'events'), () => {
+        fetchRegisteredEvents();
     });
 
     return () => unsubscribe();
+
   }, [userId]);
 
   const { filteredEvents, upcomingCount, pastCount } = useMemo(() => {

@@ -57,8 +57,8 @@ export default function Home() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">Upcoming Events</h1>
-         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
+        <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary [text-shadow:0_2px_4px_rgba(0,0,0,0.3)]">Upcoming Events</h1>
+         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
           Join events conducted in USM and get your MyCSD points.
         </p>
       </div>

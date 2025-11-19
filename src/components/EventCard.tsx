@@ -42,6 +42,9 @@ export default function EventCard({ event }: EventCardProps) {
         setIsRegistered(false);
       });
       return () => unsubscribe();
+    } else {
+        // Ensure that if user is logged out, we reset the registered state.
+        setIsRegistered(false);
     }
   }, [user, event.id]);
 

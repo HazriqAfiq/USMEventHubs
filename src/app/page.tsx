@@ -63,39 +63,38 @@ export default function Home() {
         </p>
       </div>
 
-       <div className="sm:hidden mb-6 space-y-4 p-4 border rounded-lg bg-card">
-          <h3 className="font-semibold text-lg">Filter Events</h3>
-          <div className="space-y-4">
-             <div>
-              <label className="text-sm font-medium mb-2 block">Price</label>
+       <div className="flex justify-center mb-8">
+        <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
                 <ToggleGroup
                   type="single"
+                  size="sm"
                   variant="outline"
                   value={priceFilter}
                   onValueChange={(value) => setPriceFilter(value as any || 'all')}
-                  className="w-full justify-start"
+                  aria-label="Filter by price"
                 >
-                  <ToggleGroupItem value="all" className="flex-1">All</ToggleGroupItem>
-                  <ToggleGroupItem value="free" className="flex-1">Free</ToggleGroupItem>
-                  <ToggleGroupItem value="paid" className="flex-1"><DollarSign className="h-4 w-4 mr-1"/>Paid</ToggleGroupItem>
+                  <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
+                  <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
+                  <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1"/>Paid</ToggleGroupItem>
                 </ToggleGroup>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Type</label>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                value={typeFilter}
-                onValueChange={(value) => setTypeFilter(value as any || 'all')}
-                className="w-full justify-start"
-              >
-                <ToggleGroupItem value="all" className="flex-1">All</ToggleGroupItem>
-                <ToggleGroupItem value="online" className="flex-1"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
-                <ToggleGroupItem value="physical" className="flex-1"><Users className="h-4 w-4 mr-1"/>Physical</ToggleGroupItem>
-              </ToggleGroup>
+             <div className="flex items-center gap-2">
+                 <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={typeFilter}
+                  onValueChange={(value) => setTypeFilter(value as any || 'all')}
+                  aria-label="Filter by type"
+                >
+                  <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
+                  <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
+                  <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1"/>Physical</ToggleGroupItem>
+                </ToggleGroup>
             </div>
-          </div>
         </div>
+      </div>
       
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

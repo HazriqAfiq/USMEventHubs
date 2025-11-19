@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, DollarSign, Laptop, Users, LayoutDashboard } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -16,17 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useEventFilters } from '@/hooks/use-event-filters';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 
 export function Header() {
   const { user, userProfile, isAdmin, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
-
-  const isHomepage = pathname === '/';
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -46,35 +40,6 @@ export function Header() {
           <span className="font-headline font-bold">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
-           {isHomepage && (
-             <div className="hidden sm:flex items-center gap-2">
-                <ToggleGroup
-                  type="single"
-                  size="sm"
-                  variant="outline"
-                  value={priceFilter}
-                  onValueChange={(value) => setPriceFilter(value as any || 'all')}
-                  aria-label="Filter by price"
-                >
-                  <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
-                  <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
-                  <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1"/>Paid</ToggleGroupItem>
-                </ToggleGroup>
-
-                 <ToggleGroup
-                  type="single"
-                  size="sm"
-                  variant="outline"
-                  value={typeFilter}
-                  onValueChange={(value) => setTypeFilter(value as any || 'all')}
-                  aria-label="Filter by type"
-                >
-                  <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
-                  <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
-                  <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1"/>Physical</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-           )}
           {!loading && (
             <>
               {user && userProfile ? (

@@ -38,8 +38,8 @@ export default function EditEventPage() {
     if (!eventId || !user) return;
 
     const fetchEvent = async () => {
+      const docRef = doc(db, 'events', eventId);
       try {
-        const docRef = doc(db, 'events', eventId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
@@ -70,7 +70,16 @@ export default function EditEventPage() {
         } else {
           router.push('/admin');
         }
-      } finally {
+      } catch (serverError: any) {
+        if (serverError.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'get',
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+        }
+      } 
+      finally {
         setLoading(false);
       }
     };

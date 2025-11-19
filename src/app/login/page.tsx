@@ -13,6 +13,9 @@ import { LogIn } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 
+// The designated admin email. In a real app, this would be managed more securely.
+const ADMIN_EMAIL = 'admin@example.com';
+
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -21,7 +24,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +38,8 @@ export default function LoginPage() {
         description: 'Redirecting...',
       });
       
-      // Check if the user is an admin
-      if (user && ['admin@example.com'].includes(user.email || '')) {
+      // Check if the logged-in user is the admin
+      if (user && user.email === ADMIN_EMAIL) {
          router.push('/admin');
       } else {
          router.push('/');

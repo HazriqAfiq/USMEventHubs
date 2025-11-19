@@ -23,4 +23,5 @@ export interface Event {
   registrations?: Registration[]; // UID of registered users
   organizerId?: string; // UID of the admin who created the event
   groupLink?: string;
+  qrCodeUrl?: string;
 }

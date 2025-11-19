@@ -30,6 +30,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { QrCodeImages, type QrCodePlaceholder } from '@/lib/qr-codes';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -37,12 +38,13 @@ const formSchema = z.object({
   startTime: z.string({ required_error: 'A start time is required.' }),
   endTime: z.string({ required_error: 'An end time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  imageUrl: z.string({ required_error: 'Please select an image for the event.' }),
+  imageUrl: z.string({ required_error: 'Please select an event image.' }),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
   groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  qrCodeUrl: z.string().optional(),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price > 0;
@@ -51,6 +53,14 @@ const formSchema = z.object({
 }, {
     message: 'Price must be greater than 0 for paid events.',
     path: ['price'],
+}).refine(data => {
+    if (data.isFree === 'paid') {
+        return data.qrCodeUrl && data.qrCodeUrl.length > 0;
+    }
+    return true;
+}, {
+    message: 'Please select a QR code for paid events.',
+    path: ['qrCodeUrl'],
 });
 
 type EventFormValues = z.infer<typeof formSchema>;
@@ -82,6 +92,7 @@ export default function EventForm({ event }: EventFormProps) {
       startTime: event?.startTime || '',
       endTime: event?.endTime || '',
       groupLink: event?.groupLink || '',
+      qrCodeUrl: event?.qrCodeUrl || '',
     },
   });
   
@@ -99,6 +110,7 @@ export default function EventForm({ event }: EventFormProps) {
         startTime: event.startTime,
         endTime: event.endTime,
         groupLink: event.groupLink || '',
+        qrCodeUrl: event.qrCodeUrl || '',
       });
       setPreviewImage(event.imageUrl);
     }
@@ -122,6 +134,7 @@ export default function EventForm({ event }: EventFormProps) {
                 startTime: event.startTime,
                 endTime: event.endTime,
                 groupLink: event.groupLink || '',
+                qrCodeUrl: event.qrCodeUrl || '',
             });
             setPreviewImage(event.imageUrl);
         }
@@ -139,6 +152,7 @@ export default function EventForm({ event }: EventFormProps) {
             price: 1,
             eventType: undefined,
             groupLink: '',
+            qrCodeUrl: '',
         });
         setPreviewImage(null);
     }
@@ -169,8 +183,10 @@ export default function EventForm({ event }: EventFormProps) {
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
+        eventData.qrCodeUrl = data.qrCodeUrl;
       } else {
         eventData.price = 0;
+        eventData.qrCodeUrl = '';
       }
 
     try {
@@ -363,19 +379,48 @@ export default function EventForm({ event }: EventFormProps) {
               />
             </div>
             {isPaid && (
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Amount (RM)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <>
+                <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-white">Amount (RM)</FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="qrCodeUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-white">Payment QR Code</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a QR code for payment" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {QrCodeImages.map((qr: QrCodePlaceholder) => (
+                                <SelectItem key={qr.id} value={qr.imageUrl}>
+                                <div className="flex items-center gap-2">
+                                    <Image src={qr.imageUrl} alt={qr.name} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
+                                    <span>{qr.name}</span>
+                                </div>
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+              </>
             )}
              <FormField
               control={form.control}

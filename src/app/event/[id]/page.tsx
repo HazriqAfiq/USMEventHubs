@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +55,7 @@ export default function EventDetailPage() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
+  const [isQrCodeDialogOpen, setIsQrCodeDialogOpen] = useState(false);
   
   useEffect(() => {
     if (!eventId) return;
@@ -90,8 +91,6 @@ export default function EventDetailPage() {
       const unsubscribe = onSnapshot(regRef, (doc) => {
         setIsRegistered(doc.exists());
       }, (serverError) => {
-        // This is now handled by the error emitter, but we'll keep the check
-        // to prevent UI state issues if permissions fail.
         setIsRegistered(false);
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
@@ -153,7 +152,12 @@ export default function EventDetailPage() {
       });
       return;
     }
-    setIsFormOpen(true);
+
+    if (event?.isFree === false && event.qrCodeUrl) {
+      setIsQrCodeDialogOpen(true);
+    } else {
+      setIsFormOpen(true);
+    }
   }
 
   if (loading || authLoading) {
@@ -302,6 +306,34 @@ export default function EventDetailPage() {
             <DialogClose asChild>
                 <Button type="button" className='w-full'>Close</Button>
             </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+     <Dialog open={isQrCodeDialogOpen} onOpenChange={setIsQrCodeDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+           <div className='flex items-center justify-center flex-col text-center gap-y-2 pt-4'>
+            <QrCode className='h-12 w-12 text-primary' strokeWidth={1.5} />
+            <DialogTitle className="text-2xl font-bold font-headline">Scan to Pay</DialogTitle>
+            <DialogDescription>
+              Please scan the QR code to complete your payment of <strong>RM{event.price?.toFixed(2)}</strong>. After payment, you can fill out the registration form.
+            </DialogDescription>
+           </div>
+        </DialogHeader>
+         {event.qrCodeUrl && (
+            <div className='my-4 flex justify-center'>
+              <div className="relative h-64 w-64">
+                <Image src={event.qrCodeUrl} alt="Payment QR Code" layout="fill" objectFit="contain" />
+              </div>
+            </div>
+          )}
+        <DialogFooter className="pt-4 sm:justify-between gap-2">
+            <DialogClose asChild>
+                <Button type="button" variant="outline" className='w-full sm:w-auto'>Cancel</Button>
+            </DialogClose>
+            <Button type="button" className='w-full sm:w-auto' onClick={() => { setIsQrCodeDialogOpen(false); setIsFormOpen(true); }}>
+                I've Paid, Continue Registration
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

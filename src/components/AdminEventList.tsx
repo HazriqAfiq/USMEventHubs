@@ -24,6 +24,7 @@ import { Card } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useAuth } from '@/hooks/use-auth';
 
 
 export default function AdminEventList() {
@@ -31,9 +32,15 @@ export default function AdminEventList() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const { isAdmin, loading: authLoading } = useAuth();
 
 
   useEffect(() => {
+    if (authLoading || !isAdmin) {
+        if (!authLoading) setLoading(false);
+        return;
+    }
+    
     const q = query(collection(db, 'events'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
@@ -48,7 +55,7 @@ export default function AdminEventList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [authLoading, isAdmin]);
 
   const filteredEvents = useMemo(() => {
     const today = new Date();
@@ -80,7 +87,7 @@ export default function AdminEventList() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="mt-6 space-y-4">
         {[...Array(2)].map((_, i) => (

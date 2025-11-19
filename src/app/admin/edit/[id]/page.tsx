@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event, Registration } from '@/types';
 import { ArrowLeft, Terminal, Users } from 'lucide-react';
@@ -25,43 +25,45 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
+    if (authLoading) return; // Wait for authentication to complete
+
+    if (!isAdmin) {
       router.push('/');
+      return;
     }
-  }, [isAdmin, authLoading, router]);
-  
-  useEffect(() => {
-    if (eventId && isAdmin && !authLoading) {
-      const fetchEvent = async () => {
-        try {
-          const docRef = doc(db, 'events', eventId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
-          } else {
-            console.log("No such document!");
-            router.push('/admin');
-          }
-        } finally {
-          setLoading(false);
+    
+    if (!eventId) return;
+
+    const fetchEvent = async () => {
+      try {
+        const docRef = doc(db, 'events', eventId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
+        } else {
+          console.log("No such document!");
+          router.push('/admin');
         }
-      };
-
-      const registrationsRef = collection(db, 'events', eventId, 'registrations');
-      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
-        const regs: Registration[] = [];
-        snapshot.forEach(doc => {
-           regs.push({ id: doc.id, ...doc.data() } as Registration);
-        });
-        setRegistrations(regs);
-      });
-      
-      fetchEvent();
-      return () => unsubscribe();
-
-    } else if (!authLoading && !isAdmin) {
+      } finally {
         setLoading(false);
-    }
+      }
+    };
+
+    fetchEvent();
+
+    const registrationsRef = collection(db, 'events', eventId, 'registrations');
+    const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+      const regs: Registration[] = [];
+      snapshot.forEach(doc => {
+          regs.push({ id: doc.id, ...doc.data() } as Registration);
+      });
+      setRegistrations(regs);
+    }, (error) => {
+      console.error("Error fetching registrations:", error);
+    });
+    
+    return () => unsubscribe();
+
   }, [eventId, router, authLoading, isAdmin]);
 
   if (authLoading || loading) {

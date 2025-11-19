@@ -35,7 +35,11 @@ service cloud.firestore {
         allow delete: if request.auth.uid == userId;
         
         // Admins can list all registrations, and a user can read their own registration document if they are authenticated.
-        allow read: if (request.auth != null && isAdmin(request.auth.uid)) || (request.auth != null && request.auth.uid == userId);
+        allow read: if (request.auth != null && request.auth.uid == userId);
+      }
+      // Admins can list all registrations in the subcollection. This rule is on the collection group.
+      match /registrations/{registrationId} {
+        allow list: if request.auth != null && isAdmin(request.auth.uid);
       }
     }
     

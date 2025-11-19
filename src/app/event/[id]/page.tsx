@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -33,7 +33,6 @@ export default function EventDetailPage() {
   const params = useParams();
   const eventId = params.id as string;
   const [event, setEvent] = useState<Event | null>(null);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -42,44 +41,49 @@ export default function EventDetailPage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const isRegistered = user ? registrations.some(reg => reg.id === user.uid) : false;
-
+  const [isRegistered, setIsRegistered] = useState(false);
+  
   useEffect(() => {
-    if (eventId) {
-      const fetchEvent = async () => {
-        setLoading(true);
-        try {
-          const docRef = doc(db, 'events', eventId);
-          const docSnap = await getDoc(docRef);
+    if (!eventId) return;
 
-          if (docSnap.exists()) {
-            setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
-            setEventExists(true);
-          } else {
-            setEventExists(false);
-          }
-        } catch (error) {
-          console.error("Error fetching event:", error);
+    const fetchEvent = async () => {
+      setLoading(true);
+      try {
+        const docRef = doc(db, 'events', eventId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
+          setEventExists(true);
+        } else {
           setEventExists(false);
-        } finally {
-          setLoading(false);
         }
-      };
-      
-      const registrationsRef = collection(db, 'events', eventId, 'registrations');
-      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
-        const regs: Registration[] = [];
-        snapshot.forEach(doc => {
-           regs.push({ id: doc.id, ...doc.data() } as Registration);
-        });
-        setRegistrations(regs);
-      });
+      } catch (error) {
+        console.error("Error fetching event:", error);
+        setEventExists(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEvent();
 
-      fetchEvent();
-      return () => unsubscribe();
-    }
   }, [eventId]);
+
+   useEffect(() => {
+    if (user && eventId) {
+      const regRef = doc(db, 'events', eventId, 'registrations', user.uid);
+      const unsubscribe = onSnapshot(regRef, (doc) => {
+        setIsRegistered(doc.exists());
+      }, (error) => {
+        console.error("Error checking registration status:", error);
+        setIsRegistered(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setIsRegistered(false);
+    }
+   }, [user, eventId]);
   
   const handleUnregister = async () => {
     if (!user || !event) return;

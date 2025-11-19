@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,27 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -34,9 +48,6 @@ export default function LoginPage() {
         description: 'Redirecting...',
       });
       
-      // The useAuth hook will handle role check and redirection
-      // For a slightly better UX, we could try to predict the role, but for now
-      // a simple push to home is fine. The auth provider will redirect to /admin if needed.
       router.push('/');
      
     } catch (error: any) {
@@ -65,11 +76,10 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
       const user = userCredential.user;
 
-      // Create a user profile document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
-        role: 'student', // Default role for new users
+        role: 'student', 
       });
       
       toast({
@@ -89,6 +99,40 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) {
+        toast({
+            variant: 'destructive',
+            title: 'Email required',
+            description: 'Please enter your email address.',
+        });
+        return;
+    }
+    setIsResetting(true);
+    setResetSent(false);
+    try {
+        await sendPasswordResetEmail(auth, resetEmail);
+        setResetSent(true);
+        toast({
+            title: 'Password Reset Email Sent',
+            description: 'Check your inbox for a link to reset your password.',
+        });
+    } catch (error: any) {
+        console.error('Password reset error:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Reset Failed',
+            description: error.code === 'auth/user-not-found' 
+              ? 'No account found with that email address.'
+              : 'Could not send reset email. Please try again.',
+        });
+    } finally {
+        setIsResetting(false);
+    }
+  }
+
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] py-12">
@@ -118,16 +162,69 @@ export default function LoginPage() {
                     />
                     </div>
                     <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                        id="login-password"
-                        type="password"
-                        required
-                        placeholder="********"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        disabled={isLoading}
-                    />
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="login-password">Password</Label>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                             <button
+                                type="button"
+                                className="text-sm font-medium text-primary hover:underline"
+                                onClick={() => setResetSent(false)}
+                              >
+                                Forgot password?
+                              </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <form onSubmit={handlePasswordReset}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reset Your Password</AlertDialogTitle>
+                                {resetSent ? (
+                                    <AlertDialogDescription>
+                                        A password reset link has been sent to <strong>{resetEmail}</strong>. Please check your inbox (and spam folder). You can close this dialog now.
+                                    </AlertDialogDescription>
+                                ) : (
+                                  <>
+                                    <AlertDialogDescription>
+                                      Enter your account's email address and we'll send you a link to reset your password.
+                                    </AlertDialogDescription>
+                                    <div className="pt-4">
+                                      <Label htmlFor="reset-email" className="sr-only">Email</Label>
+                                      <Input
+                                        id="reset-email"
+                                        type="email"
+                                        placeholder="user@example.com"
+                                        required
+                                        value={resetEmail}
+                                        onChange={(e) => setResetEmail(e.target.value)}
+                                        disabled={isResetting}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="mt-4">
+                                <AlertDialogCancel>
+                                  {resetSent ? 'Close' : 'Cancel'}
+                                </AlertDialogCancel>
+                                {!resetSent && (
+                                  <AlertDialogAction type="submit" disabled={isResetting}>
+                                    {isResetting ? 'Sending...' : 'Send Reset Link'}
+                                  </AlertDialogAction>
+                                )}
+                              </AlertDialogFooter>
+                            </form>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                      <Input
+                          id="login-password"
+                          type="password"
+                          required
+                          placeholder="********"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          disabled={isLoading}
+                      />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (

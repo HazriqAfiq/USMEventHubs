@@ -85,25 +85,6 @@ export default function EventDetailPage() {
     }
    }, [user, eventId]);
   
-  const handleUnregister = async () => {
-    if (!user || !event) return;
-    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
-    try {
-      await deleteDoc(regRef);
-      toast({
-        title: 'Unregistered',
-        description: "You have been unregistered from this event.",
-      });
-    } catch (error) {
-       console.error("Error unregistering:", error);
-       toast({
-        variant: 'destructive',
-        title: 'Unregistration Failed',
-        description: 'Could not update your registration status. Please try again.',
-      });
-    }
-  };
-
   const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string }) => {
     if (!user || !event) return;
     setIsSubmitting(true);
@@ -242,9 +223,6 @@ export default function EventDetailPage() {
                    <UserCheck className="h-5 w-5" />
                    <span className="font-semibold">You are registered!</span>
                 </div>
-                <Button onClick={handleUnregister} variant="outline" size="sm">
-                  Unregister
-                </Button>
               </div>
             ) : (
                <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">

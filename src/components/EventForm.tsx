@@ -29,8 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -169,15 +167,7 @@ export default function EventForm({ event }: EventFormProps) {
     try {
       if (isEditMode && event) {
         const eventRef = doc(db, 'events', event.id);
-        await updateDoc(eventRef, eventData).catch(err => {
-            const permissionError = new FirestorePermissionError({
-                path: eventRef.path,
-                operation: 'update',
-                requestResourceData: eventData
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw permissionError;
-        });
+        await updateDoc(eventRef, eventData);
 
         toast({
           title: 'Event Updated!',
@@ -188,15 +178,7 @@ export default function EventForm({ event }: EventFormProps) {
       } else {
         eventData.createdAt = serverTimestamp();
         const collectionRef = collection(db, 'events');
-        const docRef = await addDoc(collectionRef, eventData).catch(err => {
-            const permissionError = new FirestorePermissionError({
-                path: collectionRef.path,
-                operation: 'create',
-                requestResourceData: eventData
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw permissionError;
-        });
+        const docRef = await addDoc(collectionRef, eventData);
         
         toast({
           title: 'Event Created!',
@@ -205,13 +187,11 @@ export default function EventForm({ event }: EventFormProps) {
         handleReset();
       }
     } catch (error: any) {
-       if (!(error instanceof FirestorePermissionError)) {
-          toast({
-            variant: 'destructive',
-            title: 'Submission Failed',
-            description: error.message || `Could not ${isEditMode ? 'update' : 'save'} the event.`,
-          });
-       }
+        toast({
+        variant: 'destructive',
+        title: 'Submission Failed',
+        description: error.message || `Could not ${isEditMode ? 'update' : 'save'} the event.`,
+        });
     } finally {
       setIsSubmitting(false);
     }

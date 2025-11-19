@@ -1,10 +1,14 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Laptop, MapPin, Users, Clock } from 'lucide-react';
+import { Calendar, Laptop, MapPin, Users, Clock, UserCheck } from 'lucide-react';
 import type { Event } from '@/types';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/hooks/use-auth';
+import { cn } from '@/lib/utils';
 
 interface EventCardProps {
   event: Event;
@@ -22,12 +26,24 @@ const formatTime = (timeString: string) => {
 
 
 export default function EventCard({ event }: EventCardProps) {
+  const { user } = useAuth();
+  const isRegistered = user && event.registrations?.includes(user.uid);
+
   return (
      <Link href={`/event/${event.id}`} className="flex">
-      <Card className="flex flex-col overflow-hidden h-full transition-all hover:shadow-xl hover:-translate-y-1 w-full">
+      <Card className={cn(
+        "flex flex-col overflow-hidden h-full transition-all hover:shadow-xl hover:-translate-y-1 w-full",
+        isRegistered && "border-accent ring-2 ring-accent"
+      )}>
         <div className="relative aspect-video w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{objectFit: 'cover'}} />
           <div className="absolute top-2 right-2 flex gap-2">
+             {isRegistered && (
+              <Badge variant="secondary" className="text-sm bg-accent/90 text-accent-foreground">
+                <UserCheck className="h-3 w-3 mr-1.5" />
+                Registered
+              </Badge>
+            )}
              {event.isFree ? (
                 <Badge variant="secondary" className="text-sm">Free</Badge>
               ) : event.price ? (

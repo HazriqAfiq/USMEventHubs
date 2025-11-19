@@ -26,7 +26,7 @@ export default function RootLayout({
         <Providers>
           <Header />
           <main className="flex-grow bg-[url('/images/usmbg.jpg')] bg-cover bg-center bg-no-repeat">
-            <div className="bg-background/70 backdrop-blur-sm min-h-full">
+            <div className="bg-background/30 min-h-full">
               {children}
             </div>
           </main>

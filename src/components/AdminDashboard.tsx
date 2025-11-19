@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -9,6 +9,7 @@ import { format, getMonth, getYear, startOfToday, isAfter, isBefore, startOfMont
 import { CalendarCheck, CalendarClock, CalendarX, Package } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event } from '@/types';
+import { useAuth } from '@/hooks/use-auth';
 
 type MonthlyEventCount = {
   name: string;
@@ -18,9 +19,17 @@ type MonthlyEventCount = {
 export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    const q = query(collection(db, 'events'));
+    if (authLoading || !user) {
+      if (!authLoading) setLoading(false);
+      return;
+    }
+
+    const eventsRef = collection(db, 'events');
+    const q = query(eventsRef, where('organizerId', '==', user.uid));
+    
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
@@ -34,7 +43,7 @@ export default function AdminDashboard() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user, authLoading]);
 
   const { upcomingCount, pastCount, thisMonthCount, monthlyData } = useMemo(() => {
     const today = startOfToday();
@@ -87,7 +96,7 @@ export default function AdminDashboard() {
     return { upcomingCount, pastCount, thisMonthCount, monthlyData };
   }, [events]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
        <div className="mt-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -140,7 +149,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{events.length}</div>
-            <p className="text-xs text-muted-foreground">All events created historically.</p>
+            <p className="text-xs text-muted-foreground">All events you have created.</p>
           </CardContent>
         </Card>
       </div>
@@ -150,7 +159,7 @@ export default function AdminDashboard() {
             <CardHeader>
                 <CardTitle>Events Overview</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                    Number of events scheduled per month for the last 12 months.
+                    Number of events you've scheduled per month for the last 12 months.
                 </p>
             </CardHeader>
             <CardContent>

@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -60,6 +61,7 @@ interface EventFormProps {
 export default function EventForm({ event }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth(); // Get the authenticated user
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(event?.imageUrl || null);
   
@@ -138,6 +140,14 @@ export default function EventForm({ event }: EventFormProps) {
   }
 
   async function onSubmit(data: EventFormValues) {
+     if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to create or update an event.',
+      });
+      return;
+    }
     setIsSubmitting(true);
     
     const eventData: any = {
@@ -170,6 +180,7 @@ export default function EventForm({ event }: EventFormProps) {
 
       } else {
         eventData.createdAt = serverTimestamp();
+        eventData.organizerId = user.uid; // Add the organizer's ID
         const collectionRef = collection(db, 'events');
         const docRef = await addDoc(collectionRef, eventData);
         

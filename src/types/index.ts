@@ -21,4 +21,5 @@ export interface Event {
   price?: number;
   eventType: 'online' | 'physical';
   registrations?: Registration[]; // UID of registered users
+  organizerId?: string; // UID of the admin who created the event
 }

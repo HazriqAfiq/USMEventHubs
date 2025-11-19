@@ -13,6 +13,11 @@ service cloud.firestore {
       return getUserRole(userId) == 'admin';
     }
 
+    // Helper function to get the organizer ID of an event
+    function getEventOrganizer(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
+    }
+
     // Default deny all
     match /{document=**} {
       allow read, write: if false;
@@ -23,8 +28,11 @@ service cloud.firestore {
       // Anyone can read event details
       allow read: if true;
       
-      // Only authenticated users with an 'admin' role can create, update, or delete events.
-      allow create, update, delete: if request.auth != null && isAdmin(request.auth.uid);
+      // Admins can create events, but must set themselves as the organizer
+      allow create: if request.auth != null && isAdmin(request.auth.uid) && request.resource.data.organizerId == request.auth.uid;
+      
+      // Only the original organizer can update or delete their event
+      allow update, delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
 
       // Rules for the 'registrations' subcollection
       match /registrations/{userId} {
@@ -38,9 +46,9 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Admins can list all registrations in the subcollection. This rule is on the collection.
+      // The event organizer can list all registrations for their event.
       match /registrations/{registrationId} {
-        allow list: if request.auth != null && isAdmin(request.auth.uid);
+        allow list: if request.auth != null && isAdmin(request.auth.uid) && getEventOrganizer(eventId) == request.auth.uid;
       }
     }
     

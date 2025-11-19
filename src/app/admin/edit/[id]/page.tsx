@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event, Registration } from '@/types';
 import { ArrowLeft, Terminal, Users } from 'lucide-react';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function EditEventPage() {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -23,6 +23,7 @@ export default function EditEventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasPermission, setHasPermission] = useState(false);
 
   useEffect(() => {
     if (authLoading) return; // Wait for authentication to complete
@@ -32,14 +33,37 @@ export default function EditEventPage() {
       return;
     }
     
-    if (!eventId) return;
+    if (!eventId || !user) return;
 
     const fetchEvent = async () => {
       try {
         const docRef = doc(db, 'events', eventId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
+          const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
+
+          // Check if the current admin is the organizer of the event
+          if (eventData.organizerId === user.uid) {
+            setEvent(eventData);
+            setHasPermission(true);
+            
+            // If they have permission, set up the listener for registrations
+            const registrationsRef = collection(db, 'events', eventId, 'registrations');
+            const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+              const regs: Registration[] = [];
+              snapshot.forEach(doc => {
+                  regs.push({ id: doc.id, ...doc.data() } as Registration);
+              });
+              setRegistrations(regs);
+            }, (error) => {
+              console.error("Error fetching registrations:", error);
+            });
+            
+            return () => unsubscribe();
+          } else {
+            // Admin is not the organizer
+            setHasPermission(false);
+          }
         } else {
           console.log("No such document!");
           router.push('/admin');
@@ -51,20 +75,7 @@ export default function EditEventPage() {
 
     fetchEvent();
 
-    const registrationsRef = collection(db, 'events', eventId, 'registrations');
-    const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
-      const regs: Registration[] = [];
-      snapshot.forEach(doc => {
-          regs.push({ id: doc.id, ...doc.data() } as Registration);
-      });
-      setRegistrations(regs);
-    }, (error) => {
-      console.error("Error fetching registrations:", error);
-    });
-    
-    return () => unsubscribe();
-
-  }, [eventId, router, authLoading, isAdmin]);
+  }, [eventId, router, authLoading, isAdmin, user]);
 
   if (authLoading || loading) {
     return (
@@ -78,14 +89,14 @@ export default function EditEventPage() {
     );
   }
   
-  if (!isAdmin) {
+  if (!isAdmin || !hasPermission) {
      return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">
           <Terminal className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You do not have permission to view this page. Redirecting...
+            You do not have permission to view or edit this event. Redirecting...
           </AlertDescription>
         </Alert>
       </div>

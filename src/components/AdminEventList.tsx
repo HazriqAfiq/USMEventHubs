@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, doc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -32,16 +32,22 @@ export default function AdminEventList() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
 
 
   useEffect(() => {
-    if (authLoading || !isAdmin) {
+    if (authLoading || !isAdmin || !user) {
         if (!authLoading) setLoading(false);
         return;
     }
     
-    const q = query(collection(db, 'events'), orderBy('date', 'desc'));
+    const eventsRef = collection(db, 'events');
+    const q = query(
+      eventsRef,
+      where('organizerId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
@@ -55,7 +61,7 @@ export default function AdminEventList() {
     });
 
     return () => unsubscribe();
-  }, [authLoading, isAdmin]);
+  }, [authLoading, isAdmin, user]);
 
   const filteredEvents = useMemo(() => {
     const today = new Date();

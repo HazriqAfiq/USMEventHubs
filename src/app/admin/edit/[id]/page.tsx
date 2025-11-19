@@ -81,12 +81,12 @@ export default function EditEventPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-           <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+           <Button variant="ghost" onClick={() => router.back()} className="mb-4 text-white hover:text-white/80">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Admin
           </Button>
-          <h1 className="text-3xl font-bold font-headline">Edit Event</h1>
-          <p className="text-muted-foreground">Modify the details for the event "{event?.title}".</p>
+          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Edit Event</h1>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Modify the details for the event "{event?.title}".</p>
           <EventForm event={event!} />
         </div>
       </div>

@@ -64,20 +64,20 @@ export default function AdminPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
-           <p className="text-muted-foreground">An overview of your event metrics.</p>
+          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Admin Dashboard</h1>
+           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">An overview of your event metrics.</p>
           <AdminDashboard />
         </div>
         <Separator />
         <div>
-          <h2 className="text-3xl font-bold font-headline">Manage Events</h2>
-          <p className="text-muted-foreground">Review and delete existing events.</p>
+          <h2 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage Events</h2>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and delete existing events.</p>
           <AdminEventList />
         </div>
          <Separator />
         <div>
-          <h1 className="text-3xl font-bold font-headline">Create New Event</h1>
-          <p className="text-muted-foreground">Fill in the details to add a new event to the homepage.</p>
+          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Create New Event</h1>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Fill in the details to add a new event to the homepage.</p>
           <EventForm />
         </div>
       </div>

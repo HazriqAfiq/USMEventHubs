@@ -59,11 +59,11 @@ export default function DashboardPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold font-headline flex items-center">
-             <User className="mr-3 h-8 w-8 text-primary"/>
+          <h1 className="text-3xl font-bold font-headline flex items-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+             <User className="mr-3 h-8 w-8 text-white"/>
             My Dashboard
           </h1>
-          <p className="text-muted-foreground">An overview of your registered events.</p>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">An overview of your registered events.</p>
         </div>
         <div>
           <UserEventList userId={user.uid} />

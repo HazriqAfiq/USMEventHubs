@@ -15,19 +15,30 @@ import {
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useState } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   matricNo: z.string().min(5, { message: 'Matriculation number is required.' }),
-  faculty: z.string().min(3, { message: 'Faculty is required.' }),
+  faculty: z.string().min(1, { message: 'Please select a faculty.' }),
+  otherFaculty: z.string().optional(),
+}).refine(data => {
+    if (data.faculty === 'Other') {
+        return !!data.otherFaculty && data.otherFaculty.length > 2;
+    }
+    return true;
+}, {
+    message: 'Please specify your faculty (must be at least 3 characters).',
+    path: ['otherFaculty'],
 });
+
 
 type RegistrationFormValues = z.infer<typeof formSchema>;
 
 interface RegistrationFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: RegistrationFormValues) => void;
+  onSubmit: (data: { name: string, matricNo: string, faculty: string }) => void;
   isSubmitting: boolean;
 }
 
@@ -46,6 +57,7 @@ const faculties = [
   "School of Physics",
   "School of Social Sciences",
   "School of The Arts",
+  "Other",
 ];
 
 
@@ -56,8 +68,20 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
       name: '',
       matricNo: '',
       faculty: '',
+      otherFaculty: '',
     },
   });
+
+  const facultyValue = form.watch('faculty');
+
+  const handleFormSubmit = (data: RegistrationFormValues) => {
+    const finalFaculty = data.faculty === 'Other' ? data.otherFaculty! : data.faculty;
+    onSubmit({
+        name: data.name,
+        matricNo: data.matricNo,
+        faculty: finalFaculty,
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -69,7 +93,7 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -120,6 +144,21 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
                 </FormItem>
               )}
             />
+             {facultyValue === 'Other' && (
+              <FormField
+                control={form.control}
+                name="otherFaculty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Please Specify Your Faculty</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your faculty/school" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
              <DialogFooter className="pt-4">
                 <DialogClose asChild>
                     <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -33,6 +33,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -233,15 +235,30 @@ export default function LoginPage() {
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
-                      <Input
-                          id="login-password"
-                          type="password"
-                          required
-                          placeholder="********"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          disabled={isLoading}
-                      />
+                      <div className="relative">
+                        <Input
+                            id="login-password"
+                            type={showLoginPassword ? 'text' : 'password'}
+                            required
+                            placeholder="********"
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            disabled={isLoading}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground"
+                          onClick={() => setShowLoginPassword((prev) => !prev)}
+                        >
+                          {showLoginPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
@@ -275,16 +292,31 @@ export default function LoginPage() {
                     />
                     </div>
                     <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input
-                        id="register-password"
-                        type="password"
-                        required
-                        placeholder="********"
-                        value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
-                        disabled={isLoading}
-                    />
+                      <Label htmlFor="register-password">Password</Label>
+                      <div className="relative">
+                        <Input
+                            id="register-password"
+                            type={showRegisterPassword ? 'text' : 'password'}
+                            required
+                            placeholder="********"
+                            value={registerPassword}
+                            onChange={(e) => setRegisterPassword(e.target.value)}
+                            disabled={isLoading}
+                        />
+                         <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground"
+                          onClick={() => setShowRegisterPassword((prev) => !prev)}
+                        >
+                          {showRegisterPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Registering...' : 'Create Account'}

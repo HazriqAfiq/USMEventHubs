@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firest
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,7 @@ export default function EventDetailPage() {
   const router = useRouter();
 
   const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
+  const hasExternalLink = !!event?.registrationLink;
 
   useEffect(() => {
     if (eventId) {
@@ -83,8 +84,8 @@ export default function EventDetailPage() {
     const eventRef = doc(db, 'events', event.id);
 
     try {
+      // Unregister logic is the same for both types
       if (isRegistered) {
-        // Unregister logic
         await updateDoc(eventRef, {
           registrations: arrayRemove(user.uid),
         });
@@ -93,17 +94,29 @@ export default function EventDetailPage() {
           title: 'Unregistered',
           description: "You have been unregistered from this event.",
         });
-      } else {
-        // Register logic
-        await updateDoc(eventRef, {
-          registrations: arrayUnion(user.uid),
-        });
-        setEvent(prev => prev ? { ...prev, registrations: [...(prev.registrations || []), user.uid] } : null);
+        return;
+      }
+      
+      // Registration logic
+      await updateDoc(eventRef, {
+        registrations: arrayUnion(user.uid),
+      });
+      setEvent(prev => prev ? { ...prev, registrations: [...(prev.registrations || []), user.uid] } : null);
+      
+      // If there's an external link, open it in a new tab.
+      if (hasExternalLink) {
+        window.open(event.registrationLink, '_blank');
         toast({
+          title: 'Redirecting to Registration Page',
+          description: 'You have been marked as interested. Please complete your registration on the external site.',
+        });
+      } else {
+         toast({
           title: 'Registration Successful!',
           description: `You are now registered for "${event.title}".`,
         });
       }
+
     } catch (error) {
       console.error("Error updating registration:", error);
       toast({
@@ -208,8 +221,8 @@ export default function EventDetailPage() {
             </div>
           ) : (
              <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto" disabled={!user && !authLoading}>
-               <UserPlus className="mr-2 h-5 w-5" />
-               Register Interest
+               {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
+               {hasExternalLink ? 'Register via Link' : 'Register Interest'}
              </Button>
           )}
 

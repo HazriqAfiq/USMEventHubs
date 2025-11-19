@@ -22,6 +22,13 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+    
+    // Rule for the 'registrations' collection group query
+    match /{path=**}/registrations/{registrationId} {
+        // Allow a user to list their own registrations across all events.
+        // This is needed for the "My Dashboard" page.
+        allow list: if request.auth != null && request.auth.uid == resource.data.id;
+    }
 
     // Define rules for the 'events' collection
     match /events/{eventId} {

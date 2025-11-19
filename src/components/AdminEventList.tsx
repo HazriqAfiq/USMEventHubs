@@ -42,10 +42,10 @@ export default function AdminEventList() {
     }
     
     const eventsRef = collection(db, 'events');
+    // Simplified query to filter by organizerId only
     const q = query(
       eventsRef,
-      where('organizerId', '==', user.uid),
-      orderBy('date', 'desc')
+      where('organizerId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -53,6 +53,8 @@ export default function AdminEventList() {
       querySnapshot.forEach((doc) => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
+      // Sort events by date on the client-side
+      eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);
     }, (error) => {
@@ -111,11 +113,10 @@ export default function AdminEventList() {
           variant="outline"
           value={filter}
           onValueChange={(value) => setFilter(value as any || 'upcoming')}
-          className="text-white"
         >
-          <ToggleGroupItem value="upcoming" className="text-white">Upcoming</ToggleGroupItem>
-          <ToggleGroupItem value="past" className="text-white">Past</ToggleGroupItem>
-          <ToggleGroupItem value="all" className="text-white">All</ToggleGroupItem>
+          <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+          <ToggleGroupItem value="past">Past</ToggleGroupItem>
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
         </ToggleGroup>
       </div>
 

@@ -408,7 +408,7 @@ export default function EventForm({ event }: EventFormProps) {
                   <FormControl>
                     <Input placeholder="https://forms.gle/your-form-link" {...field} />
                   </FormControl>
-                   <p className="text-xs text-muted-foreground mt-1">
+                   <p className="text-xs text-white/80 mt-1">
                       Paste a link to your Google Form or other registration page. Leave blank to use built-in registration.
                     </p>
                   <FormMessage />

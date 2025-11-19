@@ -39,7 +39,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-primary text-primary-foreground border-b border-primary-foreground/20 sticky top-0 z-50">
+    <header className="bg-card text-card-foreground border-b sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-20">
         <Link href="/" className="flex items-center gap-2 font-headline text-xl font-bold">
           <Image src="/images/usm.png" alt="USM Event Hub Logo" width={120} height={120} />
@@ -55,7 +55,6 @@ export function Header() {
                   value={priceFilter}
                   onValueChange={(value) => setPriceFilter(value as any || 'all')}
                   aria-label="Filter by price"
-                  className="bg-primary-foreground text-primary rounded-md"
                 >
                   <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
                   <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
@@ -69,7 +68,6 @@ export function Header() {
                   value={typeFilter}
                   onValueChange={(value) => setTypeFilter(value as any || 'all')}
                   aria-label="Filter by type"
-                  className="bg-primary-foreground text-primary rounded-md"
                 >
                   <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
                   <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
@@ -82,7 +80,7 @@ export function Header() {
               {user && userProfile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-primary-foreground/20">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} />
                         <AvatarFallback>{getInitials(user.email)}</AvatarFallback>

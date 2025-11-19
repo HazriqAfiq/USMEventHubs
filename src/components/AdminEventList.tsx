@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
@@ -23,12 +23,15 @@ import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 
 export default function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+
 
   useEffect(() => {
     const q = query(collection(db, 'events'), orderBy('date', 'desc'));
@@ -46,6 +49,19 @@ export default function AdminEventList() {
 
     return () => unsubscribe();
   }, []);
+
+  const filteredEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (filter === 'upcoming') {
+      return events.filter(event => event.date && event.date.toDate() >= today);
+    }
+    if (filter === 'past') {
+      return events.filter(event => event.date && event.date.toDate() < today);
+    }
+    return events;
+  }, [events, filter]);
 
   const handleDelete = async (eventId: string, eventTitle: string) => {
     try {
@@ -76,10 +92,25 @@ export default function AdminEventList() {
 
   return (
     <div className="mt-6 space-y-4">
-      {events.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">No events found. Add one above to get started!</Card>
+       <div className="flex justify-start">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={filter}
+          onValueChange={(value) => setFilter(value as any || 'upcoming')}
+        >
+          <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+          <ToggleGroupItem value="past">Past</ToggleGroupItem>
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {filteredEvents.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">
+          No {filter} events found.
+        </Card>
       ) : (
-        events.map((event) => (
+        filteredEvents.map((event) => (
           <Card key={event.id} className="flex items-center p-4 gap-4 transition-all hover:shadow-md">
             <div className="relative h-16 w-16 md:h-20 md:w-28 rounded-md overflow-hidden flex-shrink-0 bg-muted">
               <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />

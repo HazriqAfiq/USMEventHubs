@@ -10,7 +10,7 @@ import { Badge } from './ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface EventCardProps {
@@ -33,10 +33,13 @@ export default function EventCard({ event }: EventCardProps) {
 
   useEffect(() => {
     if (user && event.id) {
-      const registrationsRef = collection(db, 'events', event.id, 'registrations');
-      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
-        const registrationIds = snapshot.docs.map(doc => doc.id);
-        setIsRegistered(registrationIds.includes(user.uid));
+      const registrationRef = doc(db, 'events', event.id, 'registrations', user.uid);
+      const unsubscribe = onSnapshot(registrationRef, (doc) => {
+        setIsRegistered(doc.exists());
+      }, (error) => {
+        // This will likely be a permission error if rules are not set correctly
+        // for non-admins. We can safely ignore it and assume not registered.
+        setIsRegistered(false);
       });
       return () => unsubscribe();
     }

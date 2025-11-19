@@ -34,8 +34,8 @@ service cloud.firestore {
         // Allow a user to delete their own registration (unregister)
         allow delete: if request.auth.uid == userId;
         
-        // Admins can read all registrations
-        allow read: if request.auth != null && isAdmin(request.auth.uid);
+        // Admins can list all registrations, and a user can read their own.
+        allow read: if (request.auth != null && isAdmin(request.auth.uid)) || request.auth.uid == userId;
       }
     }
     

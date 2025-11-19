@@ -8,18 +8,25 @@ import AdminEventList from '@/components/AdminEventList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import AdminDashboard from '@/components/AdminDashboard';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 export default function AdminPage() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      // If not loading and not an admin, redirect to homepage.
+      // This also handles the case where the user is not logged in.
+      if (!isAdmin) {
+        router.push('/');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, isAdmin, loading, router]);
 
-  if (loading || !user) {
+  // Show skeleton loader while checking auth state
+  if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-8">
@@ -38,7 +45,23 @@ export default function AdminPage() {
       </div>
     );
   }
+  
+  // If the user is not an admin, show an access denied message while redirecting
+  if (!isAdmin) {
+      return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You do not have permission to view this page. Redirecting...
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
+  // If we reach here, user is an admin
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">

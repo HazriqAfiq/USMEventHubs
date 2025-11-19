@@ -8,11 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event } from '@/types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function EditEventPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -21,13 +22,16 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading) {
+      // If not loading and not an admin, redirect to homepage.
+      if (!isAdmin) {
+        router.push('/');
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, isAdmin, authLoading, router]);
   
   useEffect(() => {
-    if (eventId) {
+    if (eventId && isAdmin) { // Only fetch if user is an admin
       const fetchEvent = async () => {
         try {
           const docRef = doc(db, 'events', eventId);
@@ -35,7 +39,7 @@ export default function EditEventPage() {
           if (docSnap.exists()) {
             setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
           } else {
-            // TODO: Handle not found case, maybe redirect to a 404 page or admin dashboard
+            // Handle not found case, maybe redirect to a 404 page or admin dashboard
             console.log("No such document!");
             router.push('/admin');
           }
@@ -44,8 +48,10 @@ export default function EditEventPage() {
         }
       };
       fetchEvent();
+    } else if (!authLoading && !isAdmin) {
+        setLoading(false);
     }
-  }, [eventId, router]);
+  }, [eventId, router, authLoading, isAdmin]);
 
   if (authLoading || loading) {
     return (
@@ -55,6 +61,20 @@ export default function EditEventPage() {
           <Skeleton className="h-6 w-1/2" />
           <Skeleton className="h-96 w-full" />
         </div>
+      </div>
+    );
+  }
+  
+  if (!isAdmin) {
+     return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You do not have permission to view this page. Redirecting...
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

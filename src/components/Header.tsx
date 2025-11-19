@@ -20,7 +20,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 
 export function Header() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
@@ -33,7 +33,7 @@ export function Header() {
   };
 
   const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'A';
+    if (!email) return 'U';
     return email.substring(0, 2).toUpperCase();
   };
 
@@ -89,18 +89,19 @@ export function Header() {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">Admin</p>
+                        <p className="text-sm font-medium leading-none">{isAdmin ? 'Admin' : 'Student'}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/admin')}>
-                      <UserCircle className="mr-2 h-4 w-4" />
-                      <span>Admin Dashboard</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    {isAdmin && (
+                      <DropdownMenuItem onClick={() => router.push('/admin')}>
+                        <UserCircle className="mr-2 h-4 w-4" />
+                        <span>Admin Dashboard</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
@@ -109,7 +110,7 @@ export function Header() {
                 </DropdownMenu>
               ) : (
                 <Button onClick={() => router.push('/login')}>
-                  <LogIn className="mr-2 h-4 w-4" /> Admin Login
+                  <LogIn className="mr-2 h-4 w-4" /> Login
                 </Button>
               )}
             </>

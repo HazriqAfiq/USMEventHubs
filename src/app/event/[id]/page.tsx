@@ -35,7 +35,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -78,14 +78,23 @@ export default function EventDetailPage() {
       router.push('/login');
       return;
     }
+    
+    // Admins should not be able to register
+    if (isAdmin) {
+      toast({
+        title: 'Admin Action Not Allowed',
+        description: 'Admins cannot register for events.',
+      });
+      return;
+    }
 
     if (!event) return;
 
     const eventRef = doc(db, 'events', event.id);
 
     try {
-      // Unregister logic is the same for both types
       if (isRegistered) {
+        // Unregister logic
         await updateDoc(eventRef, {
           registrations: arrayRemove(user.uid),
         });
@@ -97,13 +106,13 @@ export default function EventDetailPage() {
         return;
       }
       
-      // Registration logic
+      // Register logic
       await updateDoc(eventRef, {
         registrations: arrayUnion(user.uid),
       });
       setEvent(prev => prev ? { ...prev, registrations: [...(prev.registrations || []), user.uid] } : null);
       
-      // If there's an external link, open it in a new tab.
+      // If there's an external link, mark as interested and then open the link
       if (hasExternalLink) {
         window.open(event.registrationLink, '_blank');
         toast({
@@ -169,7 +178,7 @@ export default function EventDetailPage() {
       <Card className="overflow-hidden">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
-          {user && (
+          {isAdmin && (
             <Button asChild className="absolute top-4 right-4" variant="secondary">
               <Link href={`/admin/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
@@ -209,27 +218,35 @@ export default function EventDetailPage() {
             {event.description}
           </div>
           
-          {isRegistered ? (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 p-3 rounded-md border-2 border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
-                 <UserCheck className="h-5 w-5" />
-                 <span className="font-semibold">You are registered!</span>
+          {!isAdmin && user && (
+            isRegistered ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 p-3 rounded-md border-2 border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
+                   <UserCheck className="h-5 w-5" />
+                   <span className="font-semibold">You are registered!</span>
+                </div>
+                <Button onClick={handleRegistration} variant="outline" size="sm">
+                  Unregister
+                </Button>
               </div>
-              <Button onClick={handleRegistration} variant="outline" size="sm">
-                Unregister
-              </Button>
-            </div>
-          ) : (
-             <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto" disabled={!user && !authLoading}>
-               {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
-               {hasExternalLink ? 'Register via Link' : 'Register Interest'}
-             </Button>
+            ) : (
+               <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto">
+                 {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                 {hasExternalLink ? 'Register via Link' : 'Register Interest'}
+               </Button>
+            )
           )}
 
           {!user && !authLoading && (
-              <p className='text-sm text-muted-foreground -mt-4'>
+            <div>
+              <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto">
+                {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                {hasExternalLink ? 'Register via Link' : 'Register Interest'}
+              </Button>
+              <p className='text-sm text-muted-foreground mt-2'>
                 You need to be logged in to register your interest.
               </p>
+            </div>
           )}
 
         </CardContent>

@@ -115,9 +115,9 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16 border-2 border-dashed rounded-lg">
-          <h2 className="text-xl font-semibold">No Matching Events Found</h2>
-          <p className="text-muted-foreground mt-2">Try adjusting your filters or check back soon!</p>
+        <div className="text-center py-16 border-2 border-dashed rounded-lg bg-black/20">
+          <h2 className="text-xl font-semibold text-white">No Matching Events Found</h2>
+          <p className="text-white/80 mt-2">Try adjusting your filters or check back soon!</p>
         </div>
       )}
     </div>

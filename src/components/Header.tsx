@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, LogIn, LogOut, UserCircle, DollarSign, Laptop, Users, LayoutDashboard } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, DollarSign, Laptop, Users, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -41,7 +42,7 @@ export function Header() {
     <header className="bg-card border-b sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-16">
         <Link href="/" className="flex items-center gap-2 font-headline text-xl font-bold text-primary">
-          <CalendarDays className="h-6 w-6" />
+          <Image src="/usm.png" alt="USM Event Hub Logo" width={32} height={32} />
           <span>USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">

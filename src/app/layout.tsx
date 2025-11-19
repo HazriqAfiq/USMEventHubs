@@ -25,7 +25,11 @@ export default function RootLayout({
       <body className={cn('font-body antialiased min-h-screen flex flex-col')}>
         <Providers>
           <Header />
-          <main className="flex-grow">{children}</main>
+          <main className="flex-grow bg-[url('/images/usmbg.jpg')] bg-cover bg-center bg-no-repeat">
+            <div className="bg-background/80 backdrop-blur-sm min-h-full">
+              {children}
+            </div>
+          </main>
           <footer className="py-4 bg-card border-t">
             <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
               <p>Powered and developed by Chillframe.</p>

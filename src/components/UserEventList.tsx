@@ -109,8 +109,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
             onValueChange={(value) => setFilter(value as any || 'upcoming')}
             className="mb-4"
             >
-            <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-            <ToggleGroupItem value="past">Past</ToggleGroupItem>
+            <ToggleGroupItem value="upcoming" className="text-white">Upcoming</ToggleGroupItem>
+            <ToggleGroupItem value="past" className="text-white">Past</ToggleGroupItem>
         </ToggleGroup>
 
         {filteredEvents.length === 0 ? (

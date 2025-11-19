@@ -7,6 +7,7 @@ import EventForm from '@/components/EventForm';
 import AdminEventList from '@/components/AdminEventList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import AdminDashboard from '@/components/AdminDashboard';
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -42,15 +43,21 @@ export default function AdminPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold font-headline">Create New Event</h1>
-          <p className="text-muted-foreground">Fill in the details to add a new event to the homepage.</p>
-          <EventForm />
+          <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
+           <p className="text-muted-foreground">An overview of your event metrics.</p>
+          <AdminDashboard />
         </div>
         <Separator />
         <div>
           <h2 className="text-3xl font-bold font-headline">Manage Events</h2>
           <p className="text-muted-foreground">Review and delete existing events.</p>
           <AdminEventList />
+        </div>
+         <Separator />
+        <div>
+          <h1 className="text-3xl font-bold font-headline">Create New Event</h1>
+          <p className="text-muted-foreground">Fill in the details to add a new event to the homepage.</p>
+          <EventForm />
         </div>
       </div>
     </div>

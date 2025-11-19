@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -29,6 +30,24 @@ interface RegistrationFormProps {
   onSubmit: (data: RegistrationFormValues) => void;
   isSubmitting: boolean;
 }
+
+const faculties = [
+  "School of Biological Sciences",
+  "School of Chemical Sciences",
+  "School of Communication",
+  "School of Computer Sciences",
+  "School of Educational Studies",
+  "School of Housing, Building and Planning",
+  "School of Humanities",
+  "School of Industrial Technology",
+  "School of Language, Literacies and Translation",
+  "School of Management",
+  "School of Mathematical Sciences",
+  "School of Physics",
+  "School of Social Sciences",
+  "School of The Arts",
+];
+
 
 export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitting }: RegistrationFormProps) {
   const form = useForm<RegistrationFormValues>({
@@ -83,9 +102,20 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Faculty / School</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., School of Computer Sciences" {...field} />
-                  </FormControl>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your faculty/school" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {faculties.map((faculty) => (
+                        <SelectItem key={faculty} value={faculty}>
+                          {faculty}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

@@ -206,13 +206,6 @@ export default function EventDetailPage() {
                 Unregister
               </Button>
             </div>
-          ) : event.registrationLink ? (
-             <Button asChild size="lg" className="w-full sm:w-auto">
-              <a href={event.registrationLink} target="_blank" rel="noopener noreferrer">
-                <UserPlus className="mr-2 h-5 w-5" />
-                Join Now
-              </a>
-            </Button>
           ) : (
              <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto" disabled={!user && !authLoading}>
                <UserPlus className="mr-2 h-5 w-5" />
@@ -220,7 +213,7 @@ export default function EventDetailPage() {
              </Button>
           )}
 
-          {!user && !authLoading && !event.registrationLink && (
+          {!user && !authLoading && (
               <p className='text-sm text-muted-foreground -mt-4'>
                 You need to be logged in to register your interest.
               </p>

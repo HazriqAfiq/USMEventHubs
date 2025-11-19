@@ -74,7 +74,7 @@ export default function EventForm({ event }: EventFormProps) {
       location: event?.location || '',
       isFree: event?.isFree ? 'free' : 'paid',
       registrationLink: event?.registrationLink || '',
-      price: event?.price || 0,
+      price: event?.price || 1,
       eventType: event?.eventType,
       imageUrl: event?.imageUrl,
       date: event?.date?.toDate(),
@@ -134,7 +134,7 @@ export default function EventForm({ event }: EventFormProps) {
             imageUrl: undefined,
             location: '',
             isFree: 'free',
-            price: 0,
+            price: 1,
             eventType: undefined,
             registrationLink: '',
         });

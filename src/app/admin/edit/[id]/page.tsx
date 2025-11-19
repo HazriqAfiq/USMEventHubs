@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -26,7 +28,7 @@ export default function EditEventPage() {
   const [hasPermission, setHasPermission] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return; // Wait for authentication to complete
+    if (authLoading) return;
 
     if (!isAdmin) {
       router.push('/');
@@ -42,12 +44,10 @@ export default function EditEventPage() {
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-          // Check if the current admin is the organizer of the event
           if (eventData.organizerId === user.uid) {
             setEvent(eventData);
             setHasPermission(true);
             
-            // If they have permission, set up the listener for registrations
             const registrationsRef = collection(db, 'events', eventId, 'registrations');
             const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
               const regs: Registration[] = [];
@@ -55,17 +55,19 @@ export default function EditEventPage() {
                   regs.push({ id: doc.id, ...doc.data() } as Registration);
               });
               setRegistrations(regs);
-            }, (error) => {
-              console.error("Error fetching registrations:", error);
+            }, (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                  path: registrationsRef.path,
+                  operation: 'list',
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
             });
             
             return () => unsubscribe();
           } else {
-            // Admin is not the organizer
             setHasPermission(false);
           }
         } else {
-          console.log("No such document!");
           router.push('/admin');
         }
       } finally {

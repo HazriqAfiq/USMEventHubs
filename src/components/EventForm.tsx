@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, collectionGroup } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -41,7 +41,6 @@ const formSchema = z.object({
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
-  registrationLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price > 0;
@@ -73,7 +72,6 @@ export default function EventForm({ event }: EventFormProps) {
       description: event?.description || '',
       location: event?.location || '',
       isFree: event?.isFree ? 'free' : 'paid',
-      registrationLink: event?.registrationLink || '',
       price: event?.price || 1,
       eventType: event?.eventType,
       imageUrl: event?.imageUrl,
@@ -96,7 +94,6 @@ export default function EventForm({ event }: EventFormProps) {
         date: event.date?.toDate(),
         startTime: event.startTime,
         endTime: event.endTime,
-        registrationLink: event.registrationLink || '',
       });
       setPreviewImage(event.imageUrl);
     }
@@ -119,7 +116,6 @@ export default function EventForm({ event }: EventFormProps) {
                 date: event.date?.toDate(),
                 startTime: event.startTime,
                 endTime: event.endTime,
-                registrationLink: event.registrationLink || '',
             });
             setPreviewImage(event.imageUrl);
         }
@@ -136,7 +132,6 @@ export default function EventForm({ event }: EventFormProps) {
             isFree: 'free',
             price: 1,
             eventType: undefined,
-            registrationLink: '',
         });
         setPreviewImage(null);
     }
@@ -155,7 +150,6 @@ export default function EventForm({ event }: EventFormProps) {
         location: data.location,
         isFree: data.isFree === 'free',
         eventType: data.eventType,
-        registrationLink: data.registrationLink,
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
@@ -166,8 +160,6 @@ export default function EventForm({ event }: EventFormProps) {
     try {
       if (isEditMode && event) {
         const eventRef = doc(db, 'events', event.id);
-        // Preserve existing registrations when updating
-        eventData.registrations = event.registrations || [];
         await updateDoc(eventRef, eventData);
 
         toast({
@@ -178,7 +170,6 @@ export default function EventForm({ event }: EventFormProps) {
 
       } else {
         eventData.createdAt = serverTimestamp();
-        eventData.registrations = []; // Initialize with empty array
         const collectionRef = collection(db, 'events');
         const docRef = await addDoc(collectionRef, eventData);
         
@@ -395,22 +386,6 @@ export default function EventForm({ event }: EventFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="registrationLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Registration Link</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://forms.gle/your-form-link" {...field} />
-                  </FormControl>
-                   <p className="text-xs text-white/80 mt-1">
-                      Paste a link to your Google Form or other registration page. Leave blank to use built-in registration.
-                    </p>
                   <FormMessage />
                 </FormItem>
               )}

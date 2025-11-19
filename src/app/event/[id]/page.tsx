@@ -1,31 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
-import type { Event } from '@/types';
+import type { Event, Registration } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import Link from 'next/link';
+import RegistrationForm from '@/components/RegistrationForm';
 
-// Helper function to format time string (HH:mm) to AM/PM format
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
   const date = new Date();
   date.setHours(parseInt(hours, 10));
   date.setMinutes(parseInt(minutes, 10));
-  return format(date, 'p'); // 'p' is for locale-dependent time format (e.g., 2:30 PM)
+  return format(date, 'p');
 };
 
 
@@ -33,14 +33,17 @@ export default function EventDetailPage() {
   const params = useParams();
   const eventId = params.id as string;
   const [event, setEvent] = useState<Event | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const isRegistered = !!user && !!event?.registrations?.includes(user.uid);
-  const hasExternalLink = !!event?.registrationLink;
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isRegistered = user ? registrations.some(reg => reg.id === user.uid) : false;
 
   useEffect(() => {
     if (eventId) {
@@ -63,13 +66,69 @@ export default function EventDetailPage() {
           setLoading(false);
         }
       };
+      
+      const registrationsRef = collection(db, 'events', eventId, 'registrations');
+      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+        const regs: Registration[] = [];
+        snapshot.forEach(doc => {
+           regs.push({ id: doc.id, ...doc.data() } as Registration);
+        });
+        setRegistrations(regs);
+      });
 
       fetchEvent();
+      return () => unsubscribe();
     }
   }, [eventId]);
   
-  const handleRegistration = async () => {
-    if (!user) {
+  const handleUnregister = async () => {
+    if (!user || !event) return;
+    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
+    try {
+      await deleteDoc(regRef);
+      toast({
+        title: 'Unregistered',
+        description: "You have been unregistered from this event.",
+      });
+    } catch (error) {
+       console.error("Error unregistering:", error);
+       toast({
+        variant: 'destructive',
+        title: 'Unregistration Failed',
+        description: 'Could not update your registration status. Please try again.',
+      });
+    }
+  };
+
+  const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string }) => {
+    if (!user || !event) return;
+    setIsSubmitting(true);
+    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
+    try {
+      await setDoc(regRef, {
+        ...data,
+        id: user.uid,
+        registeredAt: serverTimestamp(),
+      });
+      toast({
+        title: 'Registration Successful!',
+        description: `You are now registered for "${event.title}".`,
+      });
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("Error submitting registration:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Registration Failed',
+        description: 'Could not save your registration. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openRegistration = () => {
+     if (!user) {
       toast({
         variant: 'destructive',
         title: 'Authentication Required',
@@ -79,7 +138,6 @@ export default function EventDetailPage() {
       return;
     }
     
-    // Admins should not be able to register
     if (isAdmin) {
       toast({
         title: 'Admin Action Not Allowed',
@@ -87,54 +145,8 @@ export default function EventDetailPage() {
       });
       return;
     }
-
-    if (!event) return;
-
-    const eventRef = doc(db, 'events', event.id);
-
-    try {
-      if (isRegistered) {
-        // Unregister logic
-        await updateDoc(eventRef, {
-          registrations: arrayRemove(user.uid),
-        });
-        setEvent(prev => prev ? { ...prev, registrations: prev.registrations?.filter(uid => uid !== user.uid) } : null);
-        toast({
-          title: 'Unregistered',
-          description: "You have been unregistered from this event.",
-        });
-        return;
-      }
-      
-      // Register logic
-      await updateDoc(eventRef, {
-        registrations: arrayUnion(user.uid),
-      });
-      setEvent(prev => prev ? { ...prev, registrations: [...(prev.registrations || []), user.uid] } : null);
-      
-      // If there's an external link, mark as interested and then open the link
-      if (hasExternalLink) {
-        window.open(event.registrationLink, '_blank');
-        toast({
-          title: 'Redirecting to Registration Page',
-          description: 'You have been marked as interested. Please complete your registration on the external site.',
-        });
-      } else {
-         toast({
-          title: 'Registration Successful!',
-          description: `You are now registered for "${event.title}".`,
-        });
-      }
-
-    } catch (error) {
-      console.error("Error updating registration:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description: 'Could not update your registration status. Please try again.',
-      });
-    }
-  };
+    setIsFormOpen(true);
+  }
 
   if (loading || authLoading) {
     return (
@@ -174,6 +186,7 @@ export default function EventDetailPage() {
   }
 
   return (
+    <>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Card className="overflow-hidden">
         <div className="relative h-64 md:h-96 w-full">
@@ -225,26 +238,26 @@ export default function EventDetailPage() {
                    <UserCheck className="h-5 w-5" />
                    <span className="font-semibold">You are registered!</span>
                 </div>
-                <Button onClick={handleRegistration} variant="outline" size="sm">
+                <Button onClick={handleUnregister} variant="outline" size="sm">
                   Unregister
                 </Button>
               </div>
             ) : (
-               <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto">
-                 {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                 {hasExternalLink ? 'Register via Link' : 'Register Interest'}
+               <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
+                 <UserPlus className="mr-2 h-5 w-5" />
+                 Register for Event
                </Button>
             )
           )}
 
           {!user && !authLoading && (
             <div>
-              <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto">
-                {hasExternalLink ? <ExternalLink className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                {hasExternalLink ? 'Register via Link' : 'Register Interest'}
+              <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
+                <UserPlus className="mr-2 h-5 w-5" />
+                Register for Event
               </Button>
               <p className='text-sm text-muted-foreground mt-2'>
-                You need to be logged in to register your interest.
+                You need to be logged in to register.
               </p>
             </div>
           )}
@@ -252,5 +265,12 @@ export default function EventDetailPage() {
         </CardContent>
       </Card>
     </div>
+    <RegistrationForm 
+      isOpen={isFormOpen} 
+      onClose={() => setIsFormOpen(false)}
+      onSubmit={handleRegistrationSubmit}
+      isSubmitting={isSubmitting}
+      />
+    </>
   );
 }

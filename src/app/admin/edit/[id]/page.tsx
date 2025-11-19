@@ -5,12 +5,14 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Event } from '@/types';
-import { ArrowLeft, Terminal } from 'lucide-react';
+import type { Event, Registration } from '@/types';
+import { ArrowLeft, Terminal, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function EditEventPage() {
   const { isAdmin, loading: authLoading } = useAuth();
@@ -19,17 +21,17 @@ export default function EditEventPage() {
   const eventId = params.id as string;
   
   const [event, setEvent] = useState<Event | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
-      // If not loading and not an admin, redirect to homepage.
       router.push('/');
     }
   }, [isAdmin, authLoading, router]);
   
   useEffect(() => {
-    if (eventId && isAdmin) { // Only fetch if user is an admin
+    if (eventId && isAdmin) {
       const fetchEvent = async () => {
         try {
           const docRef = doc(db, 'events', eventId);
@@ -37,7 +39,6 @@ export default function EditEventPage() {
           if (docSnap.exists()) {
             setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
           } else {
-            // Handle not found case, maybe redirect to a 404 page or admin dashboard
             console.log("No such document!");
             router.push('/admin');
           }
@@ -45,7 +46,19 @@ export default function EditEventPage() {
           setLoading(false);
         }
       };
+
+      const registrationsRef = collection(db, 'events', eventId, 'registrations');
+      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+        const regs: Registration[] = [];
+        snapshot.forEach(doc => {
+           regs.push({ id: doc.id, ...doc.data() } as Registration);
+        });
+        setRegistrations(regs);
+      });
+      
       fetchEvent();
+      return () => unsubscribe();
+
     } else if (!authLoading && !isAdmin) {
         setLoading(false);
     }
@@ -89,6 +102,38 @@ export default function EditEventPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Modify the details for the event "{event?.title}".</p>
           <EventForm event={event!} />
         </div>
+         <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="mr-2" />
+              Registered Attendees ({registrations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {registrations.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Matric No.</TableHead>
+                  <TableHead>Faculty</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {registrations.map((reg) => (
+                  <TableRow key={reg.id}>
+                    <TableCell>{reg.name}</TableCell>
+                    <TableCell>{reg.matricNo}</TableCell>
+                    <TableCell>{reg.faculty}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            ) : (
+                <p className='text-muted-foreground'>No one has registered for this event yet.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

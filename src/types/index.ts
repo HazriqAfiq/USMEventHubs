@@ -1,5 +1,13 @@
 import type { Timestamp } from 'firebase/firestore';
 
+export interface Registration {
+  id: string; // Corresponds to the user's UID
+  name: string;
+  matricNo: string;
+  faculty: string;
+  registeredAt: Timestamp;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -12,6 +20,5 @@ export interface Event {
   isFree: boolean;
   price?: number;
   eventType: 'online' | 'physical';
-  registrationLink?: string;
-  registrations?: string[];
+  registrations?: Registration[]; // UID of registered users
 }

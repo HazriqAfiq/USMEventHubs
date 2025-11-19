@@ -26,9 +26,17 @@ service cloud.firestore {
       // Only authenticated users with an 'admin' role can create, update, or delete events.
       allow create, update, delete: if request.auth != null && isAdmin(request.auth.uid);
 
-      // Allow authenticated users to update the registrations array (register/unregister)
-      // A stricter rule would check if they are only adding/removing their own UID.
-      allow update: if request.auth != null && request.resource.data.keys().hasAll(['registrations']);
+      // Rules for the 'registrations' subcollection
+      match /registrations/{userId} {
+        // Allow a user to create their own registration document
+        allow create: if request.auth.uid == userId;
+
+        // Allow a user to delete their own registration (unregister)
+        allow delete: if request.auth.uid == userId;
+        
+        // Admins can read all registrations
+        allow read: if request.auth != null && isAdmin(request.auth.uid);
+      }
     }
     
     // Define rules for the 'users' collection

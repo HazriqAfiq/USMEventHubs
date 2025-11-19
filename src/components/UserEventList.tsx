@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -27,16 +27,26 @@ export default function UserEventList({ userId }: UserEventListProps) {
       setLoading(false);
       return;
     }
-    
-    // Query for events where the user's ID is in the 'registrations' array
-    const q = query(collection(db, 'events'), where('registrations', 'array-contains', userId));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+
+    const registrationsQuery = query(collectionGroup(db, 'registrations'), where('id', '==', userId));
+
+    const unsubscribe = onSnapshot(registrationsQuery, async (registrationsSnapshot) => {
+      const eventIds = registrationsSnapshot.docs.map(doc => doc.ref.parent.parent?.id).filter(id => id);
+      
+      if (eventIds.length === 0) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+      
+      const eventsQuery = query(collection(db, 'events'), where('__name__', 'in', eventIds));
+      const eventsSnapshot = await getDocs(eventsQuery);
+
       const eventsData: Event[] = [];
-      querySnapshot.forEach((doc) => {
+      eventsSnapshot.forEach((doc) => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
-      // Sort by date, most recent first
+
       eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);

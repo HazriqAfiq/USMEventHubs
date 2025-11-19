@@ -9,25 +9,38 @@ import type { Event } from '@/types';
 import { Badge } from './ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface EventCardProps {
   event: Event;
 }
 
-// Helper function to format time string (HH:mm) to AM/PM format
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
   const date = new Date();
   date.setHours(parseInt(hours, 10));
   date.setMinutes(parseInt(minutes, 10));
-  return format(date, 'p'); // 'p' is for locale-dependent time format (e.g., 2:30 PM)
+  return format(date, 'p');
 };
 
 
 export default function EventCard({ event }: EventCardProps) {
   const { user } = useAuth();
-  const isRegistered = user && event.registrations?.includes(user.uid);
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  useEffect(() => {
+    if (user && event.id) {
+      const registrationsRef = collection(db, 'events', event.id, 'registrations');
+      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+        const registrationIds = snapshot.docs.map(doc => doc.id);
+        setIsRegistered(registrationIds.includes(user.uid));
+      });
+      return () => unsubscribe();
+    }
+  }, [user, event.id]);
 
   return (
      <Link href={`/event/${event.id}`} className="flex">

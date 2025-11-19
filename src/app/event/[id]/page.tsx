@@ -197,9 +197,14 @@ export default function EventDetailPage() {
           </div>
           
           {isRegistered ? (
-            <div className="flex items-center gap-2 p-3 rounded-md border-2 border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
-               <UserCheck className="h-5 w-5" />
-               <span className="font-semibold">You are registered for this event!</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 p-3 rounded-md border-2 border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
+                 <UserCheck className="h-5 w-5" />
+                 <span className="font-semibold">You are registered!</span>
+              </div>
+              <Button onClick={handleRegistration} variant="outline" size="sm">
+                Unregister
+              </Button>
             </div>
           ) : event.registrationLink ? (
              <Button asChild size="lg" className="w-full sm:w-auto">
@@ -209,10 +214,16 @@ export default function EventDetailPage() {
               </a>
             </Button>
           ) : (
-             <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto" disabled={!user}>
+             <Button onClick={handleRegistration} size="lg" className="w-full sm:w-auto" disabled={!user && !authLoading}>
                <UserPlus className="mr-2 h-5 w-5" />
                Register Interest
              </Button>
+          )}
+
+          {!user && !authLoading && !event.registrationLink && (
+              <p className='text-sm text-muted-foreground -mt-4'>
+                You need to be logged in to register your interest.
+              </p>
           )}
 
         </CardContent>

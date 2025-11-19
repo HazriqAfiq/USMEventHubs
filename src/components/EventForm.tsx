@@ -156,7 +156,6 @@ export default function EventForm({ event }: EventFormProps) {
         isFree: data.isFree === 'free',
         eventType: data.eventType,
         registrationLink: data.registrationLink,
-        registrations: [],
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
@@ -167,6 +166,8 @@ export default function EventForm({ event }: EventFormProps) {
     try {
       if (isEditMode && event) {
         const eventRef = doc(db, 'events', event.id);
+        // Preserve existing registrations when updating
+        eventData.registrations = event.registrations || [];
         await updateDoc(eventRef, eventData);
 
         toast({
@@ -177,6 +178,7 @@ export default function EventForm({ event }: EventFormProps) {
 
       } else {
         eventData.createdAt = serverTimestamp();
+        eventData.registrations = []; // Initialize with empty array
         const collectionRef = collection(db, 'events');
         const docRef = await addDoc(collectionRef, eventData);
         
@@ -407,7 +409,7 @@ export default function EventForm({ event }: EventFormProps) {
                     <Input placeholder="https://forms.gle/your-form-link" {...field} />
                   </FormControl>
                    <p className="text-xs text-muted-foreground mt-1">
-                      Paste a link to your Google Form or other registration page.
+                      Paste a link to your Google Form or other registration page. Leave blank to use built-in registration.
                     </p>
                   <FormMessage />
                 </FormItem>

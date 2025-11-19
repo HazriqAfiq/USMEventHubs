@@ -30,8 +30,8 @@ export default function RootLayout({
               {children}
             </div>
           </main>
-          <footer className="py-4 bg-card border-t">
-            <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <footer className="py-4 bg-primary text-primary-foreground border-t border-primary-foreground/20">
+            <div className="container mx-auto px-4 text-center text-sm">
               <p>Powered and developed by Chillframe.</p>
             </div>
           </footer>

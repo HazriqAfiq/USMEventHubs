@@ -31,7 +31,7 @@ export default function EditEventPage() {
   }, [isAdmin, authLoading, router]);
   
   useEffect(() => {
-    if (eventId && isAdmin) {
+    if (eventId && isAdmin && !authLoading) {
       const fetchEvent = async () => {
         try {
           const docRef = doc(db, 'events', eventId);

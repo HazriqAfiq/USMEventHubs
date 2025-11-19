@@ -45,10 +45,16 @@ export default function LoginPage() {
      
     } catch (error: any) {
       console.error('Login error:', error);
+      let errorMessage = 'There was a problem with your login request.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else {
+        errorMessage = error.message;
+      }
       toast({
         variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message || 'There was a problem with your login request.',
+        title: 'Login Failed',
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -66,7 +72,8 @@ export default function LoginPage() {
         description: 'You are now logged in. Redirecting to homepage...',
       });
       router.push('/');
-    } catch (error: any) {
+    } catch (error: any)
+{
       console.error('Registration error:', error);
       toast({
         variant: 'destructive',

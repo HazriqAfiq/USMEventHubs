@@ -90,9 +90,6 @@ export default function EventDetailPage() {
       const unsubscribe = onSnapshot(regRef, (doc) => {
         setIsRegistered(doc.exists());
       }, (serverError) => {
-        // This will likely be a permission error if rules are not set correctly
-        // for non-admins. We can safely ignore it and assume not registered.
-        // BUT, for debugging, let's emit a proper error.
         const permissionError = new FirestorePermissionError({
             path: regRef.path,
             operation: 'get',
@@ -119,22 +116,7 @@ export default function EventDetailPage() {
       });
       toast({
         title: 'Registration Successful!',
-        description: (
-          <div className="flex flex-col gap-2">
-            <p>You are now registered for "{event.title}".</p>
-            {event.groupLink && (
-              <a
-                href={event.groupLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-bold text-accent-foreground underline hover:text-accent-foreground/80"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Click here to join the community group!
-              </a>
-            )}
-          </div>
-        ),
+        description: `You are now registered for "${event.title}". ${event.groupLink ? `Join the community group: ${event.groupLink}` : ''}`,
         duration: 10000,
       });
       setIsFormOpen(false);
@@ -315,3 +297,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

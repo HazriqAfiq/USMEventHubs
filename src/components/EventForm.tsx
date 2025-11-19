@@ -42,6 +42,7 @@ const formSchema = z.object({
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
+  groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price > 0;
@@ -80,6 +81,7 @@ export default function EventForm({ event }: EventFormProps) {
       date: event?.date?.toDate(),
       startTime: event?.startTime || '',
       endTime: event?.endTime || '',
+      groupLink: event?.groupLink || '',
     },
   });
   
@@ -96,6 +98,7 @@ export default function EventForm({ event }: EventFormProps) {
         date: event.date?.toDate(),
         startTime: event.startTime,
         endTime: event.endTime,
+        groupLink: event.groupLink || '',
       });
       setPreviewImage(event.imageUrl);
     }
@@ -118,6 +121,7 @@ export default function EventForm({ event }: EventFormProps) {
                 date: event.date?.toDate(),
                 startTime: event.startTime,
                 endTime: event.endTime,
+                groupLink: event.groupLink || '',
             });
             setPreviewImage(event.imageUrl);
         }
@@ -134,6 +138,7 @@ export default function EventForm({ event }: EventFormProps) {
             isFree: 'free',
             price: 1,
             eventType: undefined,
+            groupLink: '',
         });
         setPreviewImage(null);
     }
@@ -160,6 +165,7 @@ export default function EventForm({ event }: EventFormProps) {
         location: data.location,
         isFree: data.isFree === 'free',
         eventType: data.eventType,
+        groupLink: data.groupLink,
       };
       if (data.isFree === 'paid') {
         eventData.price = data.price;
@@ -379,6 +385,19 @@ export default function EventForm({ event }: EventFormProps) {
                   <FormLabel className="text-white">Location</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Virtual or Specific Venue" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="groupLink"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Community Group Link (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., https://chat.whatsapp.com/..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

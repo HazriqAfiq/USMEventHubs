@@ -97,7 +97,23 @@ export default function EventDetailPage() {
       });
       toast({
         title: 'Registration Successful!',
-        description: `You are now registered for "${event.title}".`,
+        description: (
+          <div className="flex flex-col gap-2">
+            <p>You are now registered for "{event.title}".</p>
+            {event.groupLink && (
+              <a
+                href={event.groupLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-bold text-accent-foreground underline hover:text-accent-foreground/80"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Click here to join the community group!
+              </a>
+            )}
+          </div>
+        ),
+        duration: 10000,
       });
       setIsFormOpen(false);
     } catch (error) {

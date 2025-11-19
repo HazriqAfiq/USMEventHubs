@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CalendarCheck, CalendarX, Eye } from 'lucide-react';
 import { Button } from './ui/button';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UserEventListProps {
   userId: string;
@@ -50,8 +52,12 @@ export default function UserEventList({ userId }: UserEventListProps) {
       eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching user's events: ", error);
+    }, (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: registrationsQuery.path,
+        operation: 'list',
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 

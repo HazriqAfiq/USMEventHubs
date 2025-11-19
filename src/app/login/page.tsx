@@ -55,6 +55,8 @@ export default function LoginPage() {
       let errorMessage = 'There was a problem with your login request.';
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         errorMessage = 'Invalid email or password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
       } else {
         errorMessage = error.message;
       }

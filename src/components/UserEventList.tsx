@@ -11,6 +11,7 @@ import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CalendarCheck, CalendarX, Eye } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface UserEventListProps {
   userId: string;

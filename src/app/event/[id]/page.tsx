@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, UserX } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,16 +19,14 @@ import { Terminal } from 'lucide-react';
 import Link from 'next/link';
 import RegistrationForm from '@/components/RegistrationForm';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -55,6 +53,8 @@ export default function EventDetailPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
   
   useEffect(() => {
     if (!eventId) return;
@@ -90,12 +90,16 @@ export default function EventDetailPage() {
       const unsubscribe = onSnapshot(regRef, (doc) => {
         setIsRegistered(doc.exists());
       }, (serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: regRef.path,
-            operation: 'get',
-        }, serverError);
-        errorEmitter.emit('permission-error', permissionError);
+        // This is now handled by the error emitter, but we'll keep the check
+        // to prevent UI state issues if permissions fail.
         setIsRegistered(false);
+        if (serverError.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+              path: regRef.path,
+              operation: 'get',
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+        }
       });
       return () => unsubscribe();
     } else {
@@ -114,12 +118,11 @@ export default function EventDetailPage() {
         id: user.uid,
         registeredAt: serverTimestamp(),
       });
-      toast({
-        title: 'Registration Successful!',
-        description: `You are now registered for "${event.title}". ${event.groupLink ? `Join the community group: ${event.groupLink}` : ''}`,
-        duration: 10000,
-      });
+      
+      setCommunityLink(event.groupLink);
+      setIsSuccessDialogOpen(true);
       setIsFormOpen(false);
+
     } catch (error: any) {
       console.error("Error submitting registration:", error);
       toast({
@@ -152,27 +155,6 @@ export default function EventDetailPage() {
     }
     setIsFormOpen(true);
   }
-  
-  const handleUnregister = async () => {
-    if (!user || !event) return;
-
-    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
-    try {
-        await deleteDoc(regRef);
-        toast({
-            title: "Unregistered",
-            description: `You are no longer registered for "${event.title}".`
-        });
-    } catch (error: any) {
-        console.error("Error unregistering:", error);
-        toast({
-            variant: 'destructive',
-            title: "Action Failed",
-            description: error.message || "Could not unregister from the event."
-        });
-    }
-  }
-
 
   if (loading || authLoading) {
     return (
@@ -294,8 +276,35 @@ export default function EventDetailPage() {
       onSubmit={handleRegistrationSubmit}
       isSubmitting={isSubmitting}
       />
+    <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+           <div className='flex items-center justify-center flex-col text-center gap-y-2 pt-4'>
+            <PartyPopper className='h-12 w-12 text-accent' strokeWidth={1.5} />
+            <DialogTitle className="text-2xl font-bold font-headline">Registration Successful!</DialogTitle>
+            <DialogDescription>
+              You are now registered for "{event.title}".
+            </DialogDescription>
+           </div>
+        </DialogHeader>
+          {communityLink && (
+            <div className='space-y-4 text-center py-4'>
+                <p className='text-sm text-muted-foreground'>Join the event community group to connect with other attendees:</p>
+                <Button asChild>
+                    <a href={communityLink} target="_blank" rel="noopener noreferrer">
+                        <LinkIcon className='mr-2 h-4 w-4'/>
+                        Join Community Group
+                    </a>
+                </Button>
+            </div>
+          )}
+        <DialogFooter className="pt-4">
+            <DialogClose asChild>
+                <Button type="button" className='w-full'>Close</Button>
+            </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
-
-    

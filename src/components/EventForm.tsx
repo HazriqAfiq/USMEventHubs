@@ -301,7 +301,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="free" />
                           </FormControl>
-                          <FormLabel className="font-normal text-white">
+                          <FormLabel className="font-normal text-orange-400">
                             Free
                           </FormLabel>
                         </FormItem>
@@ -309,7 +309,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="paid" />
                           </FormControl>
-                          <FormLabel className="font-normal text-white">
+                          <FormLabel className="font-normal text-orange-400">
                             Paid
                           </FormLabel>
                         </FormItem>
@@ -335,7 +335,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="online" />
                           </FormControl>
-                          <FormLabel className="font-normal text-white">
+                          <FormLabel className="font-normal text-orange-400">
                             Online
                           </FormLabel>
                         </FormItem>
@@ -343,7 +343,7 @@ export default function EventForm({ event }: EventFormProps) {
                           <FormControl>
                             <RadioGroupItem value="physical" />
                           </FormControl>
-                          <FormLabel className="font-normal text-white">
+                          <FormLabel className="font-normal text-orange-400">
                             Physical
                           </FormLabel>
                         </FormItem>

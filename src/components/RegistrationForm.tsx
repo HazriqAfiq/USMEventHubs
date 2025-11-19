@@ -15,7 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { useState } from 'react';
+import Image from 'next/image';
+import { QrCode } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -40,6 +41,8 @@ interface RegistrationFormProps {
   onClose: () => void;
   onSubmit: (data: { name: string, matricNo: string, faculty: string }) => void;
   isSubmitting: boolean;
+  eventPrice?: number;
+  eventQrCodeUrl?: string;
 }
 
 const faculties = [
@@ -61,7 +64,14 @@ const faculties = [
 ];
 
 
-export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitting }: RegistrationFormProps) {
+export default function RegistrationForm({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  isSubmitting,
+  eventPrice,
+  eventQrCodeUrl
+}: RegistrationFormProps) {
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -82,6 +92,8 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
         faculty: finalFaculty,
     });
   };
+  
+  const isPaidEvent = eventPrice !== undefined && eventQrCodeUrl;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -159,6 +171,24 @@ export default function RegistrationForm({ isOpen, onClose, onSubmit, isSubmitti
                 )}
               />
             )}
+
+            {isPaidEvent && (
+              <div className="space-y-4 rounded-lg border bg-background p-4 shadow-sm">
+                <div className="flex flex-col items-center text-center gap-2">
+                  <QrCode className="h-8 w-8 text-primary" strokeWidth={1.5} />
+                  <h3 className="text-lg font-semibold font-headline">Scan to Pay</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Please scan the QR code to complete your payment of <strong>RM{eventPrice?.toFixed(2)}</strong>. After payment, you can submit your registration.
+                  </p>
+                </div>
+                <div className="flex justify-center">
+                  <div className="relative h-48 w-48 rounded-md overflow-hidden border">
+                    <Image src={eventQrCodeUrl} alt="Payment QR Code" layout="fill" objectFit="contain" />
+                  </div>
+                </div>
+              </div>
+            )}
+
              <DialogFooter className="pt-4">
                 <DialogClose asChild>
                     <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>

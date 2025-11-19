@@ -41,14 +41,23 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      const user = userCredential.user;
+
+      // Fetch user profile to check role
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
       toast({
         title: 'Login successful!',
         description: 'Redirecting...',
       });
       
-      router.push('/');
+      if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
      
     } catch (error: any) {
       console.error('Login error:', error);
@@ -78,10 +87,11 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
       const user = userCredential.user;
 
+      // Create a user profile document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
-        role: 'student', 
+        role: 'student', // Default role for new registrations
       });
       
       toast({
@@ -108,7 +118,7 @@ export default function LoginPage() {
         toast({
             variant: 'destructive',
             title: 'Email required',
-            description: 'Please enter your email address.',
+            description: 'Please enter the email address for your account.',
         });
         return;
     }
@@ -116,19 +126,21 @@ export default function LoginPage() {
     setResetSent(false);
     try {
         await sendPasswordResetEmail(auth, resetEmail);
-        setResetSent(true);
+        setResetSent(true); // Indicate that the dialog should show the success message
         toast({
             title: 'Password Reset Email Sent',
-            description: 'Check your inbox for a link to reset your password.',
+            description: 'Please check your inbox (and spam folder) for a link to reset your password.',
         });
     } catch (error: any) {
         console.error('Password reset error:', error);
+        let description = 'Could not send reset email. Please try again later.';
+        if (error.code === 'auth/user-not-found') {
+            description = 'No account was found with this email address. Please make sure you have entered the correct email.';
+        }
         toast({
             variant: 'destructive',
             title: 'Reset Failed',
-            description: error.code === 'auth/user-not-found' 
-              ? 'No account found with that email address.'
-              : 'Could not send reset email. Please try again.',
+            description: description,
         });
     } finally {
         setIsResetting(false);
@@ -171,7 +183,10 @@ export default function LoginPage() {
                              <button
                                 type="button"
                                 className="text-sm font-medium text-primary hover:underline"
-                                onClick={() => setResetSent(false)}
+                                onClick={() => {
+                                  setResetSent(false); // Reset UI state when opening dialog
+                                  setResetEmail(''); // Clear email field
+                                }}
                               >
                                 Forgot password?
                               </button>
@@ -182,7 +197,7 @@ export default function LoginPage() {
                                 <AlertDialogTitle>Reset Your Password</AlertDialogTitle>
                                 {resetSent ? (
                                     <AlertDialogDescription>
-                                        A password reset link has been sent to <strong>{resetEmail}</strong>. Please check your inbox (and spam folder). You can close this dialog now.
+                                        A password reset link has been sent to <strong>{resetEmail}</strong>. Please check your inbox and spam folder. You can close this dialog now.
                                     </AlertDialogDescription>
                                 ) : (
                                   <>

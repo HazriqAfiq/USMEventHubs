@@ -43,7 +43,7 @@ export function Header() {
       <div className="container mx-auto px-4 flex justify-between items-center h-20">
         <Link href="/" className="flex items-center gap-2 font-headline text-xl font-bold text-primary">
           <Image src="/images/usm.png" alt="USM Event Hub Logo" width={40} height={40} />
-          <span>USM Event Hub</span>
+          <span className="hidden sm:inline">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
            {isHomepage && (

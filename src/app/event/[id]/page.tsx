@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import Link from 'next/link';
 import RegistrationForm from '@/components/RegistrationForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
@@ -71,16 +84,25 @@ export default function EventDetailPage() {
   }, [eventId]);
 
    useEffect(() => {
+    // Only check registration status if there is a logged in user and an eventId
     if (user && eventId) {
       const regRef = doc(db, 'events', eventId, 'registrations', user.uid);
       const unsubscribe = onSnapshot(regRef, (doc) => {
         setIsRegistered(doc.exists());
-      }, (error) => {
-        console.error("Error checking registration status:", error);
+      }, (serverError) => {
+        // This will likely be a permission error if rules are not set correctly
+        // for non-admins. We can safely ignore it and assume not registered.
+        // BUT, for debugging, let's emit a proper error.
+        const permissionError = new FirestorePermissionError({
+            path: regRef.path,
+            operation: 'get',
+        }, serverError);
+        errorEmitter.emit('permission-error', permissionError);
         setIsRegistered(false);
       });
       return () => unsubscribe();
     } else {
+      // Ensure that if user logs out or there's no event, we reset the state.
       setIsRegistered(false);
     }
    }, [user, eventId]);
@@ -116,7 +138,7 @@ export default function EventDetailPage() {
         duration: 10000,
       });
       setIsFormOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting registration:", error);
       toast({
         variant: 'destructive',
@@ -148,6 +170,27 @@ export default function EventDetailPage() {
     }
     setIsFormOpen(true);
   }
+  
+  const handleUnregister = async () => {
+    if (!user || !event) return;
+
+    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
+    try {
+        await deleteDoc(regRef);
+        toast({
+            title: "Unregistered",
+            description: `You are no longer registered for "${event.title}".`
+        });
+    } catch (error: any) {
+        console.error("Error unregistering:", error);
+        toast({
+            variant: 'destructive',
+            title: "Action Failed",
+            description: error.message || "Could not unregister from the event."
+        });
+    }
+  }
+
 
   if (loading || authLoading) {
     return (

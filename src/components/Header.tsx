@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, LogIn, LogOut, UserCircle, DollarSign, Laptop, Users } from 'lucide-react';
+import { CalendarDays, LogIn, LogOut, UserCircle, DollarSign, Laptop, Users, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -101,6 +101,12 @@ export function Header() {
                         <UserCircle className="mr-2 h-4 w-4" />
                         <span>Admin Dashboard</span>
                       </DropdownMenuItem>
+                    )}
+                    {!isAdmin && (
+                        <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            <span>My Dashboard</span>
+                        </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />

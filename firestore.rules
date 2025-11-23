@@ -28,8 +28,14 @@ service cloud.firestore {
       
       // Only the original organizer can update or delete their event
       allow update, delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
+      
+      // Rules for listing the 'registrations' subcollection
+      match /registrations/{document=**} {
+        // Any admin can list all registrations for any event.
+        allow list: if request.auth != null && isAdmin(request.auth.uid);
+      }
 
-      // Rules for the 'registrations' subcollection
+      // Rules for individual 'registrations' documents
       match /registrations/{registrationId} {
         // Allow a user to create their own registration document
         allow create: if request.auth.uid == registrationId;
@@ -39,9 +45,6 @@ service cloud.firestore {
         
         // A user can read their own registration document.
         allow read: if request.auth != null && request.auth.uid == registrationId;
-
-        // Any admin can list all registrations for any event.
-        allow list: if request.auth != null && isAdmin(request.auth.uid);
       }
     }
     

@@ -1,33 +1,27 @@
 {
   "placeholderImages": [
     {
-      "id": "club-logo-1",
-      "description": "Club Logo 1",
-      "imageUrl": "/images/club_logo/logo1.png",
+      "id": "ibos-logo",
+      "description": "IBOS",
+      "imageUrl": "/images/club_logo/iboslogo.png",
       "imageHint": "club logo"
     },
     {
-      "id": "club-logo-2",
-      "description": "Club Logo 2",
-      "imageUrl": "/images/club_logo/logo2.png",
+      "id": "spin-logo",
+      "description": "SPIN",
+      "imageUrl": "/images/club_logo/spin.png",
       "imageHint": "club logo"
     },
     {
-      "id": "club-logo-3",
-      "description": "Club Logo 3",
-      "imageUrl": "/images/club_logo/logo3.png",
+      "id": "srn-logo",
+      "description": "SRN",
+      "imageUrl": "/images/club_logo/srn.png",
       "imageHint": "club logo"
     },
     {
-      "id": "club-logo-4",
-      "description": "Club Logo 4",
-      "imageUrl": "/images/club_logo/logo4.png",
-      "imageHint": "club logo"
-    },
-    {
-      "id": "club-logo-5",
-      "description": "Club Logo 5",
-      "imageUrl": "/images/club_logo/logo5.png",
+      "id": "usmjazzband-logo",
+      "description": "USMJazzBand",
+      "imageUrl": "/images/club_logo/usmjazzband.png",
       "imageHint": "club logo"
     }
   ]

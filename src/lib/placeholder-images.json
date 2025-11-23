@@ -9,19 +9,19 @@
     {
       "id": "spin-logo",
       "description": "SPIN",
-      "imageUrl": "/images/club_logo/spin.png",
+      "imageUrl": "/images/club_logo/spinlogo.jpg",
       "imageHint": "club logo"
     },
     {
       "id": "srn-logo",
       "description": "SRN",
-      "imageUrl": "/images/club_logo/srn.png",
+      "imageUrl": "/images/club_logo/srnlogo.jpg",
       "imageHint": "club logo"
     },
     {
       "id": "usmjazzband-logo",
       "description": "USMJazzBand",
-      "imageUrl": "/images/club_logo/usmjazzband.png",
+      "imageUrl": "/images/club_logo/usmjblogo.jpg",
       "imageHint": "club logo"
     }
   ]

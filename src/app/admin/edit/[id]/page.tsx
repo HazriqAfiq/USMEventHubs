@@ -25,13 +25,13 @@ export default function EditEventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [hasPermission, setHasPermission] = useState(true); // Assume permission until checked
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!isAdmin) {
-      router.push('/');
+      setHasPermission(false);
       return;
     }
     
@@ -78,6 +78,7 @@ export default function EditEventPage() {
           }, serverError);
           errorEmitter.emit('permission-error', permissionError);
         }
+        setHasPermission(false);
       } 
       finally {
         setLoading(false);
@@ -88,7 +89,16 @@ export default function EditEventPage() {
 
   }, [eventId, router, authLoading, isAdmin, user]);
 
-  if (authLoading || loading) {
+  useEffect(() => {
+    if (!authLoading && !hasPermission) {
+      const timer = setTimeout(() => {
+        router.push('/');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, hasPermission, router]);
+
+  if (authLoading || (loading && hasPermission)) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-8">
@@ -100,7 +110,7 @@ export default function EditEventPage() {
     );
   }
   
-  if (!isAdmin || !hasPermission) {
+  if (!hasPermission) {
      return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">

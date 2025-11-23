@@ -1,5 +1,3 @@
-# Firebase Studio
+**USM Event Hub**
 
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+this website is used next.js and firebase cloud service

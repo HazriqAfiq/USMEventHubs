@@ -472,7 +472,7 @@ export default function EventForm({ event }: EventFormProps) {
               name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white">Event Image</FormLabel>
+                  <FormLabel className="text-white">Club Logo Images</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);

@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,7 @@ export default function EventDetailPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [registrationDetails, setRegistrationDetails] = useState<Registration | null>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
   
@@ -84,13 +85,19 @@ export default function EventDetailPage() {
   }, [eventId]);
 
    useEffect(() => {
-    // Only check registration status if there is a logged in user and an eventId
     if (user && eventId) {
       const regRef = doc(db, 'events', eventId, 'registrations', user.uid);
-      const unsubscribe = onSnapshot(regRef, (doc) => {
-        setIsRegistered(doc.exists());
+      const unsubscribe = onSnapshot(regRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setIsRegistered(true);
+          setRegistrationDetails(docSnap.data() as Registration);
+        } else {
+          setIsRegistered(false);
+          setRegistrationDetails(null);
+        }
       }, (serverError) => {
         setIsRegistered(false);
+        setRegistrationDetails(null);
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
               path: regRef.path,
@@ -101,8 +108,8 @@ export default function EventDetailPage() {
       });
       return () => unsubscribe();
     } else {
-      // Ensure that if user logs out or there's no event, we reset the state.
       setIsRegistered(false);
+      setRegistrationDetails(null);
     }
    }, [user, eventId]);
   
@@ -241,12 +248,37 @@ export default function EventDetailPage() {
           
           {!isAdmin && user && (
             isRegistered ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 p-3 rounded-md border-2 border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
-                   <UserCheck className="h-5 w-5" />
-                   <span className="font-semibold">You are registered!</span>
-                </div>
-              </div>
+              <Card className="bg-green-500/10 border-green-500/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <UserCheck className="mr-2 h-5 w-5" />
+                    You are registered!
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {registrationDetails && (
+                    <div className="text-sm space-y-2">
+                       <p className="font-semibold">Your Registration Details:</p>
+                       <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                          <li><strong>Name:</strong> {registrationDetails.name}</li>
+                          <li><strong>Matric No:</strong> {registrationDetails.matricNo}</li>
+                          <li><strong>Faculty:</strong> {registrationDetails.faculty}</li>
+                       </ul>
+                    </div>
+                  )}
+                  {event.groupLink && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4 border-t border-green-500/20">
+                      <p className='text-sm text-muted-foreground'>Join the event community group:</p>
+                      <Button asChild size="sm">
+                          <a href={event.groupLink} target="_blank" rel="noopener noreferrer">
+                              <LinkIcon className='mr-2 h-4 w-4'/>
+                              Join Community
+                          </a>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             ) : (
                <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
                  <UserPlus className="mr-2 h-5 w-5" />

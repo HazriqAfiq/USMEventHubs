@@ -13,11 +13,6 @@ service cloud.firestore {
       return getUserRole(userId) == 'admin';
     }
 
-    // Helper function to get the organizer ID of an event
-    function getEventOrganizer(eventId) {
-      return get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
-    }
-
     // Default deny all
     match /{document=**} {
       allow read, write: if false;
@@ -35,20 +30,18 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
 
       // Rules for the 'registrations' subcollection
-      match /registrations/{userId} {
+      match /registrations/{registrationId} {
         // Allow a user to create their own registration document
-        allow create: if request.auth.uid == userId;
+        allow create: if request.auth.uid == registrationId;
 
         // Allow a user to delete their own registration (unregister)
-        allow delete: if request.auth.uid == userId;
+        allow delete: if request.auth.uid == registrationId;
         
         // A user can read their own registration document.
-        allow read: if request.auth != null && request.auth.uid == userId;
-      }
+        allow read: if request.auth != null && request.auth.uid == registrationId;
 
-      // The event organizer can list all registrations for their event.
-      match /registrations/{registrationId} {
-        allow list: if request.auth != null && isAdmin(request.auth.uid) && getEventOrganizer(eventId) == request.auth.uid;
+        // Any admin can list all registrations for any event.
+        allow list: if request.auth != null && isAdmin(request.auth.uid);
       }
     }
     
@@ -60,8 +53,8 @@ service cloud.firestore {
       // A user can read their own profile, and admins can read any profile
       allow read: if request.auth.uid == userId || (request.auth != null && isAdmin(request.auth.uid));
 
-      // A user cannot change their own role. Only admins can update user profiles (e.g., to change a role)
-      allow update: if request.auth != null && isAdmin(request.auth.uid);
+      // A user can update their own profile (but not their role). Admins can update any field.
+      allow update: if (request.auth.uid == userId && request.resource.data.role == resource.data.role) || (request.auth != null && isAdmin(request.auth.uid));
     }
   }
 }

@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2 } from 'lucide-react';
-import { format, isToday } from 'date-fns';
+import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -71,10 +71,16 @@ interface EventFormProps {
 
 const getMalaysiaTimeNow = () => {
     const now = new Date();
-    const offset = 8; // Malaysia is UTC+8
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const myTime = new Date(utc + (3600000 * offset));
+    // Directly get the time in Malaysia timezone string
+    const myTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
     return myTime;
+}
+
+const isTodayInMalaysia = (date: Date) => {
+    const today = getMalaysiaTimeNow();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
 }
 
 export default function EventForm({ event }: EventFormProps) {
@@ -304,7 +310,7 @@ export default function EventForm({ event }: EventFormProps) {
                         <Input 
                           type="time" 
                           {...field} 
-                          min={selectedDate && isToday(selectedDate) ? getCurrentTime() : undefined}
+                          min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}
                         />
                       </FormControl>
                       <FormMessage />
@@ -549,3 +555,5 @@ export default function EventForm({ event }: EventFormProps) {
     </Form>
   );
 }
+
+    

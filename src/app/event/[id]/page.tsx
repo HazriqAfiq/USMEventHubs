@@ -37,15 +37,15 @@ const toMalaysiaTime = (date: Date) => {
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
-  const date = new Date();
-  date.setUTCHours(parseInt(hours, 10) - 8); // Adjust for MYT (UTC+8)
-  date.setUTCMinutes(parseInt(minutes, 10));
   
-  const malaysianDate = toMalaysiaTime(new Date());
-  malaysianDate.setHours(parseInt(hours,10));
-  malaysianDate.setMinutes(parseInt(minutes,10));
+  // Create a date object, set the time, and then format it.
+  // The date part doesn't matter as we only format the time part.
+  const date = new Date();
+  date.setHours(parseInt(hours,10));
+  date.setMinutes(parseInt(minutes,10));
+  date.setSeconds(0);
 
-  return format(malaysianDate, 'p');
+  return format(date, 'p');
 };
 
 
@@ -351,3 +351,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

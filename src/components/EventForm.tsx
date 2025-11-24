@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -117,6 +117,7 @@ export default function EventForm({ event }: EventFormProps) {
   }, [event, form]);
 
   const isPaid = form.watch('isFree') === 'paid';
+  const selectedDate = form.watch('date');
 
   const handleReset = () => {
     if (isEditMode) {
@@ -222,6 +223,11 @@ export default function EventForm({ event }: EventFormProps) {
       setIsSubmitting(false);
     }
   }
+  
+  const getCurrentTime = () => {
+    const now = new Date();
+    return format(now, 'HH:mm');
+  };
 
   return (
     <Form {...form}>
@@ -288,7 +294,11 @@ export default function EventForm({ event }: EventFormProps) {
                     <FormItem>
                       <FormLabel className="text-white">Start Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input 
+                          type="time" 
+                          {...field} 
+                          min={selectedDate && isToday(selectedDate) ? getCurrentTime() : undefined}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -532,3 +542,5 @@ export default function EventForm({ event }: EventFormProps) {
     </Form>
   );
 }
+
+    

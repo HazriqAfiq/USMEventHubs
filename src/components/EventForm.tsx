@@ -69,6 +69,14 @@ interface EventFormProps {
   event?: Event;
 }
 
+const getMalaysiaTimeNow = () => {
+    const now = new Date();
+    const offset = 8; // Malaysia is UTC+8
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const myTime = new Date(utc + (3600000 * offset));
+    return myTime;
+}
+
 export default function EventForm({ event }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -225,8 +233,7 @@ export default function EventForm({ event }: EventFormProps) {
   }
   
   const getCurrentTime = () => {
-    const now = new Date();
-    return format(now, 'HH:mm');
+    return format(getMalaysiaTimeNow(), 'HH:mm');
   };
 
   return (
@@ -542,5 +549,3 @@ export default function EventForm({ event }: EventFormProps) {
     </Form>
   );
 }
-
-    

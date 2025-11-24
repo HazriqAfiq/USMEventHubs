@@ -17,13 +17,19 @@ interface EventCardProps {
   event: Event;
 }
 
+const toMalaysiaTime = (date: Date) => {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+};
+
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
-  const date = new Date();
-  date.setHours(parseInt(hours, 10));
-  date.setMinutes(parseInt(minutes, 10));
-  return format(date, 'p');
+  
+  const malaysianDate = toMalaysiaTime(new Date());
+  malaysianDate.setHours(parseInt(hours,10));
+  malaysianDate.setMinutes(parseInt(minutes,10));
+
+  return format(malaysianDate, 'p');
 };
 
 
@@ -84,7 +90,7 @@ export default function EventCard({ event }: EventCardProps) {
           <CardTitle className="font-headline text-xl">{event.title}</CardTitle>
           <CardDescription className="flex items-center pt-1 text-sm">
             <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{event.date ? format(event.date.toDate(), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
+            <span>{event.date ? format(toMalaysiaTime(event.date.toDate()), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
           </CardDescription>
            <CardDescription className="flex items-center pt-1 text-sm">
             <Clock className="h-4 w-4 mr-2 flex-shrink-0" />

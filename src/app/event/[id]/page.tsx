@@ -30,13 +30,22 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
+const toMalaysiaTime = (date: Date) => {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+};
+
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
   const date = new Date();
-  date.setHours(parseInt(hours, 10));
-  date.setMinutes(parseInt(minutes, 10));
-  return format(date, 'p');
+  date.setUTCHours(parseInt(hours, 10) - 8); // Adjust for MYT (UTC+8)
+  date.setUTCMinutes(parseInt(minutes, 10));
+  
+  const malaysianDate = toMalaysiaTime(new Date());
+  malaysianDate.setHours(parseInt(hours,10));
+  malaysianDate.setMinutes(parseInt(minutes,10));
+
+  return format(malaysianDate, 'p');
 };
 
 
@@ -228,7 +237,7 @@ export default function EventDetailPage() {
             <div className="flex-shrink-0 grid gap-2 text-sm text-muted-foreground w-full md:w-auto">
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <span>{event.date ? format(event.date.toDate(), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
+                  <span>{event.date ? format(toMalaysiaTime(event.date.toDate()), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
                 </div>
                  <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-2" />

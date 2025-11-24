@@ -23,6 +23,12 @@
       "description": "USMJazzBand",
       "imageUrl": "/images/club_logo/usmjblogo.jpg",
       "imageHint": "club logo"
+    },
+    {
+      "id": "vitrox-logo",
+      "description": "Vitrox",
+      "imageUrl": "/images/club_logo/vitroxlogo.png",
+      "imageHint": "club logo"
     }
   ]
 }

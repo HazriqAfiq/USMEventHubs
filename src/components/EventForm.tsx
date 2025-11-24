@@ -69,6 +69,20 @@ interface EventFormProps {
   event?: Event;
 }
 
+const getMalaysiaTimeNow = () => {
+    const now = new Date();
+    // Directly get the time in Malaysia timezone string
+    const myTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+    return myTime;
+}
+
+const isTodayInMalaysia = (date: Date) => {
+    const today = getMalaysiaTimeNow();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+}
+
 export default function EventForm({ event }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -117,6 +131,7 @@ export default function EventForm({ event }: EventFormProps) {
   }, [event, form]);
 
   const isPaid = form.watch('isFree') === 'paid';
+  const selectedDate = form.watch('date');
 
   const handleReset = () => {
     if (isEditMode) {
@@ -222,6 +237,10 @@ export default function EventForm({ event }: EventFormProps) {
       setIsSubmitting(false);
     }
   }
+  
+  const getCurrentTime = () => {
+    return format(getMalaysiaTimeNow(), 'HH:mm');
+  };
 
   return (
     <Form {...form}>
@@ -288,7 +307,11 @@ export default function EventForm({ event }: EventFormProps) {
                     <FormItem>
                       <FormLabel className="text-white">Start Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input 
+                          type="time" 
+                          {...field} 
+                          min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -532,3 +555,5 @@ export default function EventForm({ event }: EventFormProps) {
     </Form>
   );
 }
+
+    

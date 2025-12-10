@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
 import { FilePenLine, Trash2 } from 'lucide-react';
 import {
@@ -16,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
@@ -25,13 +24,14 @@ import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
   const { user, isAdmin, loading: authLoading } = useAuth();
 
 
@@ -42,7 +42,6 @@ export default function AdminEventList() {
     }
     
     const eventsRef = collection(db, 'events');
-    // Simplified query to filter by organizerId only
     const q = query(
       eventsRef,
       where('organizerId', '==', user.uid)
@@ -53,7 +52,6 @@ export default function AdminEventList() {
       querySnapshot.forEach((doc) => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
-      // Sort events by date on the client-side
       eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);
@@ -65,18 +63,41 @@ export default function AdminEventList() {
     return () => unsubscribe();
   }, [authLoading, isAdmin, user]);
 
-  const filteredEvents = useMemo(() => {
+  const { filteredEvents, availableMonths } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    let baseFilteredEvents: Event[];
+    let availableMonths: string[] = [];
+    
+    const pastEvents = events.filter(event => event.date && event.date.toDate() < today);
+
     if (filter === 'upcoming') {
-      return events.filter(event => event.date && event.date.toDate() >= today);
+      baseFilteredEvents = events.filter(event => event.date && event.date.toDate() >= today);
+    } else if (filter === 'past') {
+      const monthSet = new Set<string>();
+      pastEvents.forEach(event => {
+          monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
+      });
+      availableMonths = Array.from(monthSet);
+      
+      if (monthFilter === 'all') {
+          baseFilteredEvents = pastEvents;
+      } else {
+          const selectedMonthDate = new Date(monthFilter);
+          const interval = {
+              start: startOfMonth(selectedMonthDate),
+              end: endOfMonth(selectedMonthDate)
+          };
+          baseFilteredEvents = pastEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
+      }
+
+    } else {
+       baseFilteredEvents = events;
     }
-    if (filter === 'past') {
-      return events.filter(event => event.date && event.date.toDate() < today);
-    }
-    return events;
-  }, [events, filter]);
+
+    return { filteredEvents: baseFilteredEvents, availableMonths };
+  }, [events, filter, monthFilter]);
 
   const handleDelete = async (eventId: string, eventTitle: string) => {
     try {
@@ -94,6 +115,11 @@ export default function AdminEventList() {
       });
     }
   };
+  
+  useEffect(() => {
+    // Reset month filter when main filter changes
+    setMonthFilter('all');
+  }, [filter]);
 
   if (loading || authLoading) {
     return (
@@ -107,7 +133,7 @@ export default function AdminEventList() {
 
   return (
     <div className="mt-6 space-y-4">
-       <div className="flex justify-start">
+       <div className="flex justify-between items-center">
         <ToggleGroup
           type="single"
           variant="outline"
@@ -118,11 +144,27 @@ export default function AdminEventList() {
           <ToggleGroupItem value="past">Past</ToggleGroupItem>
           <ToggleGroupItem value="all">All</ToggleGroupItem>
         </ToggleGroup>
+
+        {filter === 'past' && availableMonths.length > 0 && (
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by month" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Months</SelectItem>
+                    {availableMonths.map(monthStr => (
+                        <SelectItem key={monthStr} value={monthStr}>
+                            {format(new Date(monthStr), 'MMMM yyyy')}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        )}
       </div>
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          No {filter} events found.
+          No {filter} events found {filter === 'past' && monthFilter !== 'all' ? `for ${format(new Date(monthFilter), 'MMMM yyyy')}` : ''}.
         </Card>
       ) : (
         filteredEvents.map((event) => (

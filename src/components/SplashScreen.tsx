@@ -30,11 +30,12 @@ export function SplashScreen() {
 
             {/* Logo and caption container */}
             <div className="flex flex-col items-center gap-6">
-                {/* Logo with glow effect */}
+                {/* Logo with glow effect - fade in and out */}
                 <div className="relative animate-pulse">
                     <div className="absolute inset-0 blur-3xl bg-primary/30 scale-110" />
+                    {/* Load image as soon as possible with drop shadow effect */}
                     <Image
-                        src="/images/usm-logo.png"
+                        src="/images/splash screen/TULISAN (1).png"
                         alt="USM Event Hub Logo"
                         width={600}
                         height={400}

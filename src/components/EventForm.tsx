@@ -67,6 +67,7 @@ type EventFormValues = z.infer<typeof formSchema>;
 
 interface EventFormProps {
   event?: Event;
+  isEditable?: boolean;
 }
 
 const getMalaysiaTimeNow = () => {
@@ -83,7 +84,7 @@ const isTodayInMalaysia = (date: Date) => {
            date.getFullYear() === today.getFullYear();
 }
 
-export default function EventForm({ event }: EventFormProps) {
+export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth(); // Get the authenticated user
@@ -245,315 +246,318 @@ export default function EventForm({ event }: EventFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-4 flex flex-col">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Event Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Annual Tech Summit" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="text-white">Event Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={'outline'}
-                          className={cn(
-                            'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, 'PPP')
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
+        <fieldset disabled={!isEditable} className="group">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-4 flex flex-col">
               <FormField
-                  control={form.control}
-                  name="startTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Start Time</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
-                          min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Event Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Annual Tech Summit" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="text-white">Event Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal group-disabled:cursor-not-allowed group-disabled:opacity-50',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP')
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                          initialFocus
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="endTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">End Time</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="isFree"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="text-white">Price</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex items-center space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="free" />
-                          </FormControl>
-                          <FormLabel className="font-normal text-white">
-                            Free
-                          </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="paid" />
-                          </FormControl>
-                          <FormLabel className="font-normal text-white">
-                            Paid
-                          </FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="eventType"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="text-white">Event Type</FormLabel>
-                    <FormControl>
-                       <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex items-center space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="online" />
-                          </FormControl>
-                          <FormLabel className="font-normal text-white">
-                            Online
-                          </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="physical" />
-                          </FormControl>
-                          <FormLabel className="font-normal text-white">
-                            Physical
-                          </FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            {isPaid && (
-              <>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
-                    name="price"
+                    name="startTime"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="text-white">Amount (RM)</FormLabel>
+                      <FormItem>
+                        <FormLabel className="text-white">Start Time</FormLabel>
                         <FormControl>
-                        <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          <Input 
+                            type="time" 
+                            {...field} 
+                            min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}
+                          />
                         </FormControl>
                         <FormMessage />
-                    </FormItem>
+                      </FormItem>
                     )}
-                />
-                 <FormField
+                  />
+                  <FormField
                     control={form.control}
-                    name="qrCodeUrl"
+                    name="endTime"
                     render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="text-white">Payment QR Code</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a QR code for payment" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {QrCodeImages.map((qr: QrCodePlaceholder) => (
-                                <SelectItem key={qr.id} value={qr.imageUrl}>
-                                <div className="flex items-center gap-2">
-                                    <Image src={qr.imageUrl} alt={qr.name} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
-                                    <span>{qr.name}</span>
-                                </div>
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
+                      <FormItem>
+                        <FormLabel className="text-white">End Time</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-              </>
-            )}
-             <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Virtual or Specific Venue" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                  />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="isFree"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="text-white">Price</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4"
+                          disabled={!isEditable}
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="free" />
+                            </FormControl>
+                            <FormLabel className="font-normal text-white">
+                              Free
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="paid" />
+                            </FormControl>
+                            <FormLabel className="font-normal text-white">
+                              Paid
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="eventType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="text-white">Event Type</FormLabel>
+                      <FormControl>
+                         <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4"
+                          disabled={!isEditable}
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="online" />
+                            </FormControl>
+                            <FormLabel className="font-normal text-white">
+                              Online
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="physical" />
+                            </FormControl>
+                            <FormLabel className="font-normal text-white">
+                              Physical
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {isPaid && (
+                <>
+                  <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="text-white">Amount (RM)</FormLabel>
+                          <FormControl>
+                          <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                      </FormItem>
+                      )}
+                  />
+                   <FormField
+                      control={form.control}
+                      name="qrCodeUrl"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel className="text-white">Payment QR Code</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
+                              <FormControl>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="Select a QR code for payment" />
+                              </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                              {QrCodeImages.map((qr: QrCodePlaceholder) => (
+                                  <SelectItem key={qr.id} value={qr.imageUrl}>
+                                  <div className="flex items-center gap-2">
+                                      <Image src={qr.imageUrl} alt={qr.name} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
+                                      <span>{qr.name}</span>
+                                  </div>
+                                  </SelectItem>
+                              ))}
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                      />
+                </>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="groupLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Community Group Link (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., https://chat.whatsapp.com/..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem className="flex flex-col flex-grow">
-                  <FormLabel className="text-white">Event Description</FormLabel>
-                  <FormControl className="flex-grow">
-                    <Textarea
-                      placeholder="Describe the event, what it's about, and who should attend."
-                      className="resize-none h-full"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="space-y-4">
-             <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Club Logo Images</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      const selectedImage = PlaceHolderImages.find(img => img.imageUrl === value);
-                      setPreviewImage(selectedImage?.imageUrl || null);
-                    }}
-                    value={field.value}
-                  >
+               <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Location</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an image for the event" />
-                      </SelectTrigger>
+                      <Input placeholder="e.g., Virtual or Specific Venue" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {PlaceHolderImages.map((image: ImagePlaceholder) => (
-                        <SelectItem key={image.id} value={image.imageUrl}>
-                          <div className="flex items-center gap-2">
-                             <Image src={image.imageUrl} alt={image.description} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
-                            <span>{image.description}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="aspect-video w-full relative rounded-md overflow-hidden border bg-muted">
-                {previewImage ? (
-                  <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">Select an image to see a preview</div>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              />
+              <FormField
+                control={form.control}
+                name="groupLink"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Community Group Link (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., https://chat.whatsapp.com/..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col flex-grow">
+                    <FormLabel className="text-white">Event Description</FormLabel>
+                    <FormControl className="flex-grow">
+                      <Textarea
+                        placeholder="Describe the event, what it's about, and who should attend."
+                        className="resize-none h-full"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="space-y-4">
+               <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Club Logo Images</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const selectedImage = PlaceHolderImages.find(img => img.imageUrl === value);
+                        setPreviewImage(selectedImage?.imageUrl || null);
+                      }}
+                      value={field.value}
+                      disabled={!isEditable}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an image for the event" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PlaceHolderImages.map((image: ImagePlaceholder) => (
+                          <SelectItem key={image.id} value={image.imageUrl}>
+                            <div className="flex items-center gap-2">
+                               <Image src={image.imageUrl} alt={image.description} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
+                              <span>{image.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="aspect-video w-full relative rounded-md overflow-hidden border bg-muted">
+                  {previewImage ? (
+                    <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">Select an image to see a preview</div>
+                  )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end gap-2">
-            {!isEditMode && (
-              <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
-                <Trash2 className="mr-2 h-4 w-4"/>
-                Clear Form
-              </Button>
-            )}
-            {isEditMode && (
-                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                    Cancel
+          <div className="flex justify-end gap-2">
+              {!isEditMode && (
+                <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
+                  <Trash2 className="mr-2 h-4 w-4"/>
+                  Clear Form
                 </Button>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
-            </Button>
-        </div>
+              )}
+              {isEditMode && (
+                   <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                      Cancel
+                  </Button>
+              )}
+              <Button type="submit" disabled={isSubmitting || !isEditable}>
+                {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
+              </Button>
+          </div>
+        </fieldset>
       </form>
     </Form>
   );
 }
-
-    

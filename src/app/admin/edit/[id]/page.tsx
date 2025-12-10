@@ -8,14 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event, Registration } from '@/types';
-import { ArrowLeft, Download, Terminal, Users } from 'lucide-react';
+import { ArrowLeft, Download, Terminal, Users, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { format } from 'date-fns';
+import { format, isPast } from 'date-fns';
 
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -27,6 +27,7 @@ export default function EditEventPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(true); // Assume permission until checked
+  const [isPastEvent, setIsPastEvent] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -47,6 +48,12 @@ export default function EditEventPage() {
 
           if (eventData.organizerId === user.uid) {
             setEvent(eventData);
+            if(eventData.date) {
+               const today = new Date();
+               today.setHours(0,0,0,0);
+               setIsPastEvent(isPast(eventData.date.toDate()) && !isTodayInMalaysia(eventData.date.toDate()));
+            }
+
             setHasPermission(true);
             
             const registrationsRef = collection(db, 'events', eventId, 'registrations');
@@ -98,6 +105,20 @@ export default function EditEventPage() {
       return () => clearTimeout(timer);
     }
   }, [authLoading, hasPermission, router]);
+
+  const isTodayInMalaysia = (date: Date) => {
+      const today = getMalaysiaTimeNow();
+      return date.getDate() === today.getDate() &&
+            date.getMonth() === today.getMonth() &&
+            date.getFullYear() === today.getFullYear();
+  }
+
+   const getMalaysiaTimeNow = () => {
+      const now = new Date();
+      // Directly get the time in Malaysia timezone string
+      const myTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+      return myTime;
+  }
   
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;
@@ -164,7 +185,16 @@ export default function EditEventPage() {
           </Button>
           <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Edit Event</h1>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Modify the details for the event "{event?.title}".</p>
-          <EventForm event={event!} />
+          {isPastEvent && (
+            <Alert className="mt-4">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Event Has Passed</AlertTitle>
+              <AlertDescription>
+                This event has already occurred. The details can no longer be edited.
+              </AlertDescription>
+            </Alert>
+          )}
+          <EventForm event={event!} isEditable={!isPastEvent} />
         </div>
          <Card>
           <CardHeader>

@@ -8,13 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event, Registration } from '@/types';
-import { ArrowLeft, Terminal, Users } from 'lucide-react';
+import { ArrowLeft, Download, Terminal, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { format } from 'date-fns';
 
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -97,6 +98,35 @@ export default function EditEventPage() {
       return () => clearTimeout(timer);
     }
   }, [authLoading, hasPermission, router]);
+  
+  const handleGenerateReport = () => {
+    if (!registrations.length || !event) return;
+
+    const headers = ['Name', 'Matric No', 'Faculty', 'Registered At'];
+    const csvContent = [
+      headers.join(','),
+      ...registrations.map(reg => [
+        `"${reg.name}"`,
+        `"${reg.matricNo}"`,
+        `"${reg.faculty}"`,
+        `"${format(reg.registeredAt.toDate(), 'yyyy-MM-dd HH:mm:ss')}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Sanitize event title for filename
+    const safeTitle = event.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    link.setAttribute('download', `attendees_${safeTitle}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   if (authLoading || (loading && hasPermission)) {
     return (
@@ -138,10 +168,18 @@ export default function EditEventPage() {
         </div>
          <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="mr-2" />
-              Registered Attendees ({registrations.length})
-            </CardTitle>
+            <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center">
+                <Users className="mr-2" />
+                Registered Attendees ({registrations.length})
+                </CardTitle>
+                {registrations.length > 0 && (
+                  <Button onClick={handleGenerateReport} variant="outline" size="sm">
+                      <Download className="mr-2 h-4 w-4" />
+                      Generate Report
+                  </Button>
+                )}
+            </div>
           </CardHeader>
           <CardContent>
             {registrations.length > 0 ? (

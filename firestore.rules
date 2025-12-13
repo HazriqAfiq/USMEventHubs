@@ -64,9 +64,14 @@ service cloud.firestore {
 
       // A user can update only their own 'name'. Admins can update any field.
       allow update: if (request.auth.uid == userId 
-                      && request.resource.data.keys().hasOnly(['name']) 
+                      // The new name must be a non-empty string.
                       && request.resource.data.name is string
-                      && request.resource.data.name.size() > 0) 
+                      && request.resource.data.name.size() > 0
+                      // Ensure no other fields are being changed by the user.
+                      && request.resource.data.uid == resource.data.uid
+                      && request.resource.data.email == resource.data.email
+                      && request.resource.data.role == resource.data.role
+                    ) 
                     || (request.auth != null && isAdmin(request.auth.uid));
     }
   }

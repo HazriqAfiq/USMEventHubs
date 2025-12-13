@@ -299,7 +299,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
         <fieldset disabled={!isEditable || isSubmitting} className="group">
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4 flex flex-col">
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="title"
@@ -538,7 +538,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 )}
               />
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 flex flex-col">
               <FormItem>
                 <FormLabel className="text-white">Event Image</FormLabel>
                 <FormControl>
@@ -583,12 +583,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 control={form.control}
                 name="description"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col flex-grow h-full min-h-[200px]">
+                  <FormItem className="flex flex-col flex-grow">
                     <FormLabel className="text-white">Event Description</FormLabel>
                     <FormControl className="flex-grow">
                       <Textarea
                         placeholder="Describe the event, what it's about, and who should attend."
-                        className="resize-none h-full"
+                        className="resize-none min-h-[150px] flex-grow"
                         {...field}
                       />
                     </FormControl>

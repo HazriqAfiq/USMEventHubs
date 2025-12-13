@@ -18,7 +18,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -43,20 +43,12 @@ export default function ProfileForm() {
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            email: '',
+        // Use `values` to handle async default values. The form will re-render when userProfile is loaded.
+        values: {
+            name: userProfile?.name || '',
+            email: userProfile?.email || '',
         },
     });
-
-    useEffect(() => {
-        if (userProfile) {
-            form.reset({
-                name: userProfile.name || '',
-                email: userProfile.email || '',
-            });
-        }
-    }, [userProfile, form]);
     
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -82,7 +74,8 @@ export default function ProfileForm() {
         try {
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
-
+            
+            // Correctly update only the photoURL
             await updateDoc(userDocRef, { photoURL: downloadURL });
 
             toast({
@@ -91,6 +84,14 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
+             const updateData = { photoURL: '...url...' }; // for error reporting
+             const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: updateData,
+            }, error);
+            errorEmitter.emit('permission-error', permissionError);
+            
             if (error.code?.includes('storage/unauthorized')) {
                  toast({
                     variant: 'destructive',
@@ -98,13 +99,6 @@ export default function ProfileForm() {
                     description: 'Please check your Firebase Storage rules to allow uploads.',
                 });
             } else {
-                const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: { photoURL: '...url...' },
-                }, error);
-                errorEmitter.emit('permission-error', permissionError);
-
                 toast({
                     variant: 'destructive',
                     title: 'Upload Failed',
@@ -122,6 +116,7 @@ export default function ProfileForm() {
             return;
         }
 
+        // Only proceed if the name has actually changed
         if (data.name === userProfile.name) {
             toast({
                 title: 'No Changes Detected',
@@ -133,6 +128,7 @@ export default function ProfileForm() {
         setIsSubmittingName(true);
         const userDocRef = doc(db, 'users', user.uid);
         
+        // Only include the 'name' field in the update payload.
         const updateData = { name: data.name };
 
         try {
@@ -160,7 +156,7 @@ export default function ProfileForm() {
     }
 
     if (loading) {
-        return null;
+        return null; // Don't render the form until auth state is confirmed
     }
 
     const isSubmitting = isSubmittingName || isUploadingImage;

@@ -77,12 +77,12 @@ export default function ProfileForm() {
 
         setIsUploadingImage(true);
         const storageRef = ref(storage, `profile-images/${user.uid}`);
+        const userDocRef = doc(db, 'users', user.uid);
 
         try {
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            const userDocRef = doc(db, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL: downloadURL });
 
             toast({
@@ -91,11 +91,26 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-             toast({
-                variant: 'destructive',
-                title: 'Upload Failed',
-                description: error.message || 'Could not upload your image.',
-            });
+            if (error.code?.includes('storage/unauthorized')) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Storage Permission Denied',
+                    description: 'Please check your Firebase Storage rules to allow uploads.',
+                });
+            } else {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: { photoURL: '...url...' },
+                }, error);
+                errorEmitter.emit('permission-error', permissionError);
+
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload Failed',
+                    description: error.message || 'Could not upload your image or save the URL.',
+                });
+            }
         } finally {
             setIsUploadingImage(false);
         }
@@ -183,7 +198,7 @@ export default function ProfileForm() {
                             disabled={isUploadingImage}
                         />
                      </div>
-                     <p className="text-sm text-muted-foreground">Click the image to upload a new one.</p>
+                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 2MB).</p>
                 </div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

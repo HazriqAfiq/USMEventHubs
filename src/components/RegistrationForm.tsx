@@ -263,7 +263,7 @@ export default function RegistrationForm({
               </div>
             </DialogHeader>
             <div className="flex justify-center py-4">
-              <div className="relative h-80 w-80 rounded-md overflow-hidden border bg-white">
+              <div className="relative h-96 w-96 rounded-md overflow-hidden border bg-white">
                 <Image src={eventQrCodeUrl!} alt="Payment QR Code" layout="fill" objectFit="contain" />
               </div>
             </div>

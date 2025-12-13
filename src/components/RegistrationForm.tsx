@@ -19,7 +19,7 @@ import Image from 'next/image';
 import { ArrowLeft, QrCode, Upload, Loader2 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),

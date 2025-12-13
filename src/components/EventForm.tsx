@@ -17,14 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, Trash2, Upload, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
@@ -38,7 +37,7 @@ const formSchema = z.object({
   startTime: z.string({ required_error: 'A start time is required.' }),
   endTime: z.string({ required_error: 'An end time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  imageUrl: z.string({ required_error: 'Please select an event image.' }),
+  imageUrl: z.string({ required_error: 'Please select an event image.' }).url({ message: "Image URL must be a valid data URI." }),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
@@ -89,8 +88,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const router = useRouter();
   const { user } = useAuth(); // Get the authenticated user
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(event?.imageUrl || null);
-  
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const isEditMode = !!event;
 
   const form = useForm<EventFormValues>({
@@ -111,6 +111,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     },
   });
   
+  const previewImage = form.watch('imageUrl');
+  
   useEffect(() => {
     if (event) {
       form.reset({
@@ -127,7 +129,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         groupLink: event.groupLink || '',
         qrCodeUrl: event.qrCodeUrl || '',
       });
-      setPreviewImage(event.imageUrl);
     }
   }, [event, form]);
 
@@ -136,26 +137,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
 
   const handleReset = () => {
     if (isEditMode) {
-        // If in edit mode, reset to original event data
-         if (event) {
+        if (event) {
             form.reset({
-                title: event.title,
-                description: event.description,
-                location: event.location,
+                ...event,
                 isFree: event.isFree ? 'free' : 'paid',
-                price: event.price || 0,
-                eventType: event.eventType,
-                imageUrl: event.imageUrl,
                 date: event.date?.toDate(),
-                startTime: event.startTime,
-                endTime: event.endTime,
-                groupLink: event.groupLink || '',
-                qrCodeUrl: event.qrCodeUrl || '',
             });
-            setPreviewImage(event.imageUrl);
         }
     } else {
-        // If in create mode, reset to empty form
         form.reset({
             title: '',
             description: '',
@@ -170,7 +159,70 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             groupLink: '',
             qrCodeUrl: '',
         });
-        setPreviewImage(null);
+    }
+  }
+
+  const handleImageUpload = () => {
+    if(!isEditable) return;
+    fileInputRef.current?.click();
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if(file.size > 2 * 1024 * 1024) { // 2MB limit
+      toast({
+        variant: 'destructive',
+        title: 'File too large',
+        description: 'Please upload an image smaller than 2MB.'
+      });
+      return;
+    }
+    
+    setIsUploadingImage(true);
+    try {
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        const img = document.createElement('img');
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH) {
+            height = (height * MAX_WIDTH) / width;
+            width = MAX_WIDTH;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject('Could not get canvas context');
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL(file.type, 0.9)); // toDataURL(type, quality)
+        };
+        img.onerror = reject;
+
+        reader.onload = (e) => {
+          img.src = e.target?.result as string;
+        }
+        reader.readAsDataURL(file);
+      });
+
+      form.setValue('imageUrl', dataUri, { shouldValidate: true });
+      
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Image processing failed',
+        description: 'There was an error processing your image. Please try another one.'
+      });
+    } finally {
+      setIsUploadingImage(false);
     }
   }
 
@@ -186,24 +238,11 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     setIsSubmitting(true);
     
     const eventData: any = {
-        title: data.title,
-        date: data.date,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        description: data.description,
-        imageUrl: data.imageUrl,
-        location: data.location,
+        ...data,
         isFree: data.isFree === 'free',
-        eventType: data.eventType,
-        groupLink: data.groupLink,
+        price: data.isFree === 'paid' ? data.price : 0,
+        qrCodeUrl: data.isFree === 'paid' ? data.qrCodeUrl : '',
       };
-      if (data.isFree === 'paid') {
-        eventData.price = data.price;
-        eventData.qrCodeUrl = data.qrCodeUrl;
-      } else {
-        eventData.price = 0;
-        eventData.qrCodeUrl = '';
-      }
 
     try {
       if (isEditMode && event) {
@@ -218,9 +257,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
 
       } else {
         eventData.createdAt = serverTimestamp();
-        eventData.organizerId = user.uid; // Add the organizer's ID
-        const collectionRef = collection(db, 'events');
-        const docRef = await addDoc(collectionRef, eventData);
+        eventData.organizerId = user.uid;
+        await addDoc(collection(db, 'events'), eventData);
         
         toast({
           title: 'Event Created!',
@@ -246,7 +284,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
-        <fieldset disabled={!isEditable} className="group">
+        <fieldset disabled={!isEditable || isSubmitting} className="group">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4 flex flex-col">
               <FormField
@@ -345,7 +383,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                           onValueChange={field.onChange}
                           value={field.value}
                           className="flex items-center space-x-4"
-                          disabled={!isEditable}
                         >
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
@@ -380,7 +417,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                           onValueChange={field.onChange}
                           value={field.value}
                           className="flex items-center space-x-4"
-                          disabled={!isEditable}
                         >
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
@@ -426,7 +462,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       render={({ field }) => (
                           <FormItem>
                           <FormLabel className="text-white">Payment QR Code</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                               <SelectTrigger>
                                   <SelectValue placeholder="Select a QR code for payment" />
@@ -494,49 +530,46 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               />
             </div>
             <div className="space-y-4">
-               <FormField
-                control={form.control}
-                name="imageUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Club Logo Images</FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        const selectedImage = PlaceHolderImages.find(img => img.imageUrl === value);
-                        setPreviewImage(selectedImage?.imageUrl || null);
-                      }}
-                      value={field.value}
-                      disabled={!isEditable}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an image for the event" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PlaceHolderImages.map((image: ImagePlaceholder) => (
-                          <SelectItem key={image.id} value={image.imageUrl}>
-                            <div className="flex items-center gap-2">
-                               <Image src={image.imageUrl} alt={image.description} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
-                              <span>{image.description}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="aspect-video w-full relative rounded-md overflow-hidden border bg-muted">
-                  {previewImage ? (
-                    <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">Select an image to see a preview</div>
-                  )}
-              </div>
+              <FormItem>
+                <FormLabel className="text-white">Event Image</FormLabel>
+                <FormControl>
+                  <div 
+                    onClick={handleImageUpload}
+                    className={cn(
+                      "aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center",
+                      isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50"
+                    )}
+                  >
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      className="hidden" 
+                      accept="image/png, image/jpeg, image/webp"
+                      disabled={!isEditable || isUploadingImage}
+                    />
+                    {previewImage ? (
+                      <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
+                    ) : (
+                      <span>Click to upload image</span>
+                    )}
+
+                    {isEditable && (
+                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        {isUploadingImage ? (
+                          <Loader2 className="h-8 w-8 text-white animate-spin" />
+                        ): (
+                          <div className='text-center text-white'>
+                            <Upload className="h-8 w-8 mx-auto" />
+                            <p>Upload Image</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
+              </FormItem>
             </div>
           </div>
 
@@ -552,7 +585,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       Cancel
                   </Button>
               )}
-              <Button type="submit" disabled={isSubmitting || !isEditable}>
+              <Button type="submit" disabled={isSubmitting || !isEditable || isUploadingImage}>
                 {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
               </Button>
           </div>

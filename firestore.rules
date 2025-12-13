@@ -24,10 +24,16 @@ service cloud.firestore {
       allow read: if true;
       
       // Admins can create events, but must set themselves as the organizer
-      allow create: if request.auth != null && isAdmin(request.auth.uid) && request.resource.data.organizerId == request.auth.uid;
+      allow create: if request.auth != null && isAdmin(request.auth.uid) 
+                    && request.resource.data.organizerId == request.auth.uid
+                    && request.resource.data.imageUrl is string;
       
       // Only the original organizer can update or delete their event
-      allow update, delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
+      allow update: if request.auth != null && isAdmin(request.auth.uid) 
+                    && resource.data.organizerId == request.auth.uid
+                    && request.resource.data.imageUrl is string;
+
+      allow delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
@@ -81,5 +87,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

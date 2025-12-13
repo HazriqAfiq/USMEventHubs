@@ -24,12 +24,10 @@ import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/fi
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { QrCodeImages, type QrCodePlaceholder } from '@/lib/qr-codes';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -58,7 +56,7 @@ const formSchema = z.object({
     }
     return true;
 }, {
-    message: 'Please select a QR code for paid events.',
+    message: 'Please upload a QR code for paid events.',
     path: ['qrCodeUrl'],
 });
 
@@ -88,8 +86,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const router = useRouter();
   const { user } = useAuth(); // Get the authenticated user
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+  
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const qrInputRef = useRef<HTMLInputElement>(null);
 
   const isEditMode = !!event;
 
@@ -112,6 +114,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   });
   
   const previewImage = form.watch('imageUrl');
+  const previewQr = form.watch('qrCodeUrl');
   
   useEffect(() => {
     if (event) {
@@ -162,12 +165,16 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     }
   }
 
-  const handleImageUpload = () => {
+  const handleImageUpload = (type: 'event' | 'qr') => {
     if(!isEditable) return;
-    fileInputRef.current?.click();
+    if (type === 'event') {
+      imageInputRef.current?.click();
+    } else {
+      qrInputRef.current?.click();
+    }
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -180,7 +187,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       return;
     }
     
-    setIsUploadingImage(true);
+    if (type === 'event') setIsUploadingImage(true);
+    if (type === 'qr') setIsUploadingQr(true);
+
     try {
       const dataUri = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -188,7 +197,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
+          const MAX_WIDTH = type === 'event' ? 800 : 400; // Smaller resize for QR
           let width = img.width;
           let height = img.height;
 
@@ -212,8 +221,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         }
         reader.readAsDataURL(file);
       });
-
-      form.setValue('imageUrl', dataUri, { shouldValidate: true });
+      
+      const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
+      form.setValue(fieldToUpdate, dataUri, { shouldValidate: true });
       
     } catch (error) {
       toast({
@@ -222,7 +232,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         description: 'There was an error processing your image. Please try another one.'
       });
     } finally {
-      setIsUploadingImage(false);
+      if (type === 'event') setIsUploadingImage(false);
+      if (type === 'qr') setIsUploadingQr(false);
     }
   }
 
@@ -280,6 +291,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const getCurrentTime = () => {
     return format(getMalaysiaTimeNow(), 'HH:mm');
   };
+  
+  const isUploading = isUploadingImage || isUploadingQr;
 
   return (
     <Form {...form}>
@@ -442,7 +455,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 />
               </div>
               {isPaid && (
-                <>
+                <div className="grid md:grid-cols-2 gap-4">
                   <FormField
                       control={form.control}
                       name="price"
@@ -456,34 +469,47 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       </FormItem>
                       )}
                   />
-                   <FormField
-                      control={form.control}
-                      name="qrCodeUrl"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel className="text-white">Payment QR Code</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                              <SelectTrigger>
-                                  <SelectValue placeholder="Select a QR code for payment" />
-                              </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                              {QrCodeImages.map((qr: QrCodePlaceholder) => (
-                                  <SelectItem key={qr.id} value={qr.imageUrl}>
-                                  <div className="flex items-center gap-2">
-                                      <Image src={qr.imageUrl} alt={qr.name} width={32} height={32} className="h-8 w-8 object-cover rounded-sm" />
-                                      <span>{qr.name}</span>
-                                  </div>
-                                  </SelectItem>
-                              ))}
-                              </SelectContent>
-                          </Select>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                </>
+                  <FormItem>
+                    <FormLabel className="text-white">Payment QR Code</FormLabel>
+                    <FormControl>
+                       <div 
+                        onClick={() => handleImageUpload('qr')}
+                        className={cn(
+                          "aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center",
+                          isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50"
+                        )}
+                      >
+                        <input 
+                          type="file" 
+                          ref={qrInputRef} 
+                          onChange={(e) => handleFileChange(e, 'qr')}
+                          className="hidden" 
+                          accept="image/png, image/jpeg, image/webp"
+                          disabled={!isEditable || isUploadingQr}
+                        />
+                        {previewQr ? (
+                          <Image src={previewQr} alt="QR code preview" fill style={{objectFit: 'contain'}} />
+                        ) : (
+                          <span>Click to upload QR</span>
+                        )}
+
+                        {isEditable && (
+                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            {isUploadingQr ? (
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            ): (
+                              <div className='text-center text-white'>
+                                <Upload className="h-8 w-8 mx-auto" />
+                                <p>Upload QR</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage>{form.formState.errors.qrCodeUrl?.message}</FormMessage>
+                  </FormItem>
+                </div>
               )}
                <FormField
                 control={form.control}
@@ -511,30 +537,13 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col flex-grow">
-                    <FormLabel className="text-white">Event Description</FormLabel>
-                    <FormControl className="flex-grow">
-                      <Textarea
-                        placeholder="Describe the event, what it's about, and who should attend."
-                        className="resize-none h-full"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
             <div className="space-y-4">
               <FormItem>
                 <FormLabel className="text-white">Event Image</FormLabel>
                 <FormControl>
                   <div 
-                    onClick={handleImageUpload}
+                    onClick={() => handleImageUpload('event')}
                     className={cn(
                       "aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center",
                       isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50"
@@ -542,8 +551,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   >
                     <input 
                       type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileChange} 
+                      ref={imageInputRef} 
+                      onChange={(e) => handleFileChange(e, 'event')} 
                       className="hidden" 
                       accept="image/png, image/jpeg, image/webp"
                       disabled={!isEditable || isUploadingImage}
@@ -570,6 +579,23 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 </FormControl>
                 <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
               </FormItem>
+               <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col flex-grow h-full min-h-[200px]">
+                    <FormLabel className="text-white">Event Description</FormLabel>
+                    <FormControl className="flex-grow">
+                      <Textarea
+                        placeholder="Describe the event, what it's about, and who should attend."
+                        className="resize-none h-full"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </div>
 
@@ -585,7 +611,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       Cancel
                   </Button>
               )}
-              <Button type="submit" disabled={isSubmitting || !isEditable || isUploadingImage}>
+              <Button type="submit" disabled={isSubmitting || !isEditable || isUploading}>
                 {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
               </Button>
           </div>

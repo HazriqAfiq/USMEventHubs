@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to get user's role from the 'users' collection
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+    
+    // Helper function to check if user is an admin
+    function isAdmin(userId) {
+      return getUserRole(userId) == 'admin';
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Define rules for the 'events' collection
+    match /events/{eventId} {
+      // Anyone can read event details
+      allow read: if true;
+      
+      // Admins can create events, but must set themselves as the organizer
+      allow create: if request.auth != null && isAdmin(request.auth.uid) 
+                    && request.resource.data.organizerId == request.auth.uid
+                    && request.resource.data.imageUrl is string
+                    && (request.resource.data.isFree == true || (request.resource.data.isFree == false && request.resource.data.qrCodeUrl is string));
+      
+      // Only the original organizer can update or delete their event
+      allow update: if request.auth != null && isAdmin(request.auth.uid) 
+                    && resource.data.organizerId == request.auth.uid
+                    && request.resource.data.imageUrl is string
+                    && (request.resource.data.isFree == true || (request.resource.data.isFree == false && request.resource.data.qrCodeUrl is string));
+
+      allow delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
+      
+      // Rules for listing the 'registrations' subcollection
+      match /registrations/{document=**} {
+        // Any admin can list all registrations for any event.
+        allow list: if request.auth != null && isAdmin(request.auth.uid);
+      }
+
+      // Rules for individual 'registrations' documents
+      match /registrations/{registrationId} {
+        // Allow a user to create their own registration document
+        allow create: if request.auth.uid == registrationId;
+
+        // Allow a user to delete their own registration (unregister)
+        allow delete: if request.auth.uid == registrationId;
+        
+        // A user can read their own registration document.
+        allow read: if request.auth != null && request.auth.uid == registrationId;
+      }
+    }
+    
+    // Define rules for the 'users' collection
+    match /users/{userId} {
+      // A user can create their own profile document (on registration)
+      allow create: if request.auth.uid == userId 
+                    && request.resource.data.uid == userId
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.photoURL == null
+                    && request.resource.data.role == 'student';
+
+      // A user can read their own profile, and admins can read any profile
+      allow read: if request.auth.uid == userId || (request.auth != null && isAdmin(request.auth.uid));
+
+      // A user can update their own 'name' or 'photoURL'. Admins can update any field.
+      allow update: if (request.auth.uid == userId 
+                      // Ensure no other fields are being changed by the user.
+                      && request.resource.data.uid == resource.data.uid
+                      && request.resource.data.email == resource.data.email
+                      && request.resource.data.role == resource.data.role
+                      // Validate incoming data types for user updates
+                      && request.resource.data.name is string
+                      && request.resource.data.name.size() > 0
+                      && (
+                        // Allow photoURL to be a string or stay the same.
+                        request.resource.data.photoURL == resource.data.photoURL || 
+                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
+                        )
+                    ) 
+                    || (request.auth != null && isAdmin(request.auth.uid));
+    }
+  }
+}

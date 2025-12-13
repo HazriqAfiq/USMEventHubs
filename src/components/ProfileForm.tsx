@@ -29,6 +29,7 @@ import { Camera, Loader2 } from 'lucide-react';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
   email: z.string().email().optional(),
+  photoURL: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
@@ -45,6 +46,7 @@ export default function ProfileForm() {
         values: {
             name: userProfile?.name || '',
             email: userProfile?.email || '',
+            photoURL: userProfile?.photoURL || '',
         },
     });
 
@@ -53,6 +55,7 @@ export default function ProfileForm() {
             form.reset({
                 name: userProfile.name || '',
                 email: userProfile.email || '',
+                photoURL: userProfile.photoURL || '',
             });
         }
     }, [userProfile, form]);
@@ -75,6 +78,7 @@ export default function ProfileForm() {
         }
 
         setIsUploadingImage(true);
+        const updateData = { photoURL: '' };
 
         try {
             const dataUri = await new Promise<string>((resolve, reject) => {
@@ -116,7 +120,8 @@ export default function ProfileForm() {
             });
             
             const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, { photoURL: dataUri });
+            updateData.photoURL = dataUri;
+            await updateDoc(userDocRef, updateData);
 
             toast({
                 title: 'Profile Picture Updated!',
@@ -285,5 +290,3 @@ export default function ProfileForm() {
         </Card>
     );
 }
-
-    

@@ -121,7 +121,16 @@ export default function ProfileForm() {
             
             const updateData = { photoURL: dataUri };
             
-            await updateDoc(userDocRef, updateData);
+            await updateDoc(userDocRef, updateData)
+            .catch((serverError) => {
+                 const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: { photoURL: '...data URI...' },
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
+                throw serverError; // re-throw to be caught by outer catch
+            });
 
             toast({
                 title: 'Profile Picture Updated!',
@@ -129,13 +138,6 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-            const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'update',
-                requestResourceData: { photoURL: '...data URI...' },
-            }, error);
-            errorEmitter.emit('permission-error', permissionError);
-
             toast({
                 variant: 'destructive',
                 title: 'Upload Failed',
@@ -163,23 +165,26 @@ export default function ProfileForm() {
         const updateData = { name: data.name };
 
         try {
-            await updateDoc(userDocRef, updateData);
+            await updateDoc(userDocRef, updateData)
+            .catch((serverError) => {
+                 const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
+                throw serverError;
+            });
+
             toast({
                 title: 'Profile Updated',
                 description: 'Your name has been successfully updated.',
             });
-        } catch (serverError: any) {
-             const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'update',
-                requestResourceData: updateData,
-            }, serverError);
-            errorEmitter.emit('permission-error', permissionError);
-
+        } catch (error: any) {
             toast({
                 variant: 'destructive',
                 title: 'Update Failed',
-                description: serverError.message || 'Could not update your profile.',
+                description: error.message || 'Could not update your profile.',
             });
         } finally {
              setIsSubmittingName(false);

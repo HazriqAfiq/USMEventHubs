@@ -87,21 +87,12 @@ service cloud.firestore {
       allow read: if request.auth.uid == userId || (request.auth != null && isAdmin(request.auth.uid));
 
       // A user can update their own 'name' or 'photoURL'. Admins can update any field.
-      allow update: if (request.auth.uid == userId 
-                      // Ensure no other fields are being changed by the user.
-                      && request.resource.data.uid == resource.data.uid
-                      && request.resource.data.email == resource.data.email
-                      && request.resource.data.role == resource.data.role
-                      // Validate incoming data types for user updates
-                      && request.resource.data.name is string
-                      && request.resource.data.name.size() > 0
-                      && (
-                        // Allow photoURL to be a string or stay the same.
-                        request.resource.data.photoURL == resource.data.photoURL || 
-                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
-                        )
-                    ) 
-                    || (request.auth != null && isAdmin(request.auth.uid));
+      allow update: if request.auth.uid == userId && (
+                    // Allow updating only name
+                    (request.resource.data.keys().hasOnly(['name']) && request.resource.data.name is string && request.resource.data.name.size() > 0) ||
+                    // Allow updating only photoURL
+                    (request.resource.data.keys().hasOnly(['photoURL']) && request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576)
+                  ) || (request.auth != null && isAdmin(request.auth.uid));
     }
   }
 }

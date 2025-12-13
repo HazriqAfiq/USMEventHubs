@@ -20,6 +20,8 @@ import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
@@ -57,24 +59,33 @@ export default function ProfileForm() {
         }
 
         setIsSubmitting(true);
-        try {
-            const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, {
-                name: data.name,
+        const userDocRef = doc(db, 'users', user.uid);
+        const updateData = { name: data.name };
+
+        updateDoc(userDocRef, updateData)
+            .then(() => {
+                 toast({
+                    title: 'Profile Updated',
+                    description: 'Your name has been successfully updated.',
+                });
+            })
+            .catch((serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
+
+                toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: serverError.message || 'Could not update your profile.',
+                });
+            })
+            .finally(() => {
+                 setIsSubmitting(false);
             });
-            toast({
-                title: 'Profile Updated',
-                description: 'Your name has been successfully updated.',
-            });
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Update Failed',
-                description: error.message || 'Could not update your profile.',
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
     }
 
     if (loading) {

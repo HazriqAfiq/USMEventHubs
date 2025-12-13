@@ -51,13 +51,20 @@ service cloud.firestore {
     // Define rules for the 'users' collection
     match /users/{userId} {
       // A user can create their own profile document (on registration)
-      allow create: if request.auth.uid == userId;
+      // They must provide their uid, email, a valid name, and their role must be 'student'.
+      allow create: if request.auth.uid == userId 
+                    && request.resource.data.uid == userId
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.role == 'student';
 
       // A user can read their own profile, and admins can read any profile
       allow read: if request.auth.uid == userId || (request.auth != null && isAdmin(request.auth.uid));
 
-      // A user can update their own profile (but not their role). Admins can update any field.
-      allow update: if (request.auth.uid == userId && request.resource.data.role == resource.data.role) || (request.auth != null && isAdmin(request.auth.uid));
+      // A user can update only their own 'name'. Admins can update any field.
+      allow update: if (request.auth.uid == userId && request.resource.data.keys().hasOnly(['name']) && request.resource.data.name.size() > 0) 
+                    || (request.auth != null && isAdmin(request.auth.uid));
     }
   }
 }

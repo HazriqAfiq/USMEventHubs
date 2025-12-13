@@ -263,7 +263,7 @@ export default function RegistrationForm({
               </div>
             </DialogHeader>
             <div className="flex justify-center py-4">
-              <div className="relative h-60 w-60 rounded-md overflow-hidden border bg-white">
+              <div className="relative h-80 w-80 rounded-md overflow-hidden border bg-white">
                 <Image src={eventQrCodeUrl!} alt="Payment QR Code" layout="fill" objectFit="contain" />
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function RegistrationForm({
 
 
   return (
-    <Dialog open={isOpen} onOpenchange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent onInteractOutside={(e) => {
           if (isSubmitting) {
             e.preventDefault();
@@ -401,5 +401,3 @@ export default function RegistrationForm({
     </Dialog>
   );
 }
-
-    

@@ -34,32 +34,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(user);
         const userDocRef = doc(db, 'users', user.uid);
         
-        const unsubscribeProfile = onSnapshot(userDocRef, async (userDocSnap) => {
+        // The onSnapshot listener will now only READ data.
+        // Profile creation is handled exclusively on the registration page.
+        const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
            if (userDocSnap.exists()) {
               const profile = userDocSnap.data() as UserProfile;
               setUserProfile(profile);
               setIsAdmin(profile.role === 'admin');
             } else {
-              // This case should ideally not be hit frequently if registration flow is correct.
-              // It can serve as a fallback.
-              const newProfile: UserProfile = {
-                uid: user.uid,
-                email: user.email,
-                role: 'student',
-                name: user.displayName || '',
-              };
-              // Only set if it doesn't exist, to avoid race conditions with registration
-              try {
-                await setDoc(userDocRef, newProfile, { merge: false }); // Do not merge, to catch if it was created elsewhere.
-                setUserProfile(newProfile);
-              } catch (e) {
-                // If this fails, it might be because the doc was just created. Refetch.
-                const freshSnap = await getDoc(userDocRef);
-                if (freshSnap.exists()) {
-                   setUserProfile(freshSnap.data() as UserProfile);
-                   setIsAdmin(freshSnap.data().role === 'admin');
-                }
-              }
+              // If the doc doesn't exist, it's likely being created during registration.
+              // We just set profile to null and wait for the snapshot to update.
+              setUserProfile(null);
               setIsAdmin(false);
             }
             setLoading(false);

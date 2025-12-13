@@ -99,6 +99,7 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       // Create a user profile document in Firestore
+      // This is the single source of truth for profile creation
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,

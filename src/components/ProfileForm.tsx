@@ -79,8 +79,7 @@ export default function ProfileForm() {
 
         setIsUploadingImage(true);
         const userDocRef = doc(db, 'users', user.uid);
-        let updateData: { photoURL: string };
-
+        
         try {
             const dataUri = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
@@ -120,7 +119,12 @@ export default function ProfileForm() {
                 reader.readAsDataURL(file);
             });
             
-            updateData = { photoURL: dataUri };
+            // To align with security rules, send the existing name along with the new photoURL
+            const updateData = { 
+                name: form.getValues('name'),
+                photoURL: dataUri 
+            };
+            
             await updateDoc(userDocRef, updateData);
 
             toast({
@@ -152,6 +156,7 @@ export default function ProfileForm() {
             return;
         }
 
+        // Only proceed if the name is actually different
         if (data.name === userProfile.name) {
             return;
         }
@@ -159,8 +164,7 @@ export default function ProfileForm() {
         setIsSubmittingName(true);
         const userDocRef = doc(db, 'users', user.uid);
         
-        // Always include both name and photoURL in the update object
-        // to match the security rule structure.
+        // To align with security rules, always send both name and the current photoURL
         const updateData = { 
             name: data.name,
             photoURL: userProfile.photoURL || null 
@@ -284,7 +288,7 @@ export default function ProfileForm() {
                             )}
                         />
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting || form.getValues('name') === userProfile.name}>
                                 {isSubmittingName ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>

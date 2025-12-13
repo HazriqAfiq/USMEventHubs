@@ -29,7 +29,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
-  email: z.string().email(),
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
@@ -45,7 +44,6 @@ export default function ProfileForm() {
         resolver: zodResolver(formSchema),
         values: {
             name: userProfile?.name || '',
-            email: userProfile?.email || '',
         },
     });
     
@@ -82,21 +80,22 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-             const userDocRef = doc(db, 'users', user.uid);
-             const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'update',
-                requestResourceData: { photoURL: '...url...' },
-            }, error);
-            errorEmitter.emit('permission-error', permissionError);
-            
-            if (error.code?.includes('storage/unauthorized')) {
-                 toast({
+            console.error("Upload failed:", error);
+            if (error.code === 'storage/unauthorized') {
+                toast({
                     variant: 'destructive',
                     title: 'Storage Permission Denied',
-                    description: 'Please check your Firebase Storage rules to allow uploads.',
+                    description: "Your Firebase Storage rules are preventing the upload. Please allow writes for authenticated users.",
                 });
             } else {
+                 const userDocRef = doc(db, 'users', user.uid);
+                 const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: { photoURL: '...url...' },
+                }, error);
+                errorEmitter.emit('permission-error', permissionError);
+
                 toast({
                     variant: 'destructive',
                     title: 'Upload Failed',
@@ -114,12 +113,7 @@ export default function ProfileForm() {
             return;
         }
 
-        // Only proceed if the name has actually changed
         if (data.name === userProfile.name) {
-            toast({
-                title: 'No Changes Detected',
-                description: 'Your name is already up to date.',
-            });
             return;
         }
 
@@ -152,8 +146,30 @@ export default function ProfileForm() {
         }
     }
 
-    if (loading) {
-        return null; // Don't render the form until auth state is confirmed
+    if (loading || !userProfile) {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                    <div className="flex flex-col items-center space-y-4">
+                        <Skeleton className="h-24 w-24 rounded-full" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
     }
 
     const isSubmitting = isSubmittingName || isUploadingImage;
@@ -216,7 +232,7 @@ export default function ProfileForm() {
                                 <FormItem>
                                     <FormLabel className="text-white">Email Address</FormLabel>
                                     <FormControl>
-                                        <Input disabled {...field} />
+                                        <Input disabled value={userProfile.email || ''} />
                                     </FormControl>
                                     <FormDescription>Your email address cannot be changed.</FormDescription>
                                     <FormMessage />

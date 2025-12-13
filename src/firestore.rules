@@ -86,24 +86,25 @@ service cloud.firestore {
       // A user can read their own profile, and admins can read any profile
       allow read: if request.auth.uid == userId || (request.auth != null && isAdmin(request.auth.uid));
 
-      // A user can update their own 'name' or 'photoURL'. Admins can update any field.
+      // User update rules
       allow update: if request.auth != null && (
-                      // Case 1: An admin can update anything.
-                      isAdmin(request.auth.uid) ||
-                      // Case 2: A regular user can update their own name and photoURL.
-                      (
-                        request.auth.uid == userId &&
-                        // They are not trying to change their role, uid, or email.
-                        request.resource.data.role == resource.data.role &&
-                        request.resource.data.uid == resource.data.uid &&
-                        request.resource.data.email == resource.data.email &&
-                        // The name must be a valid string.
-                        request.resource.data.name is string &&
-                        request.resource.data.name.size() > 0 &&
-                        // The photoURL must be a string smaller than 1MB.
-                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576)
-                      )
-                    );
+        // Admins can update any user's profile
+        isAdmin(request.auth.uid) ||
+        // A user can update their own name and photoURL
+        (
+          request.auth.uid == userId &&
+          // Ensure only 'name' and 'photoURL' are being changed
+          request.resource.data.keys().hasOnly(['name', 'photoURL']) &&
+          // Validate incoming data types for user updates
+          request.resource.data.name is string &&
+          request.resource.data.name.size() > 0 &&
+          (
+            // Allow photoURL to be a string or stay the same.
+            request.resource.data.photoURL == resource.data.photoURL || 
+            (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
+          )
+        )
+      );
     }
   }
 }

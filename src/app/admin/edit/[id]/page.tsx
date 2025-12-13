@@ -13,10 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format, isPast } from 'date-fns';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -28,6 +30,7 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(true); // Assume permission until checked
   const [isPastEvent, setIsPastEvent] = useState(false);
+  const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -176,6 +179,7 @@ export default function EditEventPage() {
   }
   
   return (
+    <>
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
@@ -231,12 +235,27 @@ export default function EditEventPage() {
                      {!event?.isFree && (
                       <TableCell>
                         {reg.paymentProofUrl ? (
-                           <Button asChild variant="outline" size="sm">
-                              <Link href={reg.paymentProofUrl} target="_blank" rel="noopener noreferrer">
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Proof
-                              </Link>
-                            </Button>
+                           <Dialog>
+                            <DialogTrigger asChild>
+                               <Button variant="outline" size="sm">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Proof
+                               </Button>
+                             </DialogTrigger>
+                             <DialogContent className="max-w-xl">
+                               <DialogHeader>
+                                 <DialogTitle>Payment Proof for {reg.name}</DialogTitle>
+                               </DialogHeader>
+                               <div className="relative mt-4 aspect-square">
+                                 <Image 
+                                    src={reg.paymentProofUrl}
+                                    alt={`Payment proof for ${reg.name}`}
+                                    fill
+                                    style={{objectFit: 'contain'}}
+                                 />
+                               </div>
+                             </DialogContent>
+                           </Dialog>
                         ) : (
                           <span className='text-xs text-muted-foreground'>No proof</span>
                         )}
@@ -253,5 +272,6 @@ export default function EditEventPage() {
         </Card>
       </div>
     </div>
+    </>
   );
 }

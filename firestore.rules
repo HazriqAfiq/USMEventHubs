@@ -71,9 +71,15 @@ service cloud.firestore {
                       // Validate incoming data types for user updates
                       && request.resource.data.name is string
                       && request.resource.data.name.size() > 0
-                      && (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string))
+                      && (
+                        // Allow photoURL to be a string or stay the same.
+                        request.resource.data.photoURL == resource.data.photoURL || 
+                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
+                        )
                     ) 
                     || (request.auth != null && isAdmin(request.auth.uid));
     }
   }
 }
+
+    

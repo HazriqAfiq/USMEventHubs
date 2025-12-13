@@ -16,19 +16,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { Camera, Loader2 } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
+  email: z.string().email().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
@@ -44,8 +44,18 @@ export default function ProfileForm() {
         resolver: zodResolver(formSchema),
         values: {
             name: userProfile?.name || '',
+            email: userProfile?.email || '',
         },
     });
+
+    useEffect(() => {
+        if (userProfile) {
+            form.reset({
+                name: userProfile.name || '',
+                email: userProfile.email || '',
+            });
+        }
+    }, [userProfile, form]);
     
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -65,14 +75,48 @@ export default function ProfileForm() {
         }
 
         setIsUploadingImage(true);
-        const storageRef = ref(storage, `profile-images/${user.uid}`);
-        
+
         try {
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
+            const dataUri = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                const img = new Image();
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 200;
+                    const MAX_HEIGHT = 200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return reject(new Error('Could not get canvas context'));
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL(file.type, 0.9)); // Get data URI
+                };
+
+                img.onerror = reject;
+
+                reader.onload = (e) => {
+                    img.src = e.target?.result as string;
+                };
+                reader.readAsDataURL(file);
+            });
             
             const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, { photoURL: downloadURL });
+            await updateDoc(userDocRef, { photoURL: dataUri });
 
             toast({
                 title: 'Profile Picture Updated!',
@@ -80,28 +124,19 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-            console.error("Upload failed:", error);
-            if (error.code === 'storage/unauthorized') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Storage Permission Denied',
-                    description: "Your Firebase Storage rules are preventing the upload. Please allow writes for authenticated users.",
-                });
-            } else {
-                 const userDocRef = doc(db, 'users', user.uid);
-                 const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: { photoURL: '...url...' },
-                }, error);
-                errorEmitter.emit('permission-error', permissionError);
+            const userDocRef = doc(db, 'users', user.uid);
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: { photoURL: '...data URI...' },
+            }, error);
+            errorEmitter.emit('permission-error', permissionError);
 
-                toast({
-                    variant: 'destructive',
-                    title: 'Upload Failed',
-                    description: error.message || 'Could not upload your image or save the URL.',
-                });
-            }
+            toast({
+                variant: 'destructive',
+                title: 'Upload Failed',
+                description: error.message || 'Could not save your image.',
+            });
         } finally {
             setIsUploadingImage(false);
         }
@@ -232,7 +267,7 @@ export default function ProfileForm() {
                                 <FormItem>
                                     <FormLabel className="text-white">Email Address</FormLabel>
                                     <FormControl>
-                                        <Input disabled value={userProfile.email || ''} />
+                                        <Input disabled {...field} />
                                     </FormControl>
                                     <FormDescription>Your email address cannot be changed.</FormDescription>
                                     <FormMessage />
@@ -250,3 +285,5 @@ export default function ProfileForm() {
         </Card>
     );
 }
+
+    

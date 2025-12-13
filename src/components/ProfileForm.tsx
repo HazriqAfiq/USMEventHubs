@@ -29,7 +29,7 @@ import { Camera, Loader2 } from 'lucide-react';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
   email: z.string().email().optional(),
-  photoURL: z.string().optional(),
+  photoURL: z.string().nullable().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
@@ -46,7 +46,7 @@ export default function ProfileForm() {
         values: {
             name: userProfile?.name || '',
             email: userProfile?.email || '',
-            photoURL: userProfile?.photoURL || '',
+            photoURL: userProfile?.photoURL || null,
         },
     });
 
@@ -55,7 +55,7 @@ export default function ProfileForm() {
             form.reset({
                 name: userProfile.name || '',
                 email: userProfile.email || '',
-                photoURL: userProfile.photoURL || '',
+                photoURL: userProfile.photoURL || null,
             });
         }
     }, [userProfile, form]);
@@ -78,7 +78,8 @@ export default function ProfileForm() {
         }
 
         setIsUploadingImage(true);
-        const updateData = { photoURL: '' };
+        const userDocRef = doc(db, 'users', user.uid);
+        let updateData: { photoURL: string };
 
         try {
             const dataUri = await new Promise<string>((resolve, reject) => {
@@ -119,8 +120,7 @@ export default function ProfileForm() {
                 reader.readAsDataURL(file);
             });
             
-            const userDocRef = doc(db, 'users', user.uid);
-            updateData.photoURL = dataUri;
+            updateData = { photoURL: dataUri };
             await updateDoc(userDocRef, updateData);
 
             toast({
@@ -129,7 +129,6 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-            const userDocRef = doc(db, 'users', user.uid);
             const permissionError = new FirestorePermissionError({
                 path: userDocRef.path,
                 operation: 'update',
@@ -160,7 +159,12 @@ export default function ProfileForm() {
         setIsSubmittingName(true);
         const userDocRef = doc(db, 'users', user.uid);
         
-        const updateData = { name: data.name };
+        // Always include both name and photoURL in the update object
+        // to match the security rule structure.
+        const updateData = { 
+            name: data.name,
+            photoURL: userProfile.photoURL || null 
+        };
 
         try {
             await updateDoc(userDocRef, updateData);

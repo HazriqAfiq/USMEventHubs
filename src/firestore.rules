@@ -93,16 +93,18 @@ service cloud.firestore {
         // A user can update their own name and photoURL
         (
           request.auth.uid == userId &&
-          // Ensure only 'name' and 'photoURL' are being changed
-          request.resource.data.keys().hasOnly(['name', 'photoURL']) &&
-          // Validate incoming data types for user updates
+          // Ensure no other fields are being changed by the user.
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.email == resource.data.email &&
+          request.resource.data.role == resource.data.role &&
+          // Only allow 'name' and 'photoURL' to be different.
+          request.resource.data.keys().diff(resource.data.keys()).hasOnly(['name', 'photoURL']) &&
+          // Validate incoming name type/size.
           request.resource.data.name is string &&
           request.resource.data.name.size() > 0 &&
-          (
-            // Allow photoURL to be a string or stay the same.
-            request.resource.data.photoURL == resource.data.photoURL || 
-            (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
-          )
+          // Validate incoming photoURL type/size.
+          (request.resource.data.photoURL is string || request.resource.data.photoURL == null) &&
+          (request.resource.data.photoURL is string ? request.resource.data.photoURL.size() < 2 * 1024 * 1024 : true) // Limit data URI to 2MB
         )
       );
     }

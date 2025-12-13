@@ -57,7 +57,7 @@ export default function Home() {
     if (!authLoading && user) {
       const timer = setTimeout(() => {
         setShowSplash(false);
-      }, 2500); // Same duration as splash screen animation
+      }, 1700); // Same duration as splash screen animation
       return () => clearTimeout(timer);
     }
   }, [authLoading, user]);

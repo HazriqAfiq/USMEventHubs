@@ -7,10 +7,10 @@ export function SplashScreen() {
     const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
-        // Hide splash screen after 2.5 seconds
+        // Hide splash screen after 1.7 seconds
         const timer = setTimeout(() => {
             setIsVisible(false);
-        }, 2500);
+        }, 1700);
 
         return () => clearTimeout(timer);
     }, []);

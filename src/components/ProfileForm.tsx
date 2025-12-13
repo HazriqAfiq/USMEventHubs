@@ -37,17 +37,17 @@ type ProfileFormValues = z.infer<typeof formSchema>;
 export default function ProfileForm() {
     const { user, userProfile, loading } = useAuth();
     const { toast } = useToast();
-    const [isSubmittingName, setIsSubmittingName] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(formSchema),
-        values: {
-            name: userProfile?.name || '',
-            email: userProfile?.email || '',
-            photoURL: userProfile?.photoURL || null,
-        },
+        defaultValues: {
+            name: '',
+            email: '',
+            photoURL: null,
+        }
     });
 
     useEffect(() => {
@@ -61,7 +61,9 @@ export default function ProfileForm() {
     }, [userProfile, form]);
     
     const handleAvatarClick = () => {
-        fileInputRef.current?.click();
+        if (!isUploadingImage) {
+            fileInputRef.current?.click();
+        }
     }
     
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,6 +134,7 @@ export default function ProfileForm() {
                 throw serverError; // re-throw to be caught by outer catch
             });
 
+            form.setValue('photoURL', dataUri);
             toast({
                 title: 'Profile Picture Updated!',
                 description: 'Your new picture has been saved.',
@@ -154,12 +157,12 @@ export default function ProfileForm() {
             return;
         }
 
-        // Only proceed if the name is actually different
+        // Only update if the name is different
         if (data.name === userProfile.name) {
             return;
         }
 
-        setIsSubmittingName(true);
+        setIsSubmitting(true);
         const userDocRef = doc(db, 'users', user.uid);
         
         const updateData = { name: data.name };
@@ -187,7 +190,7 @@ export default function ProfileForm() {
                 description: error.message || 'Could not update your profile.',
             });
         } finally {
-             setIsSubmittingName(false);
+             setIsSubmitting(false);
         }
     }
 
@@ -217,7 +220,7 @@ export default function ProfileForm() {
         )
     }
 
-    const isSubmitting = isSubmittingName || isUploadingImage;
+    const formIsDirty = form.formState.isDirty;
 
     return (
         <Card>
@@ -228,7 +231,7 @@ export default function ProfileForm() {
                 <div className="flex flex-col items-center space-y-4 mb-8">
                      <div className="relative group">
                         <Avatar className="h-24 w-24 border-2 border-primary">
-                            <AvatarImage src={userProfile?.photoURL || undefined} />
+                            <AvatarImage src={form.watch('photoURL') || undefined} />
                             <AvatarFallback className="text-3xl">
                                 {getInitials(userProfile?.name, userProfile?.email)}
                             </AvatarFallback>
@@ -248,7 +251,7 @@ export default function ProfileForm() {
                             ref={fileInputRef} 
                             onChange={handleFileChange}
                             className="hidden" 
-                            accept="image/png, image/jpeg, image/gif"
+                            accept="image/png, image/jpeg"
                             disabled={isUploadingImage}
                         />
                      </div>
@@ -285,8 +288,8 @@ export default function ProfileForm() {
                             )}
                         />
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting || form.getValues('name') === userProfile.name}>
-                                {isSubmittingName ? 'Saving...' : 'Save Changes'}
+                            <Button type="submit" disabled={isSubmitting || !formIsDirty}>
+                                {isSubmitting ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
                     </form>

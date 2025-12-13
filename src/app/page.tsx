@@ -9,14 +9,27 @@ import type { Event } from '@/types';
 import { useEventFilters } from '@/hooks/use-event-filters';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DollarSign, Laptop, Users } from 'lucide-react';
-
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { SplashScreen } from '@/components/SplashScreen';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
@@ -30,14 +43,24 @@ export default function Home() {
         }
       });
       setEvents(eventsData);
-      setLoading(false);
+      setLoadingEvents(false);
     }, (error) => {
       console.error("Error fetching events: ", error);
-      setLoading(false);
+      setLoadingEvents(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user, authLoading]);
+
+  // Hide splash screen after a delay, but only if auth is finished.
+  useEffect(() => {
+    if (!authLoading && user) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 2500); // Same duration as splash screen animation
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, user]);
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
@@ -53,6 +76,32 @@ export default function Home() {
       return priceMatch && typeMatch;
     });
   }, [events, priceFilter, typeFilter]);
+  
+  if (authLoading || !user) {
+    // Show a skeleton loader while checking for auth or redirecting
+    return (
+       <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+            <Skeleton className="h-12 w-1/2 mx-auto" />
+            <Skeleton className="h-6 w-3/4 mx-auto mt-4" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -96,7 +145,7 @@ export default function Home() {
         </div>
       </div>
       
-      {loading ? (
+      {loadingEvents ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">

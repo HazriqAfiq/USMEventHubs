@@ -3,7 +3,6 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 import { Header } from '@/components/Header';
 import { Toaster } from '@/components/ui/toaster';
-import { SplashScreen } from '@/components/SplashScreen';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -24,7 +23,6 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased min-h-screen flex flex-col')}>
-        <SplashScreen />
         <Providers>
           <Header />
           <main className="flex-grow bg-[url('/images/usmbg.jpg')] bg-cover bg-center bg-fixed relative">

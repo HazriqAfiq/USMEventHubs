@@ -599,7 +599,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-8">
               {!isEditMode && (
                 <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
                   <Trash2 className="mr-2 h-4 w-4"/>

@@ -19,7 +19,7 @@ export default {
       fontFamily: {
         body: ['PT Sans', 'sans-serif'],
         headline: ['PT Sans', 'sans-serif'],
-        fancy: ['Playfair Display', 'serif'],
+        fancy: ['PT Sans', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

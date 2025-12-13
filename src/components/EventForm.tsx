@@ -471,7 +471,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       )}
                   />
                   <FormItem>
-                    <FormLabel className="text-white">Payment QR Code</FormLabel>
+                    <FormLabel className="text-white">Payment QR Code ( Square Format )</FormLabel>
                     <FormControl>
                        <div 
                         onClick={() => handleImageUpload('qr')}

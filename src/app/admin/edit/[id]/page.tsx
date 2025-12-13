@@ -20,8 +20,7 @@ import { format, isPast } from 'date-fns';
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
-  const params = useParams();
-  const eventId = params.id as string;
+  const { id: eventId } = useParams() as { id: string };
   
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);

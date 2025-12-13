@@ -43,7 +43,6 @@ export default function ProfileForm() {
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(formSchema),
-        // Use `values` to handle async default values. The form will re-render when userProfile is loaded.
         values: {
             name: userProfile?.name || '',
             email: userProfile?.email || '',
@@ -69,13 +68,12 @@ export default function ProfileForm() {
 
         setIsUploadingImage(true);
         const storageRef = ref(storage, `profile-images/${user.uid}`);
-        const userDocRef = doc(db, 'users', user.uid);
-
+        
         try {
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
             
-            // Correctly update only the photoURL
+            const userDocRef = doc(db, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL: downloadURL });
 
             toast({
@@ -84,11 +82,11 @@ export default function ProfileForm() {
             });
 
         } catch (error: any) {
-             const updateData = { photoURL: '...url...' }; // for error reporting
+             const userDocRef = doc(db, 'users', user.uid);
              const permissionError = new FirestorePermissionError({
                 path: userDocRef.path,
                 operation: 'update',
-                requestResourceData: updateData,
+                requestResourceData: { photoURL: '...url...' },
             }, error);
             errorEmitter.emit('permission-error', permissionError);
             
@@ -128,7 +126,6 @@ export default function ProfileForm() {
         setIsSubmittingName(true);
         const userDocRef = doc(db, 'users', user.uid);
         
-        // Only include the 'name' field in the update payload.
         const updateData = { name: data.name };
 
         try {

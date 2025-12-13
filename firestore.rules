@@ -71,7 +71,7 @@ service cloud.firestore {
                       // Validate incoming data types for user updates
                       && request.resource.data.name is string
                       && request.resource.data.name.size() > 0
-                      && (request.resource.data.photoURL == null || request.resource.data.photoURL is string)
+                      && (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string))
                     ) 
                     || (request.auth != null && isAdmin(request.auth.uid));
     }

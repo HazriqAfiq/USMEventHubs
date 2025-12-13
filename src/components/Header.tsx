@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -27,9 +27,14 @@ export function Header() {
     router.push('/');
   };
 
-  const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'U';
-    return email.substring(0, 2).toUpperCase();
+  const getInitials = (name?: string | null, email?: string | null) => {
+    if (name) {
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -48,32 +53,36 @@ export function Header() {
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} />
-                        <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(userProfile.name, user.email)}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none capitalize">{userProfile.role}</p>
+                        <p className="text-sm font-medium leading-none capitalize">{userProfile.name || userProfile.role}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {isAdmin && (
+                     <DropdownMenuItem onClick={() => router.push('/profile')}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
+                      </DropdownMenuItem>
+                    {isAdmin ? (
                       <DropdownMenuItem onClick={() => router.push('/admin')}>
                         <UserCircle className="mr-2 h-4 w-4" />
                         <span>Admin Dashboard</span>
                       </DropdownMenuItem>
-                    )}
-                    {!isAdmin && (
+                    ) : (
                         <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                             <LayoutDashboard className="mr-2 h-4 w-4" />
                             <span>My Dashboard</span>
                         </DropdownMenuItem>
                     )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>

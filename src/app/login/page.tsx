@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -83,6 +84,14 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!registerName) {
+      toast({
+        variant: 'destructive',
+        title: 'Name is required.',
+        description: 'Please enter your full name.',
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -94,6 +103,7 @@ export default function LoginPage() {
         uid: user.uid,
         email: user.email,
         role: 'student', // Default role for new registrations
+        name: registerName,
       });
       
       toast({
@@ -279,6 +289,18 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
+                     <div className="space-y-2">
+                      <Label htmlFor="register-name">Full Name</Label>
+                      <Input
+                          id="register-name"
+                          type="text"
+                          placeholder="Your full name"
+                          required
+                          value={registerName}
+                          onChange={(e) => setRegisterName(e.target.value)}
+                          disabled={isLoading}
+                      />
+                    </div>
                     <div className="space-y-2">
                     <Label htmlFor="register-email">Email</Label>
                     <Input

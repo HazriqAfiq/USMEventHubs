@@ -25,3 +25,10 @@ export interface Event {
   groupLink?: string;
   qrCodeUrl?: string;
 }
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  role: 'admin' | 'student';
+  name?: string;
+}

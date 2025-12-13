@@ -98,13 +98,12 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
       const user = userCredential.user;
 
-      // Create a user profile document in Firestore
-      // This is the single source of truth for profile creation
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
-        role: 'student', // Default role for new registrations
+        role: 'student',
         name: registerName,
+        photoURL: null,
       });
       
       toast({

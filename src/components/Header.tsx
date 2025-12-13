@@ -52,7 +52,7 @@ export function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} />
+                        <AvatarImage src={userProfile.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} />
                         <AvatarFallback>{getInitials(userProfile.name, user.email)}</AvatarFallback>
                       </Avatar>
                     </Button>

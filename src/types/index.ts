@@ -31,4 +31,5 @@ export interface UserProfile {
   email: string | null;
   role: 'admin' | 'student';
   name?: string;
+  photoURL?: string | null;
 }

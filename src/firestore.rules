@@ -98,7 +98,7 @@ service cloud.firestore {
                       && (
                         // Allow photoURL to be a string or stay the same.
                         request.resource.data.photoURL == resource.data.photoURL || 
-                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 2 * 1024 * 1024) // Limit data URI to 2MB
+                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
                         )
                     ) 
                     || (request.auth != null && isAdmin(request.auth.uid));

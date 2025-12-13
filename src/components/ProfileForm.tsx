@@ -68,11 +68,11 @@ export default function ProfileForm() {
         const file = event.target.files?.[0];
         if (!file || !user) return;
 
-        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        if (file.size > 1 * 1024 * 1024) { // 1MB limit
             toast({
                 variant: 'destructive',
                 title: 'File Too Large',
-                description: 'Please select an image smaller than 2MB.',
+                description: 'Please select an image smaller than 1MB.',
             });
             return;
         }
@@ -119,11 +119,7 @@ export default function ProfileForm() {
                 reader.readAsDataURL(file);
             });
             
-            // To align with security rules, send the existing name along with the new photoURL
-            const updateData = { 
-                name: form.getValues('name'),
-                photoURL: dataUri 
-            };
+            const updateData = { photoURL: dataUri };
             
             await updateDoc(userDocRef, updateData);
 
@@ -164,11 +160,7 @@ export default function ProfileForm() {
         setIsSubmittingName(true);
         const userDocRef = doc(db, 'users', user.uid);
         
-        // To align with security rules, always send both name and the current photoURL
-        const updateData = { 
-            name: data.name,
-            photoURL: userProfile.photoURL || null 
-        };
+        const updateData = { name: data.name };
 
         try {
             await updateDoc(userDocRef, updateData);
@@ -255,7 +247,7 @@ export default function ProfileForm() {
                             disabled={isUploadingImage}
                         />
                      </div>
-                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 2MB).</p>
+                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 1MB).</p>
                 </div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

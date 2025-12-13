@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2 } from 'lucide-react';
+import { FilePenLine, Trash2, Users } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 export default function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
@@ -63,6 +64,29 @@ export default function AdminEventList() {
 
     return () => unsubscribe();
   }, [authLoading, isAdmin, user]);
+  
+  useEffect(() => {
+    // Set up listeners for participant counts for each event
+    const unsubscribers: (() => void)[] = [];
+    events.forEach(event => {
+      const registrationsRef = collection(db, 'events', event.id, 'registrations');
+      const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
+        setParticipantCounts(prevCounts => ({
+          ...prevCounts,
+          [event.id]: snapshot.size
+        }));
+      }, (error) => {
+        console.error(`Error fetching registrations for event ${event.id}:`, error);
+      });
+      unsubscribers.push(unsubscribe);
+    });
+
+    // Cleanup listeners on component unmount or when events change
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [events]);
+
 
   const { filteredEvents, availableMonths } = useMemo(() => {
     const today = new Date();
@@ -175,7 +199,13 @@ export default function AdminEventList() {
             </div>
             <div className="flex-grow overflow-hidden">
               <h3 className="font-bold truncate">{event.title}</h3>
-              <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+              <div className="flex items-center gap-x-4 text-sm text-muted-foreground">
+                <span>{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</span>
+                <span className='flex items-center'>
+                    <Users className="mr-1.5 h-4 w-4" />
+                    {participantCounts[event.id] ?? 0}
+                </span>
+              </div>
             </div>
             <div className='flex gap-2 flex-shrink-0'>
               <Link href={`/admin/edit/${event.id}`}>

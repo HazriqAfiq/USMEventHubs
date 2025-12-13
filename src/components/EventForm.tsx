@@ -343,6 +343,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
+                          today={getMalaysiaTimeNow()}
                           disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                           initialFocus
                         />

@@ -121,16 +121,24 @@ export default function EventDetailPage() {
     }
    }, [user, eventId]);
   
-  const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string }) => {
+  const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string, paymentProofUrl?: string }) => {
     if (!user || !event) return;
     setIsSubmitting(true);
     const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
     try {
-      await setDoc(regRef, {
-        ...data,
+      const registrationData: any = {
+        name: data.name,
+        matricNo: data.matricNo,
+        faculty: data.faculty,
         id: user.uid,
         registeredAt: serverTimestamp(),
-      });
+      };
+
+      if (data.paymentProofUrl) {
+        registrationData.paymentProofUrl = data.paymentProofUrl;
+      }
+      
+      await setDoc(regRef, registrationData);
       
       setCommunityLink(event.groupLink);
       setIsSuccessDialogOpen(true);
@@ -138,10 +146,17 @@ export default function EventDetailPage() {
 
     } catch (error: any) {
       console.error("Error submitting registration:", error);
+      const permissionError = new FirestorePermissionError({
+          path: regRef.path,
+          operation: 'create',
+          requestResourceData: { ...data, id: user.uid },
+      }, error);
+      errorEmitter.emit('permission-error', permissionError);
+      
       toast({
         variant: 'destructive',
         title: 'Registration Failed',
-        description: 'Could not save your registration. Please try again.',
+        description: 'Could not save your registration. Please try again. Ensure payment proof is uploaded for paid events.',
       });
     } finally {
       setIsSubmitting(false);
@@ -350,5 +365,3 @@ export default function EventDetailPage() {
     </>
   );
 }
-
-    

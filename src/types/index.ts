@@ -6,6 +6,7 @@ export interface Registration {
   matricNo: string;
   faculty: string;
   registeredAt: Timestamp;
+  paymentProofUrl?: string;
 }
 
 export interface Event {

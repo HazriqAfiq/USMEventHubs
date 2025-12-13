@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Event, Registration } from '@/types';
-import { ArrowLeft, Download, Terminal, Users, Info } from 'lucide-react';
+import { ArrowLeft, Download, Terminal, Users, Info, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format, isPast } from 'date-fns';
+import Link from 'next/link';
 
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -218,6 +219,7 @@ export default function EditEventPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Matric No.</TableHead>
                   <TableHead>Faculty</TableHead>
+                  {!event?.isFree && <TableHead>Payment</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -226,6 +228,20 @@ export default function EditEventPage() {
                     <TableCell>{reg.name}</TableCell>
                     <TableCell>{reg.matricNo}</TableCell>
                     <TableCell>{reg.faculty}</TableCell>
+                     {!event?.isFree && (
+                      <TableCell>
+                        {reg.paymentProofUrl ? (
+                           <Button asChild variant="outline" size="sm">
+                              <Link href={reg.paymentProofUrl} target="_blank" rel="noopener noreferrer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Proof
+                              </Link>
+                            </Button>
+                        ) : (
+                          <span className='text-xs text-muted-foreground'>No proof</span>
+                        )}
+                      </TableCell>
+                     )}
                   </TableRow>
                 ))}
               </TableBody>

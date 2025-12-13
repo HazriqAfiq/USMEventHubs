@@ -58,8 +58,19 @@ export default function ProfileForm() {
             return;
         }
 
+        // Only update if the name has changed
+        if (data.name === userProfile?.name) {
+            toast({
+                title: 'No Changes Detected',
+                description: 'Your name is already up to date.',
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         const userDocRef = doc(db, 'users', user.uid);
+        
+        // Ensure we are only trying to update the 'name' field
         const updateData = { name: data.name };
 
         updateDoc(userDocRef, updateData)

@@ -187,6 +187,14 @@ export default function EventDetailPage() {
     setIsFormOpen(true);
   }
 
+  const handleSuccessDialogClose = (open: boolean) => {
+    setIsSuccessDialogOpen(open);
+    if (!open) {
+      // Reload the page when the dialog is closed to refresh permissions
+      window.location.reload();
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -339,14 +347,14 @@ export default function EventDetailPage() {
       eventPrice={event?.isFree === false ? event.price : undefined}
       eventQrCodeUrl={event?.isFree === false ? event.qrCodeUrl : undefined}
       />
-    <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+    <Dialog open={isSuccessDialogOpen} onOpenChange={handleSuccessDialogClose}>
       <DialogContent>
         <DialogHeader>
            <div className='flex items-center justify-center flex-col text-center gap-y-2 pt-4'>
             <PartyPopper className='h-12 w-12 text-accent' strokeWidth={1.5} />
             <DialogTitle className="text-2xl font-bold font-headline">Registration Successful!</DialogTitle>
             <DialogDescription>
-              You are now registered for "{event.title}".
+              You are now registered for "{event.title}". The page will now reload.
             </DialogDescription>
            </div>
         </DialogHeader>
@@ -371,3 +379,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

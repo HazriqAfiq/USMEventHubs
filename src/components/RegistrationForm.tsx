@@ -391,6 +391,9 @@ export default function RegistrationForm({
             e.preventDefault();
           }
         }}>
+        <DialogHeader>
+          <DialogTitle className="sr-only">Registration Dialog</DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)}>
             {renderStepContent()}

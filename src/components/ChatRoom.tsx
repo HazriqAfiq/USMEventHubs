@@ -245,7 +245,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
           <div className="mb-4 px-2 text-sm text-neutral-400">You don't have access to this chat yet. Registration may still be processing — refresh or wait a moment.</div>
         ) : (
           <>
-            <div className="h-96 overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
+            <div className="h-[32rem] overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-neutral-400">No messages yet — be the first to say something.</div>
               ) : (
@@ -295,8 +295,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
             <div className="mt-2">
               <div className="flex items-center gap-3">
-                <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message..." className="flex-1 h-8 resize-none rounded-md bg-neutral-800 text-white placeholder:text-neutral-400" />
-                <button onClick={handleSend} aria-label="Send" className="bg-violet-500 hover:bg-violet-600 p-3 rounded-lg">
+                <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message..." className="flex-1 h-11 min-h-[44px] resize-none rounded-md bg-neutral-800 text-white placeholder:text-neutral-400" />
+                <button onClick={handleSend} aria-label="Send" className="bg-violet-500 hover:bg-violet-600 p-3 rounded-lg h-11 w-11 flex items-center justify-center">
                   <Send className="w-5 h-5 text-white" />
                 </button>
               </div>

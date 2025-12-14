@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import ChatRoom from '@/components/ChatRoom';
 
 const toMalaysiaTime = (date: Date) => {
   return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
@@ -325,6 +326,11 @@ export default function EventDetailPage() {
         </CardContent>
       </Card>
     </div>
+
+    {((isAdmin && user?.uid === event?.organizerId) || isRegistered) && user && event && (
+      <ChatRoom eventId={event.id} organizerId={event.organizerId} />
+    )}
+
     <RegistrationForm 
       isOpen={isFormOpen} 
       onClose={() => setIsFormOpen(false)}

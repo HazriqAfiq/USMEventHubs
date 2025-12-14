@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogC
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import ChatMessage from './ChatMessage';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 interface Props {
   eventId: string;
@@ -45,6 +47,11 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
       (err) => {
         // If user doesn't have permission yet, mark access as false and don't spam console
         if (err && err.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: q.toString(),
+            operation: 'list',
+          }, err);
+          errorEmitter.emit('permission-error', permissionError);
           setHasAccess(false);
         } else {
           console.error('Chat snapshot error', err);
@@ -107,17 +114,30 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
   const handleSend = async () => {
     if (!user || !text.trim()) return;
     try {
-      await addDoc(collection(db, 'events', eventId, 'messages'), {
+      const messageData = {
         text: text.trim(),
         senderId: user.uid,
         senderName: userProfile?.name || user.displayName || user.email || 'Anonymous',
         senderPhotoURL: userProfile?.photoURL || (user as any).photoURL || null,
         createdAt: serverTimestamp(),
         isOrganizer: organizerId ? (organizerId == user.uid) : false,
+      };
+
+      await addDoc(collection(db, 'events', eventId, 'messages'), messageData)
+      .catch((serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: `events/${eventId}/messages`,
+            operation: 'create',
+            requestResourceData: messageData,
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+          throw serverError; // re-throw to be caught by outer catch
       });
+
       setText('');
     } catch (err) {
       console.error('Failed to send message', err);
+       toast({ title: 'Error', description: 'Failed to send message. Check console for details.', variant: 'destructive' });
     }
   };
 
@@ -168,7 +188,18 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     }
 
     try {
-      await updateDoc(doc(db, 'events', eventId, 'messages', messageId), { pinned: !currentPinned });
+      const messageRef = doc(db, 'events', eventId, 'messages', messageId);
+      await updateDoc(messageRef, { pinned: !currentPinned })
+       .catch((serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: messageRef.path,
+            operation: 'update',
+            requestResourceData: { pinned: !currentPinned },
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+          throw serverError; // re-throw to be caught by outer catch
+      });
+
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pinned: !currentPinned } : m)));
       toast({ title: currentPinned ? 'Unpinned' : 'Pinned', description: currentPinned ? 'Message unpinned.' : 'Message pinned.' });
     } catch (err) {
@@ -214,7 +245,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
           <div className="mb-4 px-2 text-sm text-neutral-400">You don't have access to this chat yet. Registration may still be processing — refresh or wait a moment.</div>
         ) : (
           <>
-            <div className="h-60 overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
+            <div className="h-96 overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-neutral-400">No messages yet — be the first to say something.</div>
               ) : (
@@ -276,4 +307,3 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     </div>
   );
 }
-

@@ -107,13 +107,8 @@ export default function EventDetailPage() {
       }, (serverError) => {
         setIsRegistered(false);
         setRegistrationDetails(null);
-        if (serverError.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-              path: regRef.path,
-              operation: 'get',
-          }, serverError);
-          errorEmitter.emit('permission-error', permissionError);
-        }
+        // Don't throw a permission error here, as it's expected for non-registered users.
+        // The chat component will handle its own permissions.
       });
       return () => unsubscribe();
     } else {
@@ -187,14 +182,6 @@ export default function EventDetailPage() {
     setIsFormOpen(true);
   }
 
-  const handleSuccessDialogClose = (open: boolean) => {
-    setIsSuccessDialogOpen(open);
-    if (!open) {
-      // Reload the page when the dialog is closed to refresh permissions
-      window.location.reload();
-    }
-  }
-
   if (loading || authLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -231,6 +218,8 @@ export default function EventDetailPage() {
   if (!event) {
     return null;
   }
+  
+  const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event;
 
   return (
     <>
@@ -335,7 +324,7 @@ export default function EventDetailPage() {
       </Card>
     </div>
 
-    {((isAdmin && user?.uid === event?.organizerId) || isRegistered) && user && event && (
+    {showChat && (
       <ChatRoom eventId={event.id} organizerId={event.organizerId} />
     )}
 
@@ -347,14 +336,14 @@ export default function EventDetailPage() {
       eventPrice={event?.isFree === false ? event.price : undefined}
       eventQrCodeUrl={event?.isFree === false ? event.qrCodeUrl : undefined}
       />
-    <Dialog open={isSuccessDialogOpen} onOpenChange={handleSuccessDialogClose}>
+    <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
       <DialogContent>
         <DialogHeader>
            <div className='flex items-center justify-center flex-col text-center gap-y-2 pt-4'>
             <PartyPopper className='h-12 w-12 text-accent' strokeWidth={1.5} />
             <DialogTitle className="text-2xl font-bold font-headline">Registration Successful!</DialogTitle>
             <DialogDescription>
-              You are now registered for "{event.title}". The page will now reload.
+              You are now registered for "{event.title}".
             </DialogDescription>
            </div>
         </DialogHeader>
@@ -379,5 +368,3 @@ export default function EventDetailPage() {
     </>
   );
 }
-
-    

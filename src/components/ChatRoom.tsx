@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -45,16 +45,17 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
         setHasAccess(true);
       },
       (err) => {
-        // If user doesn't have permission yet, mark access as false and don't spam console
         if (err && err.code === 'permission-denied') {
+          setHasAccess(false);
+          // Don't emit an error here, just update the UI state.
+          // This is an expected state for newly registered users.
+        } else {
+          console.error('Chat snapshot error', err);
           const permissionError = new FirestorePermissionError({
-            path: q.toString(),
+            path: `events/${eventId}/messages`,
             operation: 'list',
           }, err);
           errorEmitter.emit('permission-error', permissionError);
-          setHasAccess(false);
-        } else {
-          console.error('Chat snapshot error', err);
           setHasAccess(false);
         }
       }
@@ -208,6 +209,87 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     }
   };
 
+  const renderContent = () => {
+    if (hasAccess === null) {
+      return (
+        <div className="h-[40rem] flex flex-col items-center justify-center text-sm text-neutral-400">
+           <Loader2 className="h-6 w-6 animate-spin mb-4" />
+           <p>Checking chat access...</p>
+        </div>
+      );
+    }
+
+    if (hasAccess === false) {
+      return (
+         <div className="h-[40rem] flex flex-col items-center justify-center text-center text-sm text-neutral-400">
+          <p className='font-semibold'>Access Denied</p>
+          <p className='mt-1 max-w-xs'>Your registration might still be processing. Please wait a moment or try refreshing the page if this persists.</p>
+        </div>
+      );
+    }
+    
+    return (
+      <>
+        <div className="h-[40rem] overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-neutral-400">No messages yet — be the first to say something.</div>
+          ) : (
+            <>
+              {(() => {
+                const pinned = messages.filter((mm) => mm.pinned);
+                const others = messages.filter((mm) => !mm.pinned);
+                return (
+                  <>
+                    {pinned.length > 0 && (
+                      <div className="sticky top-0 bg-neutral-900 z-10 space-y-3 mb-4 pb-3 border-b border-neutral-700">
+                        {pinned.map((m) => (
+                          <ChatMessage
+                            key={`pinned-${m.id}`}
+                            message={m}
+                            isOwn={user?.uid === m.senderId}
+                            isOrganizer={m.senderId === organizerId || m.isOrganizer}
+                            profile={profiles[m.senderId]}
+                            onTogglePin={togglePin}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {others.length > 0 && (
+                      <div className="space-y-3">
+                        {others.map((m) => (
+                          <ChatMessage
+                            key={m.id}
+                            message={m}
+                            isOwn={user?.uid === m.senderId}
+                            isOrganizer={m.senderId === organizerId || m.isOrganizer}
+                            profile={profiles[m.senderId]}
+                            onTogglePin={togglePin}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <div ref={bottomRef} />
+                  </>
+                );
+              })()}
+            </>
+          )}
+        </div>
+
+        <div className="mt-2">
+          <div className="flex items-center gap-3">
+            <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message..." className="flex-1 h-11 min-h-[44px] resize-none rounded-md bg-neutral-800 text-white placeholder:text-neutral-400" />
+            <button onClick={handleSend} aria-label="Send" className="bg-violet-500 hover:bg-violet-600 p-3 rounded-lg h-11 w-11 flex items-center justify-center">
+              <Send className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
       <div className="bg-neutral-900 rounded-2xl p-6 text-white shadow-lg">
@@ -240,69 +322,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
             </>
           )}
         </div>
-
-        {hasAccess === false ? (
-          <div className="mb-4 px-2 text-sm text-neutral-400">You don't have access to this chat yet. Registration may still be processing — refresh or wait a moment.</div>
-        ) : (
-          <>
-            <div className="h-[32rem] overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-neutral-400">No messages yet — be the first to say something.</div>
-              ) : (
-                <>
-                  {(() => {
-                    const pinned = messages.filter((mm) => mm.pinned);
-                    const others = messages.filter((mm) => !mm.pinned);
-                    return (
-                      <>
-                        {pinned.length > 0 && (
-                          <div className="sticky top-0 bg-neutral-900 z-10 space-y-3 mb-4 pb-3 border-b border-neutral-700">
-                            {pinned.map((m) => (
-                              <ChatMessage
-                                key={`pinned-${m.id}`}
-                                message={m}
-                                isOwn={user?.uid === m.senderId}
-                                isOrganizer={m.senderId === organizerId || m.isOrganizer}
-                                profile={profiles[m.senderId]}
-                                onTogglePin={togglePin}
-                              />
-                            ))}
-                          </div>
-                        )}
-
-                        {others.length > 0 && (
-                          <div className="space-y-3">
-                            {others.map((m) => (
-                              <ChatMessage
-                                key={m.id}
-                                message={m}
-                                isOwn={user?.uid === m.senderId}
-                                isOrganizer={m.senderId === organizerId || m.isOrganizer}
-                                profile={profiles[m.senderId]}
-                                onTogglePin={togglePin}
-                              />
-                            ))}
-                          </div>
-                        )}
-
-                        <div ref={bottomRef} />
-                      </>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
-
-            <div className="mt-2">
-              <div className="flex items-center gap-3">
-                <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message..." className="flex-1 h-11 min-h-[44px] resize-none rounded-md bg-neutral-800 text-white placeholder:text-neutral-400" />
-                <button onClick={handleSend} aria-label="Send" className="bg-violet-500 hover:bg-violet-600 p-3 rounded-lg h-11 w-11 flex items-center justify-center">
-                  <Send className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+        {renderContent()}
       </div>
     </div>
   );

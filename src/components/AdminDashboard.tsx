@@ -5,8 +5,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, getMonth, getYear, startOfToday, isAfter, isBefore, startOfMonth, endOfMonth, isWithinInterval, parse } from 'date-fns';
-import { CalendarCheck, CalendarClock, CalendarX, Package } from 'lucide-react';
+import { format, getMonth, getYear, startOfToday, isAfter, isBefore, startOfMonth, endOfMonth, isWithinInterval, parse, startOfYear, endOfYear, isSameYear } from 'date-fns';
+import { CalendarCheck, CalendarClock, CalendarX, Package, Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -53,44 +53,51 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  const { upcomingCount, pastCount, thisMonthCount, monthlyData, availableYears } = useMemo(() => {
+  const {
+    eventsInYearCount,
+    upcomingInYearCount,
+    pastInYearCount,
+    totalEventsCount,
+    monthlyData,
+    availableYears,
+  } = useMemo(() => {
     const today = startOfToday();
-    const currentMonthInterval = { start: startOfMonth(today), end: endOfMonth(today) };
     
-    let upcomingCount = 0;
-    let pastCount = 0;
-    let thisMonthCount = 0;
-    
-    const yearSet = new Set<number>();
-    
-    const monthCounts: { [key: number]: number[] } = {}; // year -> month counts
+    // Filter events by selected year
+    const eventsInSelectedYear = events.filter(event => 
+        event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
+    );
 
-    events.forEach(event => {
-      if (!event.date) return;
-      const eventDate = event.date.toDate();
-      const eventYear = getYear(eventDate);
-      yearSet.add(eventYear);
+    const eventsInYearCount = eventsInSelectedYear.length;
+    let upcomingInYearCount = 0;
+    let pastInYearCount = 0;
 
-      if (isAfter(eventDate, today)) {
-        upcomingCount++;
-      } else if (isBefore(eventDate, today)) {
-        pastCount++;
-      }
-
-      if (isWithinInterval(eventDate, currentMonthInterval)) {
-          thisMonthCount++;
-      }
-
-      const month = getMonth(eventDate);
-      if (!monthCounts[eventYear]) {
-        monthCounts[eventYear] = Array(12).fill(0);
-      }
-      monthCounts[eventYear][month]++;
+    eventsInSelectedYear.forEach(event => {
+        if (!event.date) return;
+        const eventDate = event.date.toDate();
+        if (isAfter(eventDate, today)) {
+            upcomingInYearCount++;
+        } else if (isBefore(eventDate, today)) {
+            pastInYearCount++;
+        }
     });
     
-    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
+    const yearSet = new Set<number>();
+    events.forEach(event => {
+        if (event.date) {
+            yearSet.add(getYear(event.date.toDate()));
+        }
+    });
 
-    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => {
+    const monthCounts: number[] = Array(12).fill(0);
+    eventsInSelectedYear.forEach(event => {
+        if (event.date) {
+            const month = getMonth(event.date.toDate());
+            monthCounts[month]++;
+        }
+    });
+
+    const monthlyData: MonthlyEventCount[] = monthCounts.map((total, monthIndex) => {
       const date = new Date(selectedYear, monthIndex);
       return {
         name: format(date, 'MMM'),
@@ -100,11 +107,20 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
 
     const availableYears = Array.from(yearSet).sort((a,b) => b - a);
     if (availableYears.length === 0 || !yearSet.has(new Date().getFullYear())) {
-        availableYears.push(new Date().getFullYear());
-        availableYears.sort((a,b) => b - a);
+        if (!availableYears.includes(new Date().getFullYear())) {
+            availableYears.push(new Date().getFullYear());
+            availableYears.sort((a,b) => b - a);
+        }
     }
 
-    return { upcomingCount, pastCount, thisMonthCount, monthlyData, availableYears };
+    return { 
+        eventsInYearCount,
+        upcomingInYearCount,
+        pastInYearCount,
+        totalEventsCount: events.length,
+        monthlyData, 
+        availableYears 
+    };
   }, [events, selectedYear]);
 
   if (loading || authLoading) {
@@ -133,32 +149,32 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+            <CardTitle className="text-sm font-medium">Events in {selectedYear}</CardTitle>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{eventsInYearCount}</div>
+            <p className="text-xs text-muted-foreground">Total events scheduled for {selectedYear}.</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming in {selectedYear}</CardTitle>
             <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{upcomingCount}</div>
-            <p className="text-xs text-muted-foreground">Events that are yet to happen.</p>
+            <div className="text-2xl font-bold">{upcomingInYearCount}</div>
+            <p className="text-xs text-muted-foreground">Upcoming events in {selectedYear}.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Past Events</CardTitle>
+            <CardTitle className="text-sm font-medium">Past in {selectedYear}</CardTitle>
             <CalendarX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pastCount}</div>
-            <p className="text-xs text-muted-foreground">Events that have already occurred.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Events This Month</CardTitle>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{thisMonthCount}</div>
-             <p className="text-xs text-muted-foreground">Total events in {format(new Date(), 'MMMM')}.</p>
+            <div className="text-2xl font-bold">{pastInYearCount}</div>
+             <p className="text-xs text-muted-foreground">Past events in {selectedYear}.</p>
           </CardContent>
         </Card>
         <Card>
@@ -167,8 +183,8 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{events.length}</div>
-            <p className="text-xs text-muted-foreground">All events you have created.</p>
+            <div className="text-2xl font-bold">{totalEventsCount}</div>
+            <p className="text-xs text-muted-foreground">All events you have ever created.</p>
           </CardContent>
         </Card>
       </div>

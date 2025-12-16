@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format, getMonth, getYear, startOfToday, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
+import { format, getMonth, getYear, startOfToday, isWithinInterval, startOfMonth, endOfMonth, parse, isAfter, isBefore, isSameYear } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
@@ -84,18 +84,33 @@ export default function UserEventList({ userId }: UserEventListProps) {
   }, [userId]);
 
   const { filteredEvents, upcomingCount, pastCount, monthlyData, availableYears } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfToday();
     
-    const upcoming = events.filter(event => event.date && event.date.toDate() >= today);
-    const past = events.filter(event => event.date && event.date.toDate() < today);
+    const eventsInSelectedYear = events.filter(event => 
+        event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
+    );
+
+    let upcomingCountInYear = 0;
+    let pastCountInYear = 0;
+
+    eventsInSelectedYear.forEach(event => {
+        if (!event.date) return;
+        if (isAfter(event.date.toDate(), today)) {
+            upcomingCountInYear++;
+        } else if (isBefore(event.date.toDate(), today)) {
+            pastCountInYear++;
+        }
+    });
 
     let displayedEvents: Event[];
     if (chartMonthFilter) {
       const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
-      displayedEvents = events.filter(event => isWithinInterval(event.date.toDate(), interval));
+      displayedEvents = events.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
     } else {
-      displayedEvents = filter === 'upcoming' ? upcoming : past;
+      displayedEvents = (filter === 'upcoming' 
+        ? events.filter(event => event.date && event.date.toDate() >= today) 
+        : events.filter(event => event.date && event.date.toDate() < today)
+      );
     }
     
     const yearSet = new Set<number>();
@@ -126,14 +141,16 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
     const availableYears = Array.from(yearSet).sort((a,b) => b-a);
     if (availableYears.length === 0 || !yearSet.has(new Date().getFullYear())) {
-        availableYears.push(new Date().getFullYear());
-        availableYears.sort((a,b) => b - a);
+       if (!availableYears.includes(new Date().getFullYear())) {
+            availableYears.push(new Date().getFullYear());
+            availableYears.sort((a,b) => b - a);
+        }
     }
 
     return {
       filteredEvents: displayedEvents,
-      upcomingCount: upcoming.length,
-      pastCount: past.length,
+      upcomingCount: upcomingCountInYear,
+      pastCount: pastCountInYear,
       monthlyData,
       availableYears,
     };
@@ -169,22 +186,22 @@ export default function UserEventList({ userId }: UserEventListProps) {
         <div className="grid gap-4 md:grid-cols-2">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Upcoming Registered Events</CardTitle>
+                    <CardTitle className="text-sm font-medium">Upcoming in {selectedYear}</CardTitle>
                     <CalendarCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{upcomingCount}</div>
-                    <p className="text-xs text-muted-foreground">Events you've registered for that are yet to happen.</p>
+                    <p className="text-xs text-muted-foreground">Upcoming events you're registered for in {selectedYear}.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Past Attended Events</CardTitle>
+                    <CardTitle className="text-sm font-medium">Past in {selectedYear}</CardTitle>
                     <CalendarX className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{pastCount}</div>
-                    <p className="text-xs text-muted-foreground">Events you've registered for that have already occurred.</p>
+                    <p className="text-xs text-muted-foreground">Past events you were registered for in {selectedYear}.</p>
                 </CardContent>
             </Card>
         </div>

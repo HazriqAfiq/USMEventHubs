@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList, Ban, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +39,6 @@ const formatTime = (timeString: string) => {
   if (!timeString) return '';
   const [hours, minutes] = timeString.split(':');
   
-  // Create a date object, set the time, and then format it.
-  // The date part doesn't matter as we only format the time part.
   const date = new Date();
   date.setHours(parseInt(hours,10));
   date.setMinutes(parseInt(minutes,10));
@@ -130,8 +128,6 @@ export default function EventDetailPage() {
       }, (serverError) => {
         setIsRegistered(false);
         setRegistrationDetails(null);
-        // Don't throw a permission error here, as it's expected for non-registered users.
-        // The chat component will handle its own permissions.
       });
       return () => unsubscribe();
     } else {
@@ -143,7 +139,6 @@ export default function EventDetailPage() {
   const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string, paymentProofUrl?: string }) => {
     if (!user || !event) return;
 
-    // Final, definitive check at the moment of submission
     if (isRegistrationClosed) {
       toast({
         variant: 'destructive',
@@ -222,13 +217,11 @@ export default function EventDetailPage() {
       return;
     }
     
-    // Always open the form, the form itself will handle showing QR code if needed
     setIsFormOpen(true);
   }
   
   const handleSuccessDialogClose = (open: boolean) => {
     if (!open) {
-      // Reload the page when the success dialog is closed
       window.location.reload();
     }
     setIsSuccessDialogOpen(open);

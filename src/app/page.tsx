@@ -39,18 +39,23 @@ export default function Home() {
       querySnapshot.forEach((doc) => {
         const event = { id: doc.id, ...doc.data() } as Event;
         
-        // Calculate the registration deadline (15 mins after start time)
-        if (event.date && event.startTime) {
-          const startDateTime = event.date.toDate();
-          const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-          startDateTime.setHours(startHours, startMinutes, 0, 0);
-          
-          const registrationDeadline = addMinutes(startDateTime, 15);
+        if (event.date && event.startTime && event.endTime) {
+            const eventDate = event.date.toDate();
 
-          // Only show events if the registration deadline has not passed
-          if (registrationDeadline >= now) {
-            eventsData.push(event);
-          }
+            const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+            const startDateTime = new Date(eventDate);
+            startDateTime.setHours(startHours, startMinutes, 0, 0);
+            
+            const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+            const endDateTime = new Date(eventDate);
+            endDateTime.setHours(endHours, endMinutes, 0, 0);
+
+            const registrationDeadline = addMinutes(startDateTime, 15);
+            
+            // Show the event only if it's not over AND registration is still open.
+            if (now < endDateTime && now < registrationDeadline) {
+                eventsData.push(event);
+            }
         }
       });
       setEvents(eventsData);

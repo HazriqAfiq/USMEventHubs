@@ -66,24 +66,6 @@ export default function EventDetailPage() {
   const [registrationDetails, setRegistrationDetails] = useState<Registration | null>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
-
-  useEffect(() => {
-    if (timeLeft === 0) {
-      toast({
-        title: 'Session Expired',
-        description: 'Redirecting to homepage...',
-      });
-      router.push('/');
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => prevTime - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, router, toast]);
 
   const { isRegistrationClosed, isEventOver } = useMemo(() => {
     if (!event || !event.date || !event.startTime || !event.endTime) {
@@ -291,19 +273,9 @@ export default function EventDetailPage() {
   
   const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event && !isEventOver;
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
   return (
     <>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-       <Alert className="sticky top-24 z-20 mb-4 bg-secondary/80 backdrop-blur-sm border-secondary-foreground/20 text-secondary-foreground">
-        <AlertCircle className="h-4 w-4 text-secondary-foreground" />
-        <AlertTitle>Page Session</AlertTitle>
-        <AlertDescription>
-          Redirecting to homepage in {minutes}:{seconds < 10 ? '0' : ''}{seconds}.
-        </AlertDescription>
-      </Alert>
       <Card className="overflow-hidden mt-4">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />

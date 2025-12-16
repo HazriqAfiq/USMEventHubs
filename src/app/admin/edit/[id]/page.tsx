@@ -16,8 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { format, isPast } from 'date-fns';
-import Link from 'next/link';
+import { format } from 'date-fns';
 import Image from 'next/image';
 
 export default function EditEventPage() {
@@ -29,9 +28,18 @@ export default function EditEventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasPermission, setHasPermission] = useState(true); // Assume permission until checked
+  const [hasPermission, setHasPermission] = useState(true);
   const [isPastEvent, setIsPastEvent] = useState(false);
-  const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
+
+  const getEventEndTime = (eventData: Event): Date | null => {
+    if (eventData.date && eventData.endTime) {
+        const eventEndDate = eventData.date.toDate();
+        const [endHours, endMinutes] = eventData.endTime.split(':').map(Number);
+        eventEndDate.setHours(endHours, endMinutes, 0, 0);
+        return eventEndDate;
+    }
+    return null;
+  }
 
   useEffect(() => {
     if (authLoading) return;
@@ -50,12 +58,13 @@ export default function EditEventPage() {
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
+          // Only allow the organizer to view this page.
           if (eventData.organizerId === user.uid) {
             setEvent(eventData);
-            if(eventData.date) {
-               const today = new Date();
-               today.setHours(0,0,0,0);
-               setIsPastEvent(isPast(eventData.date.toDate()) && !isTodayInMalaysia(eventData.date.toDate()));
+
+            const eventEndTime = getEventEndTime(eventData);
+            if (eventEndTime && eventEndTime < new Date()) {
+                setIsPastEvent(true);
             }
 
             setHasPermission(true);
@@ -75,9 +84,12 @@ export default function EditEventPage() {
                 errorEmitter.emit('permission-error', permissionError);
             });
             
+            setLoading(false);
             return () => unsubscribe();
+
           } else {
             setHasPermission(false);
+            setLoading(false);
           }
         } else {
           router.push('/admin');
@@ -91,8 +103,6 @@ export default function EditEventPage() {
           errorEmitter.emit('permission-error', permissionError);
         }
         setHasPermission(false);
-      } 
-      finally {
         setLoading(false);
       }
     };
@@ -102,28 +112,18 @@ export default function EditEventPage() {
   }, [eventId, router, authLoading, isAdmin, user]);
 
   useEffect(() => {
-    if (!authLoading && !hasPermission) {
+    if (!authLoading && !user && !loading) {
+      router.push('/login');
+    } else if (!authLoading && !isAdmin && !loading) {
+       router.push('/');
+    } else if (!loading && !hasPermission) {
       const timer = setTimeout(() => {
-        router.push('/');
-      }, 2000);
+        router.push('/admin');
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [authLoading, hasPermission, router]);
+  }, [authLoading, user, isAdmin, hasPermission, loading, router]);
 
-  const isTodayInMalaysia = (date: Date) => {
-      const today = getMalaysiaTimeNow();
-      return date.getDate() === today.getDate() &&
-            date.getMonth() === today.getMonth() &&
-            date.getFullYear() === today.getFullYear();
-  }
-
-   const getMalaysiaTimeNow = () => {
-      const now = new Date();
-      // Directly get the time in Malaysia timezone string
-      const myTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
-      return myTime;
-  }
-  
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;
 
@@ -143,7 +143,6 @@ export default function EditEventPage() {
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
     
-    // Sanitize event title for filename
     const safeTitle = event.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     link.setAttribute('download', `attendees_${safeTitle}.csv`);
     
@@ -153,7 +152,7 @@ export default function EditEventPage() {
   };
 
 
-  if (authLoading || (loading && hasPermission)) {
+  if (authLoading || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-8">
@@ -188,8 +187,8 @@ export default function EditEventPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Admin
           </Button>
-          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Edit Event</h1>
-          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Modify the details for the event "{event?.title}".</p>
+          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Event Details</h1>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">{isPastEvent ? "Viewing details for the past event" : "Modify the details for the event"} "{event?.title}".</p>
           {isPastEvent && (
             <Alert className="mt-4">
               <Info className="h-4 w-4" />

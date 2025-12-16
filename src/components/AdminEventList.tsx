@@ -94,8 +94,17 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
 
 
   const { filteredEvents, availableMonths } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+
+    const getEventEndTime = (event: Event): Date | null => {
+        if (event.date && event.endTime) {
+            const eventEndDate = event.date.toDate();
+            const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+            eventEndDate.setHours(endHours, endMinutes, 0, 0);
+            return eventEndDate;
+        }
+        return null;
+    }
 
     let baseFilteredEvents: Event[];
     
@@ -104,15 +113,25 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
       baseFilteredEvents = events.filter(event => isWithinInterval(event.date.toDate(), interval));
     } else {
       if (filter === 'upcoming') {
-        baseFilteredEvents = events.filter(event => event.date && event.date.toDate() >= today);
+        baseFilteredEvents = events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate >= now : false;
+        });
       } else if (filter === 'past') {
-        baseFilteredEvents = events.filter(event => event.date && event.date.toDate() < today);
+        baseFilteredEvents = events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate < now : true;
+        });
       } else {
          baseFilteredEvents = events;
       }
     }
     
-    const pastEvents = events.filter(event => event.date && event.date.toDate() < today);
+    const pastEvents = events.filter(event => {
+      const eventEndDate = getEventEndTime(event);
+      return eventEndDate ? eventEndDate < now : true;
+    });
+
     const monthSet = new Set<string>();
     pastEvents.forEach(event => {
         monthSet.add(format(event.date.toDate(), 'yyyy-MM'));

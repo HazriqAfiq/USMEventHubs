@@ -380,12 +380,12 @@ export default function RegistrationForm({
         case 3:
           return (
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isSubmitting || isRegistrationClosed}>
                 <ArrowLeft className="mr-2 h-4 w-4"/>
                 Back
               </Button>
-              <Button type="submit" disabled={isSubmitting || isUploading || !paymentProofPreview}>
-                {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+              <Button type="submit" disabled={isSubmitting || isUploading || !paymentProofPreview || isRegistrationClosed}>
+                {isSubmitting ? 'Submitting...' : (isRegistrationClosed ? 'Registration Closed' : 'Submit Registration')}
               </Button>
             </DialogFooter>
           );
@@ -396,10 +396,10 @@ export default function RegistrationForm({
       return (
         <DialogFooter className="pt-4">
           <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
+            <Button type="button" variant="outline" disabled={isSubmitting || isRegistrationClosed}>Cancel</Button>
           </DialogClose>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+          <Button type="submit" disabled={isSubmitting || isRegistrationClosed}>
+            {isSubmitting ? 'Submitting...' : (isRegistrationClosed ? 'Registration Closed' : 'Submit Registration')}
           </Button>
         </DialogFooter>
       )

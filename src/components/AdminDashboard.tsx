@@ -52,6 +52,16 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
 
     return () => unsubscribe();
   }, [user, authLoading]);
+  
+  const getEventEndTime = (event: Event): Date | null => {
+    if (event.date && event.endTime) {
+        const eventEndDate = event.date.toDate();
+        const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+        eventEndDate.setHours(endHours, endMinutes, 0, 0);
+        return eventEndDate;
+    }
+    return null;
+  }
 
   const {
     eventsInYearCount,
@@ -61,7 +71,7 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
     monthlyData,
     availableYears,
   } = useMemo(() => {
-    const today = startOfToday();
+    const now = new Date();
     
     // Filter events by selected year
     const eventsInSelectedYear = events.filter(event => 
@@ -73,13 +83,14 @@ export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
     let pastInYearCount = 0;
 
     eventsInSelectedYear.forEach(event => {
-        if (!event.date) return;
-        const eventDate = event.date.toDate();
-        if (isAfter(eventDate, today)) {
+      const eventEndDate = getEventEndTime(event);
+      if (eventEndDate) {
+        if (eventEndDate >= now) {
             upcomingInYearCount++;
-        } else if (isBefore(eventDate, today)) {
+        } else {
             pastInYearCount++;
         }
+      }
     });
     
     const yearSet = new Set<number>();

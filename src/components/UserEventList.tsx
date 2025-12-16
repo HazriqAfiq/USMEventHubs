@@ -83,8 +83,18 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   }, [userId]);
 
+  const getEventEndTime = (event: Event): Date | null => {
+    if (event.date && event.endTime) {
+        const eventEndDate = event.date.toDate();
+        const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+        eventEndDate.setHours(endHours, endMinutes, 0, 0);
+        return eventEndDate;
+    }
+    return null;
+  }
+
   const { filteredEvents, upcomingCount, pastCount, monthlyData, availableYears } = useMemo(() => {
-    const today = startOfToday();
+    const now = new Date();
     
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
@@ -94,12 +104,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
     let pastCountInYear = 0;
 
     eventsInSelectedYear.forEach(event => {
-        if (!event.date) return;
-        if (isAfter(event.date.toDate(), today)) {
+      const eventEndDate = getEventEndTime(event);
+      if (eventEndDate) {
+        if (eventEndDate >= now) {
             upcomingCountInYear++;
-        } else if (isBefore(event.date.toDate(), today)) {
+        } else {
             pastCountInYear++;
         }
+      }
     });
 
     let displayedEvents: Event[];
@@ -108,8 +120,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
       displayedEvents = events.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
     } else {
       displayedEvents = (filter === 'upcoming' 
-        ? events.filter(event => event.date && event.date.toDate() >= today) 
-        : events.filter(event => event.date && event.date.toDate() < today)
+        ? events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate >= now : false;
+        }) 
+        : events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate < now : true;
+        })
       );
     }
     

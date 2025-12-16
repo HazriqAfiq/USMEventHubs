@@ -67,6 +67,7 @@ export default function EventDetailPage() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
   const [isRegistrationClosed, setIsRegistrationClosed] = useState(false);
+  const [isEventOver, setIsEventOver] = useState(false);
   
   useEffect(() => {
     if (!eventId) return;
@@ -82,16 +83,28 @@ export default function EventDetailPage() {
           setEvent(eventData);
           setEventExists(true);
 
-          if (eventData.date && eventData.startTime) {
-              const [hours, minutes] = eventData.startTime.split(':');
-              const startDateTime = eventData.date.toDate();
-              startDateTime.setHours(parseInt(hours), parseInt(minutes));
-              
-              const registrationDeadline = addMinutes(startDateTime, 15);
+          if (eventData.date) {
               const now = new Date();
               
-              if (now > registrationDeadline) {
-                  setIsRegistrationClosed(true);
+              // Check for registration deadline
+              if (eventData.startTime) {
+                  const [startHours, startMinutes] = eventData.startTime.split(':');
+                  const startDateTime = eventData.date.toDate();
+                  startDateTime.setHours(parseInt(startHours), parseInt(startMinutes));
+                  const registrationDeadline = addMinutes(startDateTime, 15);
+                  if (now > registrationDeadline) {
+                      setIsRegistrationClosed(true);
+                  }
+              }
+
+              // Check if event is over
+              if (eventData.endTime) {
+                  const [endHours, endMinutes] = eventData.endTime.split(':');
+                  const endDateTime = eventData.date.toDate();
+                  endDateTime.setHours(parseInt(endHours), parseInt(endMinutes));
+                  if (now > endDateTime) {
+                      setIsEventOver(true);
+                  }
               }
           }
 
@@ -244,7 +257,7 @@ export default function EventDetailPage() {
     return null;
   }
   
-  const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event;
+  const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event && !isEventOver;
 
   return (
     <>

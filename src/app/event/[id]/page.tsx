@@ -64,13 +64,22 @@ export default function EventDetailPage() {
   const [registrationDetails, setRegistrationDetails] = useState<Registration | null>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
+  const [now, setNow] = useState(new Date());
+
+  // Set up an interval to update the current time every second for real-time checks
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000); // every second
+
+    return () => clearInterval(timer);
+  }, []);
 
   const { isRegistrationClosed, isEventOver } = useMemo(() => {
     if (!event || !event.date || !event.startTime || !event.endTime) {
       return { isRegistrationClosed: false, isEventOver: false };
     }
 
-    const now = new Date();
     const eventDate = event.date.toDate();
 
     const [startHours, startMinutes] = event.startTime.split(':');
@@ -84,7 +93,7 @@ export default function EventDetailPage() {
       isRegistrationClosed: now > registrationDeadline || now > endDateTime,
       isEventOver: now > endDateTime,
     };
-  }, [event]);
+  }, [event, now]);
   
   useEffect(() => {
     if (!eventId) return;
@@ -139,11 +148,12 @@ export default function EventDetailPage() {
   const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string, paymentProofUrl?: string }) => {
     if (!user || !event) return;
 
+    // Final, definitive check at the moment of submission
     if (isRegistrationClosed) {
       toast({
         variant: 'destructive',
         title: 'Registration Closed',
-        description: 'The registration window for this event has passed.',
+        description: 'The registration window for this event has passed. Your submission was blocked.',
       });
       setIsFormOpen(false);
       return;
@@ -208,6 +218,7 @@ export default function EventDetailPage() {
       return;
     }
 
+    // Strict check before even opening the form
     if (isRegistrationClosed) {
       toast({
         variant: 'destructive',
@@ -345,31 +356,43 @@ export default function EventDetailPage() {
                   )}
                 </CardContent>
               </Card>
-            ) : isRegistrationClosed ? (
-               <div className="flex items-center justify-center text-center p-4 rounded-md border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                 <Ban className="h-5 w-5 mr-3" />
-                 <div className='text-left'>
-                    <p className="font-semibold">Registration Closed</p>
-                    <p className="text-sm">The registration window for this event has passed.</p>
-                 </div>
-              </div>
             ) : (
-               <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
-                 <UserPlus className="mr-2 h-5 w-5" />
-                 Register for Event
+               <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto" disabled={isRegistrationClosed}>
+                 {isRegistrationClosed ? (
+                    <>
+                      <Ban className="mr-2 h-5 w-5" />
+                      Registration Closed
+                    </>
+                 ) : (
+                    <>
+                      <UserPlus className="mr-2 h-5 w-5" />
+                      Register for Event
+                    </>
+                 )}
                </Button>
             )
           )}
 
-          {!user && !authLoading && !isRegistrationClosed && (
+          {!user && !authLoading && (
             <div>
-              <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
-                <UserPlus className="mr-2 h-5 w-5" />
-                Register for Event
+              <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto" disabled={isRegistrationClosed}>
+                {isRegistrationClosed ? (
+                  <>
+                    <Ban className="mr-2 h-5 w-5" />
+                    Registration Closed
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Register for Event
+                  </>
+                )}
               </Button>
-              <p className='text-sm text-muted-foreground mt-2'>
-                You need to be logged in to register.
-              </p>
+              {!isRegistrationClosed && (
+                <p className='text-sm text-muted-foreground mt-2'>
+                  You need to be logged in to register.
+                </p>
+              )}
             </div>
           )}
 
@@ -422,3 +445,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

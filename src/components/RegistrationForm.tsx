@@ -105,6 +105,7 @@ export default function RegistrationForm({
     },
   });
 
+  // Effect to close the form if the registration period ends while it's open
   useEffect(() => {
     if (isOpen && isRegistrationClosed) {
       onClose();
@@ -426,3 +427,5 @@ export default function RegistrationForm({
     </Dialog>
   );
 }
+
+    

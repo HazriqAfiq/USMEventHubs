@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format } from 'date-fns';
+import { format, getMonth, getYear, startOfToday } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
@@ -14,10 +14,17 @@ import { CalendarCheck, CalendarX, Eye } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface UserEventListProps {
   userId: string;
 }
+
+type MonthlyEventCount = {
+  name: string;
+  total: number;
+};
+
 
 export default function UserEventList({ userId }: UserEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -75,17 +82,46 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   }, [userId]);
 
-  const { filteredEvents, upcomingCount, pastCount } = useMemo(() => {
+  const { filteredEvents, upcomingCount, pastCount, monthlyData } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const upcoming = events.filter(event => event.date && event.date.toDate() >= today);
     const past = events.filter(event => event.date && event.date.toDate() < today);
 
+     const monthCounts: { [key: number]: number[] } = {}; // year -> month counts
+     events.forEach(event => {
+      if (!event.date) return;
+      const eventDate = event.date.toDate();
+      const year = getYear(eventDate);
+      const month = getMonth(eventDate);
+      if (!monthCounts[year]) {
+        monthCounts[year] = Array(12).fill(0);
+      }
+      monthCounts[year][month]++;
+    });
+
+    const monthlyData: MonthlyEventCount[] = [];
+    const currentYear = getYear(today);
+    // Show last 12 months including current
+    for (let i = 11; i >= 0; i--) {
+        const date = new Date(today);
+        date.setMonth(date.getMonth() - i);
+        const year = getYear(date);
+        const month = getMonth(date);
+        
+        const total = monthCounts[year]?.[month] || 0;
+        monthlyData.push({
+            name: format(date, 'MMM yy'),
+            total: total,
+        });
+    }
+
     return {
       filteredEvents: filter === 'upcoming' ? upcoming : past,
       upcomingCount: upcoming.length,
       pastCount: past.length,
+      monthlyData,
     };
   }, [events, filter]);
 
@@ -96,7 +132,10 @@ export default function UserEventList({ userId }: UserEventListProps) {
             <Skeleton className="h-28"/>
             <Skeleton className="h-28"/>
         </div>
-        <Skeleton className="h-12 w-64" />
+         <div className="mt-8">
+            <Skeleton className="h-[350px] w-full" />
+        </div>
+        <Skeleton className="h-12 w-64 mt-8" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
@@ -128,7 +167,35 @@ export default function UserEventList({ userId }: UserEventListProps) {
             </Card>
         </div>
 
-      <div>
+        <div className="mt-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>My Participation</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        Number of events you've joined per month for the last 12 months.
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip 
+                            contentStyle={{
+                                background: "hsl(var(--background))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "var(--radius)",
+                            }}
+                        />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+      </div>
+
+      <div className='mt-8'>
         <ToggleGroup
             type="single"
             variant="outline"

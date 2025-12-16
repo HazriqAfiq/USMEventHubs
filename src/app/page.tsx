@@ -33,13 +33,21 @@ export default function Home() {
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
 
       querySnapshot.forEach((doc) => {
         const event = { id: doc.id, ...doc.data() } as Event;
-        if (event.date && event.date.toDate() >= today) {
-          eventsData.push(event);
+        
+        // Calculate the event's end time
+        if (event.date && event.endTime) {
+          const eventEndDate = event.date.toDate();
+          const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+          eventEndDate.setHours(endHours, endMinutes, 0, 0);
+
+          // Only show events that have not ended yet
+          if (eventEndDate >= now) {
+            eventsData.push(event);
+          }
         }
       });
       setEvents(eventsData);
@@ -89,7 +97,7 @@ export default function Home() {
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-4">
               <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-6 w-3/e" />
               <Skeleton className="h-4 w-1/2" />
               <Skeleton className="h-10 w-full" />
             </div>

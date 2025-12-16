@@ -17,6 +17,7 @@ import { addMinutes } from 'date-fns';
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [now, setNow] = useState(new Date());
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -28,35 +29,25 @@ export default function Home() {
     }
   }, [user, authLoading, router]);
 
+  // Set up an interval to update the current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60000); // every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (authLoading || !user) return;
 
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
-      const now = new Date();
-
+      
       querySnapshot.forEach((doc) => {
         const event = { id: doc.id, ...doc.data() } as Event;
-        
-        if (event.date && event.startTime && event.endTime) {
-            const eventDate = event.date.toDate();
-
-            const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-            const startDateTime = new Date(eventDate);
-            startDateTime.setHours(startHours, startMinutes, 0, 0);
-            
-            const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-            const endDateTime = new Date(eventDate);
-            endDateTime.setHours(endHours, endMinutes, 0, 0);
-
-            const registrationDeadline = addMinutes(startDateTime, 15);
-            
-            // Show the event only if it's not over AND registration is still open.
-            if (now < endDateTime && now < registrationDeadline) {
-                eventsData.push(event);
-            }
-        }
+        eventsData.push(event);
       });
       setEvents(eventsData);
       setLoadingEvents(false);
@@ -79,7 +70,25 @@ export default function Home() {
   }, [authLoading, user]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    const visibleEvents = events.filter(event => {
+      if (event.date && event.startTime && event.endTime) {
+          const eventDate = event.date.toDate();
+
+          const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+          const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
+          
+          const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+          const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+
+          const registrationDeadline = addMinutes(startDateTime, 15);
+          
+          // An event should be hidden if it's over OR registration has closed.
+          return now < endDateTime && now < registrationDeadline;
+      }
+      return false; // Don't show events without complete time info
+    });
+
+    return visibleEvents.filter(event => {
       const priceMatch = 
         priceFilter === 'all' || 
         (priceFilter === 'free' && event.isFree) || 
@@ -91,7 +100,7 @@ export default function Home() {
 
       return priceMatch && typeMatch;
     });
-  }, [events, priceFilter, typeFilter]);
+  }, [events, priceFilter, typeFilter, now]);
   
   if (authLoading || !user) {
     // Show a skeleton loader while checking for auth or redirecting

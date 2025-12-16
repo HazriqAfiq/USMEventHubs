@@ -181,6 +181,14 @@ export default function EventDetailPage() {
     // Always open the form, the form itself will handle showing QR code if needed
     setIsFormOpen(true);
   }
+  
+  const handleSuccessDialogClose = (open: boolean) => {
+    if (!open) {
+      // Reload the page when the success dialog is closed
+      window.location.reload();
+    }
+    setIsSuccessDialogOpen(open);
+  }
 
   if (loading || authLoading) {
     return (
@@ -336,14 +344,14 @@ export default function EventDetailPage() {
       eventPrice={event?.isFree === false ? event.price : undefined}
       eventQrCodeUrl={event?.isFree === false ? event.qrCodeUrl : undefined}
       />
-    <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+    <Dialog open={isSuccessDialogOpen} onOpenChange={handleSuccessDialogClose}>
       <DialogContent>
         <DialogHeader>
            <div className='flex items-center justify-center flex-col text-center gap-y-2 pt-4'>
             <PartyPopper className='h-12 w-12 text-accent' strokeWidth={1.5} />
             <DialogTitle className="text-2xl font-bold font-headline">Registration Successful!</DialogTitle>
             <DialogDescription>
-              You are now registered for "{event.title}".
+              You are now registered for "{event.title}". The page will now reload.
             </DialogDescription>
            </div>
         </DialogHeader>

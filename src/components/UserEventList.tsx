@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format, getMonth, getYear, startOfToday } from 'date-fns';
+import { format, getMonth, getYear, startOfToday, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, XCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -32,6 +32,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -89,6 +90,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
     const upcoming = events.filter(event => event.date && event.date.toDate() >= today);
     const past = events.filter(event => event.date && event.date.toDate() < today);
 
+    let displayedEvents: Event[];
+    if (chartMonthFilter) {
+      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
+      displayedEvents = events.filter(event => isWithinInterval(event.date.toDate(), interval));
+    } else {
+      displayedEvents = filter === 'upcoming' ? upcoming : past;
+    }
+    
     const yearSet = new Set<number>();
     const monthCounts: { [key: number]: number[] } = {}; // year -> month counts
 
@@ -98,40 +107,37 @@ export default function UserEventList({ userId }: UserEventListProps) {
       const eventYear = getYear(eventDate);
       yearSet.add(eventYear);
       
-      if(eventYear === selectedYear) {
-         const month = getMonth(eventDate);
-         if (!monthCounts[eventYear]) {
-           monthCounts[eventYear] = Array(12).fill(0);
-         }
-         monthCounts[eventYear][month]++;
+      const month = getMonth(eventDate);
+      if (!monthCounts[eventYear]) {
+        monthCounts[eventYear] = Array(12).fill(0);
       }
+      monthCounts[eventYear][month]++;
     });
 
-    const monthlyData: MonthlyEventCount[] = [];
-    const yearCounts = monthCounts[selectedYear] || Array(12).fill(0);
+    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
 
-    for (let month = 0; month < 12; month++) {
-      const date = new Date(selectedYear, month);
-      monthlyData.push({
+    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => {
+      const date = new Date(selectedYear, monthIndex);
+      return {
         name: format(date, 'MMM'),
-        total: yearCounts[month],
-      });
-    }
+        total: total,
+      };
+    });
 
     const availableYears = Array.from(yearSet).sort((a,b) => b-a);
-     if (!yearSet.has(new Date().getFullYear())) {
+    if (availableYears.length === 0 || !yearSet.has(new Date().getFullYear())) {
         availableYears.push(new Date().getFullYear());
         availableYears.sort((a,b) => b - a);
     }
 
     return {
-      filteredEvents: filter === 'upcoming' ? upcoming : past,
+      filteredEvents: displayedEvents,
       upcomingCount: upcoming.length,
       pastCount: past.length,
       monthlyData,
       availableYears,
     };
-  }, [events, filter, selectedYear]);
+  }, [events, filter, selectedYear, chartMonthFilter]);
 
   if (loading) {
     return (
@@ -149,6 +155,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
       </div>
     );
   }
+
+  const handleBarClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const monthName = data.activePayload[0].payload.name;
+      const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
+      setChartMonthFilter(clickedDate);
+    }
+  };
 
   return (
     <div className="mt-6 space-y-6">
@@ -201,7 +215,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={monthlyData}>
+                    <BarChart data={monthlyData} onClick={handleBarClick}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -212,7 +226,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                                 borderRadius: "var(--radius)",
                             }}
                         />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                     </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
@@ -220,20 +234,31 @@ export default function UserEventList({ userId }: UserEventListProps) {
       </div>
 
       <div className='mt-8'>
-        <ToggleGroup
-            type="single"
-            variant="outline"
-            value={filter}
-            onValueChange={(value) => setFilter(value as any || 'upcoming')}
-            className="mb-4"
-            >
-            <ToggleGroupItem value="upcoming" className="text-white">Upcoming</ToggleGroupItem>
-            <ToggleGroupItem value="past" className="text-white">Past</ToggleGroupItem>
-        </ToggleGroup>
+        {chartMonthFilter ? (
+          <div>
+            <Button variant="ghost" onClick={() => setChartMonthFilter(null)}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear filter for {format(chartMonthFilter, 'MMMM yyyy')}
+            </Button>
+          </div>
+        ) : (
+          <ToggleGroup
+              type="single"
+              variant="outline"
+              value={filter}
+              onValueChange={(value) => {
+                if (value) setFilter(value as any)
+              }}
+              className="mb-4"
+              >
+              <ToggleGroupItem value="upcoming" className="text-white">Upcoming</ToggleGroupItem>
+              <ToggleGroupItem value="past" className="text-white">Past</ToggleGroupItem>
+          </ToggleGroup>
+        )}
 
         {filteredEvents.length === 0 ? (
             <Card className="p-8 text-center text-muted-foreground">
-            No {filter} events found.
+              No events found for the selected criteria.
             </Card>
         ) : (
             <div className="space-y-4">

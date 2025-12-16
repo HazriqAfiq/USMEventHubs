@@ -5,7 +5,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, getMonth, getYear, startOfToday, isAfter, isBefore, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, getMonth, getYear, startOfToday, isAfter, isBefore, startOfMonth, endOfMonth, isWithinInterval, parse } from 'date-fns';
 import { CalendarCheck, CalendarClock, CalendarX, Package } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event } from '@/types';
@@ -17,7 +17,12 @@ type MonthlyEventCount = {
   total: number;
 };
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+  onMonthClick: (date: Date | null) => void;
+}
+
+
+export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
@@ -76,28 +81,25 @@ export default function AdminDashboard() {
           thisMonthCount++;
       }
 
-      if (eventYear === selectedYear) {
-         const month = getMonth(eventDate);
-         if (!monthCounts[eventYear]) {
-           monthCounts[eventYear] = Array(12).fill(0);
-         }
-         monthCounts[eventYear][month]++;
+      const month = getMonth(eventDate);
+      if (!monthCounts[eventYear]) {
+        monthCounts[eventYear] = Array(12).fill(0);
       }
+      monthCounts[eventYear][month]++;
+    });
+    
+    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
+
+    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => {
+      const date = new Date(selectedYear, monthIndex);
+      return {
+        name: format(date, 'MMM'),
+        total: total,
+      };
     });
 
-    const monthlyData: MonthlyEventCount[] = [];
-    const yearCounts = monthCounts[selectedYear] || Array(12).fill(0);
-    
-    for (let month = 0; month < 12; month++) {
-      const date = new Date(selectedYear, month);
-      monthlyData.push({
-        name: format(date, 'MMM'),
-        total: yearCounts[month],
-      });
-    }
-
     const availableYears = Array.from(yearSet).sort((a,b) => b - a);
-    if (!yearSet.has(new Date().getFullYear())) {
+    if (availableYears.length === 0 || !yearSet.has(new Date().getFullYear())) {
         availableYears.push(new Date().getFullYear());
         availableYears.sort((a,b) => b - a);
     }
@@ -117,6 +119,14 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const handleBarClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const monthName = data.activePayload[0].payload.name;
+      const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
+      onMonthClick(clickedDate);
+    }
+  };
 
   return (
     <div className="mt-6">
@@ -189,7 +199,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={monthlyData}>
+                <BarChart data={monthlyData} onClick={handleBarClick}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -200,7 +210,7 @@ export default function AdminDashboard() {
                             borderRadius: "var(--radius)",
                         }}
                     />
-                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                 </BarChart>
                 </ResponsiveContainer>
             </CardContent>

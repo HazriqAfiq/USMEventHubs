@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export default function AdminEventList() {
+interface AdminEventListProps {
+  monthFilter: Date | null;
+  onClearMonthFilter: () => void;
+}
+
+export default function AdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: AdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
@@ -93,36 +98,38 @@ export default function AdminEventList() {
     today.setHours(0, 0, 0, 0);
 
     let baseFilteredEvents: Event[];
-    let availableMonths: string[] = [];
+    
+    if (chartMonthFilter) {
+      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
+      baseFilteredEvents = events.filter(event => isWithinInterval(event.date.toDate(), interval));
+    } else {
+      if (filter === 'upcoming') {
+        baseFilteredEvents = events.filter(event => event.date && event.date.toDate() >= today);
+      } else if (filter === 'past') {
+        baseFilteredEvents = events.filter(event => event.date && event.date.toDate() < today);
+      } else {
+         baseFilteredEvents = events;
+      }
+    }
     
     const pastEvents = events.filter(event => event.date && event.date.toDate() < today);
-
-    if (filter === 'upcoming') {
-      baseFilteredEvents = events.filter(event => event.date && event.date.toDate() >= today);
-    } else if (filter === 'past') {
-      const monthSet = new Set<string>();
-      pastEvents.forEach(event => {
-          monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
-      });
-      availableMonths = Array.from(monthSet);
+    const monthSet = new Set<string>();
+    pastEvents.forEach(event => {
+        monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
+    });
+    const availableMonths = Array.from(monthSet);
       
-      if (monthFilter === 'all') {
-          baseFilteredEvents = pastEvents;
-      } else {
-          const selectedMonthDate = new Date(monthFilter);
-          const interval = {
-              start: startOfMonth(selectedMonthDate),
-              end: endOfMonth(selectedMonthDate)
-          };
-          baseFilteredEvents = pastEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
-      }
-
-    } else {
-       baseFilteredEvents = events;
+    if (!chartMonthFilter && filter === 'past' && monthFilter !== 'all') {
+      const selectedMonthDate = new Date(monthFilter);
+      const interval = {
+          start: startOfMonth(selectedMonthDate),
+          end: endOfMonth(selectedMonthDate)
+      };
+      baseFilteredEvents = baseFilteredEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
     }
 
     return { filteredEvents: baseFilteredEvents, availableMonths };
-  }, [events, filter, monthFilter]);
+  }, [events, filter, monthFilter, chartMonthFilter]);
 
   const handleDelete = async (eventId: string, eventTitle: string) => {
     try {
@@ -158,38 +165,51 @@ export default function AdminEventList() {
 
   return (
     <div className="mt-6 space-y-4">
-       <div className="flex justify-between items-center">
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          value={filter}
-          onValueChange={(value) => setFilter(value as any || 'upcoming')}
-        >
-          <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-          <ToggleGroupItem value="past">Past</ToggleGroupItem>
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-        </ToggleGroup>
+       <div className="flex flex-wrap gap-4 justify-between items-center">
+        {!chartMonthFilter ? (
+          <>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={filter}
+              onValueChange={(value) => {
+                if (value) setFilter(value as any);
+              }}
+            >
+              <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+              <ToggleGroupItem value="past">Past</ToggleGroupItem>
+              <ToggleGroupItem value="all">All</ToggleGroupItem>
+            </ToggleGroup>
 
-        {filter === 'past' && availableMonths.length > 0 && (
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by month" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Months</SelectItem>
-                    {availableMonths.map(monthStr => (
-                        <SelectItem key={monthStr} value={monthStr}>
-                            {format(new Date(monthStr), 'MMMM yyyy')}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            {filter === 'past' && availableMonths.length > 0 && (
+                <Select value={monthFilter} onValueChange={setMonthFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Months</SelectItem>
+                        {availableMonths.map(monthStr => (
+                            <SelectItem key={monthStr} value={monthStr}>
+                                {format(new Date(monthStr), 'MMMM yyyy')}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+          </>
+        ) : (
+          <div className="w-full">
+            <Button variant="ghost" onClick={onClearMonthFilter}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear filter for {format(chartMonthFilter, 'MMMM yyyy')}
+            </Button>
+          </div>
         )}
       </div>
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          No {filter} events found {filter === 'past' && monthFilter !== 'all' ? `for ${format(new Date(monthFilter), 'MMMM yyyy')}` : ''}.
+          No events found for the selected criteria.
         </Card>
       ) : (
         filteredEvents.map((event) => (

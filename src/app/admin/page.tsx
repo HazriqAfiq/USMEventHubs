@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
@@ -14,6 +14,7 @@ import { Terminal } from 'lucide-react';
 export default function AdminPage() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
+  const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -66,13 +67,13 @@ export default function AdminPage() {
         <div>
           <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Admin Dashboard</h1>
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">An overview of your event metrics.</p>
-          <AdminDashboard />
+          <AdminDashboard onMonthClick={setMonthFilter} />
         </div>
         <Separator />
         <div>
           <h2 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage Events</h2>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and delete existing events.</p>
-          <AdminEventList />
+          <AdminEventList monthFilter={monthFilter} onClearMonthFilter={() => setMonthFilter(null)} />
         </div>
          <Separator />
         <div>

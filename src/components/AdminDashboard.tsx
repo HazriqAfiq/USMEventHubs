@@ -10,6 +10,7 @@ import { CalendarCheck, CalendarClock, CalendarX, Package } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MonthlyEventCount = {
   name: string;
@@ -20,6 +21,8 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -45,7 +48,7 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  const { upcomingCount, pastCount, thisMonthCount, monthlyData } = useMemo(() => {
+  const { upcomingCount, pastCount, thisMonthCount, monthlyData, availableYears } = useMemo(() => {
     const today = startOfToday();
     const currentMonthInterval = { start: startOfMonth(today), end: endOfMonth(today) };
     
@@ -53,11 +56,15 @@ export default function AdminDashboard() {
     let pastCount = 0;
     let thisMonthCount = 0;
     
+    const yearSet = new Set<number>();
+    
     const monthCounts: { [key: number]: number[] } = {}; // year -> month counts
 
     events.forEach(event => {
       if (!event.date) return;
       const eventDate = event.date.toDate();
+      const eventYear = getYear(eventDate);
+      yearSet.add(eventYear);
 
       if (isAfter(eventDate, today)) {
         upcomingCount++;
@@ -69,32 +76,34 @@ export default function AdminDashboard() {
           thisMonthCount++;
       }
 
-      const year = getYear(eventDate);
-      const month = getMonth(eventDate);
-      if (!monthCounts[year]) {
-        monthCounts[year] = Array(12).fill(0);
+      if (eventYear === selectedYear) {
+         const month = getMonth(eventDate);
+         if (!monthCounts[eventYear]) {
+           monthCounts[eventYear] = Array(12).fill(0);
+         }
+         monthCounts[eventYear][month]++;
       }
-      monthCounts[year][month]++;
     });
 
     const monthlyData: MonthlyEventCount[] = [];
-    const currentYear = getYear(today);
-    // Show last 12 months including current
-    for (let i = 11; i >= 0; i--) {
-        const date = new Date(today);
-        date.setMonth(date.getMonth() - i);
-        const year = getYear(date);
-        const month = getMonth(date);
-        
-        const total = monthCounts[year]?.[month] || 0;
-        monthlyData.push({
-            name: format(date, 'MMM yy'),
-            total: total,
-        });
+    const yearCounts = monthCounts[selectedYear] || Array(12).fill(0);
+    
+    for (let month = 0; month < 12; month++) {
+      const date = new Date(selectedYear, month);
+      monthlyData.push({
+        name: format(date, 'MMM'),
+        total: yearCounts[month],
+      });
     }
 
-    return { upcomingCount, pastCount, thisMonthCount, monthlyData };
-  }, [events]);
+    const availableYears = Array.from(yearSet).sort((a,b) => b - a);
+    if (!yearSet.has(new Date().getFullYear())) {
+        availableYears.push(new Date().getFullYear());
+        availableYears.sort((a,b) => b - a);
+    }
+
+    return { upcomingCount, pastCount, thisMonthCount, monthlyData, availableYears };
+  }, [events, selectedYear]);
 
   if (loading || authLoading) {
     return (
@@ -157,10 +166,26 @@ export default function AdminDashboard() {
       <div className="mt-8">
         <Card>
             <CardHeader>
-                <CardTitle>Events Overview</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                    Number of events you've scheduled per month for the last 12 months.
-                </p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Events Overview</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Number of events you've scheduled per month for the year {selectedYear}.
+                        </p>
+                    </div>
+                    {availableYears.length > 0 && (
+                        <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="Select Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(year => (
+                                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>

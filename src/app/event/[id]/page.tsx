@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList } from 'lucide-react';
+import { format, addMinutes } from 'date-fns';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +51,8 @@ const formatTime = (timeString: string) => {
 
 
 export default function EventDetailPage() {
-  const { id: eventId } = useParams() as { id: string };
+  const params = useParams();
+  const eventId = params.id as string;
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
@@ -65,6 +66,7 @@ export default function EventDetailPage() {
   const [registrationDetails, setRegistrationDetails] = useState<Registration | null>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
+  const [isRegistrationClosed, setIsRegistrationClosed] = useState(false);
   
   useEffect(() => {
     if (!eventId) return;
@@ -76,8 +78,23 @@ export default function EventDetailPage() {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          setEvent({ id: docSnap.id, ...docSnap.data() } as Event);
+          const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
+          setEvent(eventData);
           setEventExists(true);
+
+          if (eventData.date && eventData.startTime) {
+              const [hours, minutes] = eventData.startTime.split(':');
+              const startDateTime = eventData.date.toDate();
+              startDateTime.setHours(parseInt(hours), parseInt(minutes));
+              
+              const registrationDeadline = addMinutes(startDateTime, 15);
+              const now = new Date();
+              
+              if (now > registrationDeadline) {
+                  setIsRegistrationClosed(true);
+              }
+          }
+
         } else {
           setEventExists(false);
         }
@@ -308,6 +325,14 @@ export default function EventDetailPage() {
                   )}
                 </CardContent>
               </Card>
+            ) : isRegistrationClosed ? (
+               <div className="flex items-center justify-center text-center p-4 rounded-md border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                 <Ban className="h-5 w-5 mr-3" />
+                 <div className='text-left'>
+                    <p className="font-semibold">Registration Closed</p>
+                    <p className="text-sm">The registration window for this event has passed.</p>
+                 </div>
+              </div>
             ) : (
                <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
                  <UserPlus className="mr-2 h-5 w-5" />
@@ -316,7 +341,7 @@ export default function EventDetailPage() {
             )
           )}
 
-          {!user && !authLoading && (
+          {!user && !authLoading && !isRegistrationClosed && (
             <div>
               <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto">
                 <UserPlus className="mr-2 h-5 w-5" />
@@ -376,3 +401,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

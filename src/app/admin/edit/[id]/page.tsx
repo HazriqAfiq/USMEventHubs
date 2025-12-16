@@ -23,7 +23,8 @@ import Image from 'next/image';
 export default function EditEventPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { id: eventId } = useParams() as { id: string };
+  const params = useParams();
+  const eventId = params.id as string;
   
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);

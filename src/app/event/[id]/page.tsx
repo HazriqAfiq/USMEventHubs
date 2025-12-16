@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList, Ban } from 'lucide-react';
+import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, ClipboardList, Ban, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,8 +66,45 @@ export default function EventDetailPage() {
   const [registrationDetails, setRegistrationDetails] = useState<Registration | null>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
-  const [isRegistrationClosed, setIsRegistrationClosed] = useState(false);
-  const [isEventOver, setIsEventOver] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+
+  useEffect(() => {
+    if (timeLeft === 0) {
+      toast({
+        title: 'Session Expired',
+        description: 'Redirecting to homepage...',
+      });
+      router.push('/');
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => prevTime - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, router, toast]);
+
+  const { isRegistrationClosed, isEventOver } = useMemo(() => {
+    if (!event || !event.date || !event.startTime || !event.endTime) {
+      return { isRegistrationClosed: false, isEventOver: false };
+    }
+
+    const now = new Date();
+    const eventDate = event.date.toDate();
+
+    const [startHours, startMinutes] = event.startTime.split(':');
+    const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(startHours), parseInt(startMinutes));
+    const registrationDeadline = addMinutes(startDateTime, 15);
+
+    const [endHours, endMinutes] = event.endTime.split(':');
+    const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(endHours), parseInt(endMinutes));
+    
+    return {
+      isRegistrationClosed: now > registrationDeadline || now > endDateTime,
+      isEventOver: now > endDateTime,
+    };
+  }, [event]);
   
   useEffect(() => {
     if (!eventId) return;
@@ -82,32 +119,6 @@ export default function EventDetailPage() {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
           setEvent(eventData);
           setEventExists(true);
-
-          if (eventData.date) {
-              const now = new Date();
-              
-              // Check for registration deadline
-              if (eventData.startTime) {
-                  const [startHours, startMinutes] = eventData.startTime.split(':');
-                  const startDateTime = eventData.date.toDate();
-                  startDateTime.setHours(parseInt(startHours), parseInt(startMinutes));
-                  const registrationDeadline = addMinutes(startDateTime, 15);
-                  if (now > registrationDeadline) {
-                      setIsRegistrationClosed(true);
-                  }
-              }
-
-              // Check if event is over
-              if (eventData.endTime) {
-                  const [endHours, endMinutes] = eventData.endTime.split(':');
-                  const endDateTime = eventData.date.toDate();
-                  endDateTime.setHours(parseInt(endHours), parseInt(endMinutes));
-                  if (now > endDateTime) {
-                      setIsEventOver(true);
-                  }
-              }
-          }
-
         } else {
           setEventExists(false);
         }
@@ -149,6 +160,18 @@ export default function EventDetailPage() {
   
   const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string, paymentProofUrl?: string }) => {
     if (!user || !event) return;
+
+    // Final, definitive check at the moment of submission
+    if (isRegistrationClosed) {
+      toast({
+        variant: 'destructive',
+        title: 'Registration Closed',
+        description: 'The registration window for this event has passed.',
+      });
+      setIsFormOpen(false);
+      return;
+    }
+
     setIsSubmitting(true);
     const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
     try {
@@ -182,7 +205,7 @@ export default function EventDetailPage() {
       toast({
         variant: 'destructive',
         title: 'Registration Failed',
-        description: 'Could not save your registration. Please try again. Ensure payment proof is uploaded for paid events.',
+        description: 'Could not save your registration. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
@@ -204,6 +227,15 @@ export default function EventDetailPage() {
       toast({
         title: 'Admin Action Not Allowed',
         description: 'Admins cannot register for events.',
+      });
+      return;
+    }
+
+    if (isRegistrationClosed) {
+      toast({
+        variant: 'destructive',
+        title: 'Registration Closed',
+        description: 'The registration window for this event has passed.',
       });
       return;
     }
@@ -259,13 +291,23 @@ export default function EventDetailPage() {
   
   const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event && !isEventOver;
 
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
   return (
     <>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Card className="overflow-hidden">
+       <Alert className="sticky top-24 z-20 mb-4 bg-secondary/80 backdrop-blur-sm border-secondary-foreground/20 text-secondary-foreground">
+        <AlertCircle className="h-4 w-4 text-secondary-foreground" />
+        <AlertTitle>Page Session</AlertTitle>
+        <AlertDescription>
+          Redirecting to homepage in {minutes}:{seconds < 10 ? '0' : ''}{seconds}.
+        </AlertDescription>
+      </Alert>
+      <Card className="overflow-hidden mt-4">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
-          {isAdmin && (
+          {isAdmin && user?.uid === event.organizerId && (
             <Button asChild className="absolute top-4 right-4" variant="secondary">
               <Link href={`/admin/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
@@ -381,6 +423,7 @@ export default function EventDetailPage() {
       isSubmitting={isSubmitting}
       eventPrice={event?.isFree === false ? event.price : undefined}
       eventQrCodeUrl={event?.isFree === false ? event.qrCodeUrl : undefined}
+      isRegistrationClosed={isRegistrationClosed}
       />
     <Dialog open={isSuccessDialogOpen} onOpenChange={handleSuccessDialogClose}>
       <DialogContent>
@@ -414,5 +457,3 @@ export default function EventDetailPage() {
     </>
   );
 }
-
-    

@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import Image from 'next/image';
 import { ArrowLeft, QrCode, Upload, Loader2 } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,6 +47,7 @@ interface RegistrationFormProps {
   isSubmitting: boolean;
   eventPrice?: number;
   eventQrCodeUrl?: string;
+  isRegistrationClosed: boolean;
 }
 
 const faculties = [
@@ -74,7 +75,8 @@ export default function RegistrationForm({
   onSubmit, 
   isSubmitting,
   eventPrice,
-  eventQrCodeUrl
+  eventQrCodeUrl,
+  isRegistrationClosed,
 }: RegistrationFormProps) {
   const isPaidEvent = eventPrice !== undefined && eventQrCodeUrl;
   const [step, setStep] = useState(1);
@@ -102,6 +104,17 @@ export default function RegistrationForm({
       paymentProofUrl: '',
     },
   });
+
+  useEffect(() => {
+    if (isOpen && isRegistrationClosed) {
+      onClose();
+      toast({
+        variant: "destructive",
+        title: "Registration Closed",
+        description: "The registration window for this event has passed.",
+      });
+    }
+  }, [isOpen, isRegistrationClosed, onClose, toast]);
   
   const handleClose = () => {
     onClose();
@@ -116,6 +129,15 @@ export default function RegistrationForm({
   const paymentProofPreview = form.watch('paymentProofUrl');
 
   const handleFormSubmit = (data: RegistrationFormValues) => {
+    if (isRegistrationClosed) {
+      toast({
+        variant: "destructive",
+        title: "Registration Closed",
+        description: "The registration window for this event has passed.",
+      });
+      handleClose();
+      return;
+    }
     const finalFaculty = data.faculty === 'Other' ? data.otherFaculty! : data.faculty;
     onSubmit({
         name: data.name,

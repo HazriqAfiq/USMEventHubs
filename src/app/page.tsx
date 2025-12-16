@@ -12,6 +12,7 @@ import { DollarSign, Laptop, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { SplashScreen } from '@/components/SplashScreen';
+import { addMinutes } from 'date-fns';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -38,14 +39,16 @@ export default function Home() {
       querySnapshot.forEach((doc) => {
         const event = { id: doc.id, ...doc.data() } as Event;
         
-        // Calculate the event's end time
-        if (event.date && event.endTime) {
-          const eventEndDate = event.date.toDate();
-          const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-          eventEndDate.setHours(endHours, endMinutes, 0, 0);
+        // Calculate the registration deadline (15 mins after start time)
+        if (event.date && event.startTime) {
+          const startDateTime = event.date.toDate();
+          const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+          startDateTime.setHours(startHours, startMinutes, 0, 0);
+          
+          const registrationDeadline = addMinutes(startDateTime, 15);
 
-          // Only show events that have not ended yet
-          if (eventEndDate >= now) {
+          // Only show events if the registration deadline has not passed
+          if (registrationDeadline >= now) {
             eventsData.push(event);
           }
         }

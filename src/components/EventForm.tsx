@@ -146,14 +146,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       qrCodeUrl: event.qrCodeUrl || '',
     } : {
       title: '',
+      description: '',
       date: undefined,
       startTime: '',
       endTime: '',
-      description: '',
       imageUrl: '',
       location: '',
-      price: 0,
       isFree: 'free',
+      price: 0,
       eventType: undefined,
       groupLink: '',
       qrCodeUrl: '',
@@ -164,16 +164,18 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     if (!user) throw new Error("User not authenticated for upload.");
 
     let path: string;
-    const eventId = isEditMode ? event.id : form.getValues('title').replace(/\s+/g, '-').toLowerCase() + '-' + uuidv4();
+    const eventIdForPath = isEditMode ? event.id : form.getValues('title').replace(/\s+/g, '-').toLowerCase() + '-' + uuidv4();
 
     if (type === 'event') {
-        path = `event-images/${eventId}/event-image.jpg`;
+        path = `event-images/${eventIdForPath}/event-image.jpg`;
     } else {
-        path = `qr-codes/${eventId}/qr-code.jpg`;
+        path = `qr-codes/${eventIdForPath}/qr-code.jpg`;
     }
 
     const storageRef = ref(storage, path);
     const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
+    
+    // Upload the string and get the download URL
     await uploadString(storageRef, resizedDataUrl, 'data_url');
     return getDownloadURL(storageRef);
   };
@@ -226,7 +228,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
           console.error("Upload failed:", error);
           toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
       } finally {
-          setUploadProgress({ type, loading: false });
+          setUploadProgress({ type: null, loading: false });
       }
   };
   
@@ -478,5 +480,3 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
-
-    

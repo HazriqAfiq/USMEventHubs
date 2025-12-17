@@ -210,6 +210,24 @@ export default function EventDetailPage() {
     }
     setIsSuccessDialogOpen(open);
   }
+  
+  const isOrganizer = user ? isAdmin && event?.organizerId === user.uid : false;
+  
+  const showChat = useMemo(() => {
+    if (!user || !event) return false;
+    
+    // Organizer can always see the chat (past or present)
+    if (isOrganizer) {
+      return true;
+    }
+    
+    // Participants can only see the chat for events that are not over
+    if (isRegistered && !isEventOver) {
+      return true;
+    }
+    
+    return false;
+  }, [user, event, isOrganizer, isRegistered, isEventOver]);
 
   if (loading || authLoading) {
     return (
@@ -245,24 +263,6 @@ export default function EventDetailPage() {
   if (!event) {
     return null;
   }
-  
-  const isOrganizer = user ? isAdmin && user.uid === event.organizerId : false;
-  const showChat = useMemo(() => {
-    if (!user || !event) return false;
-    
-    // Organizer can always see the chat (past or present)
-    if (isOrganizer) {
-      return true;
-    }
-    
-    // Participants can only see the chat for events that are not over
-    if (isRegistered && !isEventOver) {
-      return true;
-    }
-    
-    return false;
-  }, [user, event, isOrganizer, isRegistered, isEventOver]);
-
 
   return (
     <>
@@ -435,3 +435,4 @@ export default function EventDetailPage() {
 }
 
     
+

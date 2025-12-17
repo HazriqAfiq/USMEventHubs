@@ -246,7 +246,23 @@ export default function EventDetailPage() {
     return null;
   }
   
-  const showChat = (isRegistered || (isAdmin && user?.uid === event.organizerId)) && user && event && !isEventOver;
+  const isOrganizer = user ? isAdmin && user.uid === event.organizerId : false;
+  const showChat = useMemo(() => {
+    if (!user || !event) return false;
+    
+    // Organizer can always see the chat (past or present)
+    if (isOrganizer) {
+      return true;
+    }
+    
+    // Participants can only see the chat for events that are not over
+    if (isRegistered && !isEventOver) {
+      return true;
+    }
+    
+    return false;
+  }, [user, event, isOrganizer, isRegistered, isEventOver]);
+
 
   return (
     <>
@@ -254,7 +270,7 @@ export default function EventDetailPage() {
       <Card className="overflow-hidden mt-4">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
-          {isAdmin && user?.uid === event.organizerId && (
+          {isOrganizer && (
             <Button asChild className="absolute top-4 right-4" variant="secondary">
               <Link href={`/admin/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />

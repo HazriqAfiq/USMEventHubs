@@ -22,7 +22,7 @@ import { CalendarIcon, Trash2, Upload, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
@@ -47,11 +47,11 @@ const formSchema = z.object({
   qrCodeUrl: z.string().optional(),
 }).refine(data => {
     if (data.isFree === 'paid') {
-        return data.price !== undefined && data.price > 0;
+        return data.price !== undefined && data.price >= 1;
     }
     return true;
 }, {
-    message: 'Price must be greater than 0 for paid events.',
+    message: 'Price must be at least RM1.00 for paid events.',
     path: ['price'],
 }).refine(data => {
     if (data.isFree === 'paid') {
@@ -144,6 +144,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       date: event.date?.toDate(),
       groupLink: event.groupLink || '',
       qrCodeUrl: event.qrCodeUrl || '',
+      price: event.price ?? 1,
     } : {
       title: '',
       description: '',
@@ -153,7 +154,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       imageUrl: '',
       location: '',
       isFree: 'free',
-      price: 0,
+      price: 1,
       eventType: undefined,
       groupLink: '',
       qrCodeUrl: '',
@@ -175,7 +176,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     const storageRef = ref(storage, path);
     const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
     
-    // Upload the string and get the download URL
     await uploadString(storageRef, resizedDataUrl, 'data_url');
     return getDownloadURL(storageRef);
   };
@@ -214,22 +214,25 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
 
   const [uploadProgress, setUploadProgress] = useState<{ type: 'event' | 'qr' | null, loading: boolean }>({ type: null, loading: false });
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      setUploadProgress({ type, loading: true });
-      try {
-          const downloadURL = await handleImageUpload(file, type);
-          const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
-          form.setValue(fieldToUpdate, downloadURL, { shouldValidate: true, shouldDirty: true });
-          toast({ title: `${type === 'event' ? 'Image' : 'QR Code'} uploaded!` });
-      } catch (error: any) {
-          console.error("Upload failed:", error);
-          toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
-      } finally {
-          setUploadProgress({ type: null, loading: false });
-      }
+    setUploadProgress({ type, loading: true });
+
+    handleImageUpload(file, type)
+      .then(downloadURL => {
+        const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
+        form.setValue(fieldToUpdate, downloadURL, { shouldValidate: true, shouldDirty: true });
+        toast({ title: `${type === 'event' ? 'Image' : 'QR Code'} uploaded!` });
+      })
+      .catch(error => {
+        console.error("Upload failed:", error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+      })
+      .finally(() => {
+        setUploadProgress({ type: null, loading: false });
+      });
   };
   
   const handleReset = () => {
@@ -242,7 +245,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         imageUrl: '',
         location: '',
         isFree: 'free',
-        price: 0,
+        price: 1,
         eventType: undefined,
         groupLink: '',
         qrCodeUrl: '',
@@ -391,7 +394,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       <FormItem>
                           <FormLabel className="text-white">Amount (RM)</FormLabel>
                           <FormControl>
-                          <Input type="number" placeholder="e.g., 50.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          <Input type="number" placeholder="e.g., 1.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
                           <FormMessage />
                       </FormItem>

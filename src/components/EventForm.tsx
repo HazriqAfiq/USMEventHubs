@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -61,6 +62,31 @@ const formSchema = z.object({
 }, {
     message: 'Please upload a QR code for paid events.',
     path: ['qrCodeUrl'],
+}).refine((data) => {
+    if (!data.startTime || !data.endTime) return true; // Don't validate if either is missing
+    const [startHours, startMinutes] = data.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = data.endTime.split(':').map(Number);
+    
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+
+    return endTimeInMinutes > startTimeInMinutes;
+}, {
+    message: 'End time must be after start time.',
+    path: ['endTime'],
+}).refine((data) => {
+    if (!data.startTime || !data.endTime) return true; // Don't validate if either is missing
+    const [startHours, startMinutes] = data.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = data.endTime.split(':').map(Number);
+    
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+    
+    // Check if end time is at least 15 minutes after start time
+    return (endTimeInMinutes - startTimeInMinutes) >= 15;
+}, {
+    message: 'Event must be at least 15 minutes long.',
+    path: ['endTime'],
 });
 
 type EventFormValues = z.infer<typeof formSchema>;
@@ -483,3 +509,4 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
+

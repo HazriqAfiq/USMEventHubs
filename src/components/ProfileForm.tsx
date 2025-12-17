@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -120,7 +121,7 @@ export default function ProfileForm() {
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-
+        
         setIsUploading(true);
         try {
             const downloadURL = await handleImageUpload(file);
@@ -204,7 +205,7 @@ export default function ProfileForm() {
                         </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" disabled={isUploading} />
                      </div>
-                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 2MB).</p>
+                     <p className="text-sm text-muted-foreground">Click the image to upload a new one.</p>
                 </div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -247,5 +248,7 @@ export default function ProfileForm() {
         </Card>
     );
 }
+
+    
 
     

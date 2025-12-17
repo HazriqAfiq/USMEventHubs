@@ -148,13 +148,8 @@ export default function EventDetailPage() {
   const handleRegistrationSubmit = async (data: { name: string, matricNo: string, faculty: string, paymentProofUrl?: string }) => {
     if (!user || !event) return;
 
-    // Final, definitive check at the moment of submission
     if (isRegistrationClosed) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration Closed',
-        description: 'The registration window for this event has passed. Your submission was blocked.',
-      });
+      toast({ variant: 'destructive', title: 'Registration Closed', description: 'The registration window for this event has passed.' });
       setIsFormOpen(false);
       return;
     }
@@ -163,16 +158,10 @@ export default function EventDetailPage() {
     const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
     try {
       const registrationData: any = {
-        name: data.name,
-        matricNo: data.matricNo,
-        faculty: data.faculty,
+        ...data,
         id: user.uid,
         registeredAt: serverTimestamp(),
       };
-
-      if (data.paymentProofUrl) {
-        registrationData.paymentProofUrl = data.paymentProofUrl;
-      }
       
       await setDoc(regRef, registrationData);
       
@@ -189,11 +178,7 @@ export default function EventDetailPage() {
       }, error);
       errorEmitter.emit('permission-error', permissionError);
       
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description: 'Could not save your registration. Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Registration Failed', description: 'Could not save your registration. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -201,30 +186,18 @@ export default function EventDetailPage() {
 
   const openRegistration = () => {
      if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Required',
-        description: 'You must be logged in to register for an event.',
-      });
+      toast({ variant: 'destructive', title: 'Authentication Required', description: 'You must be logged in to register for an event.' });
       router.push('/login');
       return;
     }
     
     if (isAdmin) {
-      toast({
-        title: 'Admin Action Not Allowed',
-        description: 'Admins cannot register for events.',
-      });
+      toast({ title: 'Admin Action Not Allowed', description: 'Admins cannot register for events.' });
       return;
     }
 
-    // Strict check before even opening the form
     if (isRegistrationClosed) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration Closed',
-        description: 'The registration window for this event has passed.',
-      });
+      toast({ variant: 'destructive', title: 'Registration Closed', description: 'The registration window for this event has passed.' });
       return;
     }
     
@@ -262,9 +235,7 @@ export default function EventDetailPage() {
         <Alert variant="destructive" className="max-w-md mx-auto">
           <Terminal className="h-4 w-4" />
           <AlertTitle>404 - Event Not Found</AlertTitle>
-          <AlertDescription>
-            The event you are looking for does not exist or may have been moved.
-          </AlertDescription>
+          <AlertDescription>The event you are looking for does not exist or may have been moved.</AlertDescription>
         </Alert>
         <Button onClick={() => router.push('/')} className="mt-6">Go to Homepage</Button>
       </div>
@@ -412,6 +383,7 @@ export default function EventDetailPage() {
       eventPrice={event?.isFree === false ? event.price : undefined}
       eventQrCodeUrl={event?.isFree === false ? event.qrCodeUrl : undefined}
       isRegistrationClosed={isRegistrationClosed}
+      eventId={event.id}
       />
     <Dialog open={isSuccessDialogOpen} onOpenChange={handleSuccessDialogClose}>
       <DialogContent>

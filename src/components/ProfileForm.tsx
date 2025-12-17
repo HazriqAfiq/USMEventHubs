@@ -16,7 +16,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -25,6 +26,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { Camera, Loader2 } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }).max(50, { message: 'Name cannot be longer than 50 characters.' }),
@@ -33,6 +35,48 @@ const formSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof formSchema>;
+
+async function resizeImage(file: File, maxSize: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const img = new Image();
+        
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject('Could not get canvas context');
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL(file.type, 0.9));
+        };
+        img.onerror = reject;
+
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                img.src = e.target.result as string;
+            } else {
+                reject(new Error("FileReader failed to read file."));
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 export default function ProfileForm() {
     const { user, userProfile, loading } = useAuth();
@@ -43,11 +87,7 @@ export default function ProfileForm() {
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            email: '',
-            photoURL: null,
-        }
+        defaultValues: { name: '', email: '', photoURL: null },
     });
 
     useEffect(() => {
@@ -61,9 +101,7 @@ export default function ProfileForm() {
     }, [userProfile, form]);
     
     const handleAvatarClick = () => {
-        if (!isUploadingImage) {
-            fileInputRef.current?.click();
-        }
+        if (!isUploadingImage) fileInputRef.current?.click();
     }
     
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,81 +109,16 @@ export default function ProfileForm() {
         if (!file || !user) return;
 
         if (file.size > 1 * 1024 * 1024) { // 1MB limit
-            toast({
-                variant: 'destructive',
-                title: 'File Too Large',
-                description: 'Please select an image smaller than 1MB.',
-            });
+            toast({ variant: 'destructive', title: 'File Too Large', description: 'Please select an image smaller than 1MB.' });
             return;
         }
 
         setIsUploadingImage(true);
-        const userDocRef = doc(db, 'users', user.uid);
-        
         try {
-            const dataUri = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                const img = new Image();
-                
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 200;
-                    const MAX_HEIGHT = 200;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return reject(new Error('Could not get canvas context'));
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL(file.type, 0.9)); // Get data URI
-                };
-
-                img.onerror = reject;
-
-                reader.onload = (e) => {
-                    img.src = e.target?.result as string;
-                };
-                reader.readAsDataURL(file);
-            });
-            
-            const updateData = { photoURL: dataUri };
-            
-            await updateDoc(userDocRef, updateData)
-            .catch((serverError) => {
-                 const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: { photoURL: '...data URI...' },
-                }, serverError);
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError; // re-throw to be caught by outer catch
-            });
-
-            form.setValue('photoURL', dataUri);
-            toast({
-                title: 'Profile Picture Updated!',
-                description: 'Your new picture has been saved.',
-            });
-
+            const dataUri = await resizeImage(file, 200);
+            form.setValue('photoURL', dataUri, { shouldValidate: true, shouldDirty: true });
         } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Upload Failed',
-                description: error.message || 'Could not save your image.',
-            });
+            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not process your image.' });
         } finally {
             setIsUploadingImage(false);
         }
@@ -156,39 +129,41 @@ export default function ProfileForm() {
             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
             return;
         }
-
-        // Only update if the name is different
-        if (data.name === userProfile.name) {
-            return;
-        }
-
+        
         setIsSubmitting(true);
         const userDocRef = doc(db, 'users', user.uid);
         
-        const updateData = { name: data.name };
-
         try {
-            await updateDoc(userDocRef, updateData)
-            .catch((serverError) => {
-                 const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData,
-                }, serverError);
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError;
-            });
+            let photoURL = data.photoURL;
+            // Check if photoURL is a new upload (data URI)
+            if (photoURL && photoURL.startsWith('data:')) {
+                const storageRef = ref(storage, `profile-pictures/${user.uid}/profile.jpg`);
+                await uploadString(storageRef, photoURL, 'data_url');
+                photoURL = await getDownloadURL(storageRef);
+            }
+            
+            const updateData: { name: string, photoURL?: string | null } = { name: data.name };
+            if (photoURL !== userProfile.photoURL) {
+                updateData.photoURL = photoURL;
+            }
 
-            toast({
-                title: 'Profile Updated',
-                description: 'Your name has been successfully updated.',
-            });
+            if (data.name !== userProfile.name || photoURL !== userProfile.photoURL) {
+                 await updateDoc(userDocRef, updateData)
+                    .catch((serverError) => {
+                        const permissionError = new FirestorePermissionError({
+                            path: userDocRef.path,
+                            operation: 'update',
+                            requestResourceData: updateData,
+                        }, serverError);
+                        errorEmitter.emit('permission-error', permissionError);
+                        throw serverError;
+                    });
+
+                toast({ title: 'Profile Updated', description: 'Your information has been successfully updated.' });
+                form.reset(data, { keepValues: true }); // Resets dirty state
+            }
         } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Update Failed',
-                description: error.message || 'Could not update your profile.',
-            });
+            toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not update your profile.' });
         } finally {
              setIsSubmitting(false);
         }
@@ -197,23 +172,12 @@ export default function ProfileForm() {
     if (loading || !userProfile) {
         return (
              <Card>
-                <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Personal Information</CardTitle></CardHeader>
                 <CardContent className="space-y-8">
-                    <div className="flex flex-col items-center space-y-4">
-                        <Skeleton className="h-24 w-24 rounded-full" />
-                        <Skeleton className="h-4 w-48" />
-                    </div>
+                    <div className="flex flex-col items-center space-y-4"><Skeleton className="h-24 w-24 rounded-full" /><Skeleton className="h-4 w-48" /></div>
                     <div className="space-y-6">
-                        <div className="space-y-2">
-                            <Skeleton className="h-4 w-20" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
-                        <div className="space-y-2">
-                            <Skeleton className="h-4 w-20" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
+                        <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                        <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
                     </div>
                 </CardContent>
             </Card>
@@ -224,36 +188,18 @@ export default function ProfileForm() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Personal Information</CardTitle></CardHeader>
             <CardContent>
                 <div className="flex flex-col items-center space-y-4 mb-8">
                      <div className="relative group">
                         <Avatar className="h-24 w-24 border-2 border-primary">
                             <AvatarImage src={form.watch('photoURL') || undefined} />
-                            <AvatarFallback className="text-3xl">
-                                {getInitials(userProfile?.name, userProfile?.email)}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-3xl">{getInitials(userProfile?.name, userProfile?.email)}</AvatarFallback>
                         </Avatar>
-                        <button 
-                            onClick={handleAvatarClick} 
-                            disabled={isUploadingImage}
-                            className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
-                            {isUploadingImage ? (
-                                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                            ): (
-                                <Camera className="h-8 w-8 text-white" />
-                            )}
+                        <button onClick={handleAvatarClick} disabled={isUploadingImage} className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
+                            {isUploadingImage ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<Camera className="h-8 w-8 text-white" />)}
                         </button>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange}
-                            className="hidden" 
-                            accept="image/png, image/jpeg"
-                            disabled={isUploadingImage}
-                        />
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" disabled={isUploadingImage} />
                      </div>
                      <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 1MB).</p>
                 </div>

@@ -19,8 +19,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2, Upload, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
@@ -35,7 +36,7 @@ const formSchema = z.object({
   startTime: z.string({ required_error: 'A start time is required.' }),
   endTime: z.string({ required_error: 'An end time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  imageUrl: z.string({ required_error: 'Please select an event image.' }).url({ message: "Image URL must be a valid data URI." }),
+  imageUrl: z.string({ required_error: 'Please select an event image.' }),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
@@ -69,7 +70,6 @@ interface EventFormProps {
 
 const getMalaysiaTimeNow = () => {
     const now = new Date();
-    // Directly get the time in Malaysia timezone string
     const myTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
     return myTime;
 }
@@ -81,217 +81,179 @@ const isTodayInMalaysia = (date: Date) => {
            date.getFullYear() === today.getFullYear();
 }
 
-export default function EventForm({ event, isEditable = true }: EventFormProps) {
-  const { toast } = useToast();
-  const router = useRouter();
-  const { user } = useAuth(); // Get the authenticated user
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingQr, setIsUploadingQr] = useState(false);
-  
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const qrInputRef = useRef<HTMLInputElement>(null);
-
-  const isEditMode = !!event;
-
-  const form = useForm<EventFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: event?.title || '',
-      description: event?.description || '',
-      location: event?.location || '',
-      isFree: event?.isFree ? 'free' : 'paid',
-      price: event?.price || 1,
-      eventType: event?.eventType,
-      imageUrl: event?.imageUrl,
-      date: event?.date?.toDate(),
-      startTime: event?.startTime || '',
-      endTime: event?.endTime || '',
-      groupLink: event?.groupLink || '',
-      qrCodeUrl: event?.qrCodeUrl || '',
-    },
-  });
-  
-  const previewImage = form.watch('imageUrl');
-  const previewQr = form.watch('qrCodeUrl');
-  
-  useEffect(() => {
-    if (event) {
-      form.reset({
-        title: event.title,
-        description: event.description,
-        location: event.location,
-        isFree: event.isFree ? 'free' : 'paid',
-        price: event.price || 0,
-        eventType: event.eventType,
-        imageUrl: event.imageUrl,
-        date: event.date?.toDate(),
-        startTime: event.startTime,
-        endTime: event.endTime,
-        groupLink: event.groupLink || '',
-        qrCodeUrl: event.qrCodeUrl || '',
-      });
-    }
-  }, [event, form]);
-
-  const isPaid = form.watch('isFree') === 'paid';
-  const selectedDate = form.watch('date');
-
-  const handleReset = () => {
-    if (isEditMode) {
-        if (event) {
-            form.reset({
-                ...event,
-                isFree: event.isFree ? 'free' : 'paid',
-                date: event.date?.toDate(),
-            });
-        }
-    } else {
-        form.reset({
-            title: '',
-            description: '',
-            date: undefined,
-            startTime: '',
-            endTime: '',
-            imageUrl: undefined,
-            location: '',
-            isFree: 'free',
-            price: 1,
-            eventType: undefined,
-            groupLink: '',
-            qrCodeUrl: '',
-        });
-    }
-  }
-
-  const handleImageUpload = (type: 'event' | 'qr') => {
-    if(!isEditable) return;
-    if (type === 'event') {
-      imageInputRef.current?.click();
-    } else {
-      qrInputRef.current?.click();
-    }
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if(file.size > 2 * 1024 * 1024) { // 2MB limit
-      toast({
-        variant: 'destructive',
-        title: 'File too large',
-        description: 'Please upload an image smaller than 2MB.'
-      });
-      return;
-    }
-    
-    if (type === 'event') setIsUploadingImage(true);
-    if (type === 'qr') setIsUploadingQr(true);
-
-    try {
-      const dataUri = await new Promise<string>((resolve, reject) => {
+async function resizeImage(file: File, maxSize: number): Promise<string> {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         const img = document.createElement('img');
         
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = type === 'event' ? 800 : 400; // Smaller resize for QR
-          let width = img.width;
-          let height = img.height;
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
 
-          if (width > MAX_WIDTH) {
-            height = (height * MAX_WIDTH) / width;
-            width = MAX_WIDTH;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject('Could not get canvas context');
-          
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL(file.type, 0.9)); // toDataURL(type, quality)
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject('Could not get canvas context');
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL(file.type, 0.9));
         };
         img.onerror = reject;
 
         reader.onload = (e) => {
-          img.src = e.target?.result as string;
-        }
+            if (e.target?.result) {
+                img.src = e.target.result as string;
+            } else {
+                reject(new Error("FileReader failed to read file."));
+            }
+        };
         reader.readAsDataURL(file);
-      });
-      
-      const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
-      form.setValue(fieldToUpdate, dataUri, { shouldValidate: true });
-      
+    });
+}
+
+export default function EventForm({ event, isEditable = true }: EventFormProps) {
+  const { toast } = useToast();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const qrInputRef = useRef<HTMLInputElement>(null);
+  
+  const isEditMode = !!event;
+
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: isEditMode && event ? {
+      ...event,
+      isFree: event.isFree ? 'free' : 'paid',
+      date: event.date?.toDate(),
+    } : {
+      title: '',
+      description: '',
+      location: '',
+      isFree: 'free',
+      price: 1,
+      groupLink: '',
+    },
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
+      return;
+    }
+    
+    const setLoading = type === 'event' ? setIsUploadingImage : setIsUploadingQr;
+    setLoading(true);
+
+    try {
+        const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
+        const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
+        form.setValue(fieldToUpdate, resizedDataUrl, { shouldValidate: true });
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Image processing failed',
-        description: 'There was an error processing your image. Please try another one.'
-      });
+        console.error("Image processing failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Image processing failed",
+            description: "There was an error processing your image.",
+        });
     } finally {
-      if (type === 'event') setIsUploadingImage(false);
-      if (type === 'qr') setIsUploadingQr(false);
+        setLoading(false);
     }
   }
 
   async function onSubmit(data: EventFormValues) {
-     if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in to create or update an event.',
-      });
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
       return;
     }
     setIsSubmitting(true);
-    
-    const eventData: any = {
-        ...data,
-        isFree: data.isFree === 'free',
-        price: data.isFree === 'paid' ? data.price : 0,
-        qrCodeUrl: data.isFree === 'paid' ? data.qrCodeUrl : '',
-      };
 
     try {
-      if (isEditMode && event) {
-        const eventRef = doc(db, 'events', event.id);
-        await updateDoc(eventRef, eventData);
+        let imageUrl = data.imageUrl;
+        let qrCodeUrl = data.qrCodeUrl;
+        const docId = isEditMode && event ? event.id : doc(collection(db, 'events')).id;
 
-        toast({
-          title: 'Event Updated!',
-          description: `"${data.title}" has been updated successfully.`,
-        });
-        router.push('/admin');
+        // Upload event image if it's a data URI
+        if (imageUrl && imageUrl.startsWith('data:')) {
+            const storageRef = ref(storage, `event-images/${docId}/event-image.jpg`);
+            await uploadString(storageRef, imageUrl, 'data_url');
+            imageUrl = await getDownloadURL(storageRef);
+        }
 
-      } else {
-        eventData.createdAt = serverTimestamp();
-        eventData.organizerId = user.uid;
-        await addDoc(collection(db, 'events'), eventData);
-        
-        toast({
-          title: 'Event Created!',
-          description: `"${data.title}" has been added successfully.`,
-        });
-        handleReset();
-      }
+        // Upload QR code if it's a paid event and the URL is a data URI
+        if (data.isFree === 'paid' && qrCodeUrl && qrCodeUrl.startsWith('data:')) {
+            const storageRef = ref(storage, `qr-codes/${docId}/qr-code.jpg`);
+            await uploadString(storageRef, qrCodeUrl, 'data_url');
+            qrCodeUrl = await getDownloadURL(storageRef);
+        }
+
+        const eventData = {
+            ...data,
+            imageUrl,
+            qrCodeUrl: data.isFree === 'paid' ? qrCodeUrl : '',
+            isFree: data.isFree === 'free',
+            price: data.isFree === 'paid' ? data.price : 0,
+        };
+
+        if (isEditMode && event) {
+            await updateDoc(doc(db, 'events', event.id), eventData);
+            toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
+            router.push('/admin');
+        } else {
+            await addDoc(collection(db, 'events'), { ...eventData, createdAt: serverTimestamp(), organizerId: user.uid });
+            toast({ title: 'Event Created!', description: `"${data.title}" has been added.` });
+            handleReset();
+        }
     } catch (error: any) {
-        toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: error.message || `Could not ${isEditMode ? 'update' : 'save'} the event.`,
-        });
+        console.error("Submission failed:", error);
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   }
   
-  const getCurrentTime = () => {
-    return format(getMalaysiaTimeNow(), 'HH:mm');
-  };
-  
+  const handleReset = () => {
+    form.reset({
+        title: '',
+        description: '',
+        date: undefined,
+        startTime: '',
+        endTime: '',
+        imageUrl: undefined,
+        location: '',
+        isFree: 'free',
+        price: 1,
+        eventType: undefined,
+        groupLink: '',
+        qrCodeUrl: '',
+    });
+  }
+
+  const isPaid = form.watch('isFree') === 'paid';
+  const selectedDate = form.watch('date');
+  const previewImage = form.watch('imageUrl');
+  const previewQr = form.watch('qrCodeUrl');
+  const getCurrentTime = () => format(getMalaysiaTimeNow(), 'HH:mm');
   const isUploading = isUploadingImage || isUploadingQr;
 
   return (
@@ -324,16 +286,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                         <FormControl>
                           <Button
                             variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal group-disabled:cursor-not-allowed group-disabled:opacity-50',
-                              !field.value && 'text-muted-foreground'
-                            )}
+                            className={cn('w-full pl-3 text-left font-normal group-disabled:cursor-not-allowed group-disabled:opacity-50',!field.value && 'text-muted-foreground')}
                           >
-                            {field.value ? (
-                              format(field.value, 'PPP')
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
+                            {field.value ? format(field.value, 'PPP') : (<span>Pick a date</span>)}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
@@ -361,11 +316,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       <FormItem>
                         <FormLabel className="text-white">Start Time</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            {...field} 
-                            min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}
-                          />
+                          <Input type="time" {...field} min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}/>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -393,26 +344,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     <FormItem className="space-y-3">
                       <FormLabel className="text-white">Price</FormLabel>
                       <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex items-center space-x-4"
-                        >
+                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4">
                           <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="free" />
-                            </FormControl>
-                            <FormLabel className="font-normal text-white">
-                              Free
-                            </FormLabel>
+                            <FormControl><RadioGroupItem value="free" /></FormControl>
+                            <FormLabel className="font-normal text-white">Free</FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="paid" />
-                            </FormControl>
-                            <FormLabel className="font-normal text-white">
-                              Paid
-                            </FormLabel>
+                            <FormControl><RadioGroupItem value="paid" /></FormControl>
+                            <FormLabel className="font-normal text-white">Paid</FormLabel>
                           </FormItem>
                         </RadioGroup>
                       </FormControl>
@@ -427,26 +366,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     <FormItem className="space-y-3">
                       <FormLabel className="text-white">Event Type</FormLabel>
                       <FormControl>
-                         <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex items-center space-x-4"
-                        >
+                         <RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4">
                           <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="online" />
-                            </FormControl>
-                            <FormLabel className="font-normal text-white">
-                              Online
-                            </FormLabel>
+                            <FormControl><RadioGroupItem value="online" /></FormControl>
+                            <FormLabel className="font-normal text-white">Online</FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="physical" />
-                            </FormControl>
-                            <FormLabel className="font-normal text-white">
-                              Physical
-                            </FormLabel>
+                            <FormControl><RadioGroupItem value="physical" /></FormControl>
+                            <FormLabel className="font-normal text-white">Physical</FormLabel>
                           </FormItem>
                         </RadioGroup>
                       </FormControl>
@@ -473,39 +400,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   <FormItem>
                     <FormLabel className="text-white">Payment QR Code ( Square Format )</FormLabel>
                     <FormControl>
-                       <div 
-                        onClick={() => handleImageUpload('qr')}
-                        className={cn(
-                          "aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center",
-                          isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50"
-                        )}
-                      >
-                        <input 
-                          type="file" 
-                          ref={qrInputRef} 
-                          onChange={(e) => handleFileChange(e, 'qr')}
-                          className="hidden" 
-                          accept="image/png, image/jpeg, image/webp"
-                          disabled={!isEditable || isUploadingQr}
-                        />
-                        {previewQr ? (
-                          <Image src={previewQr} alt="QR code preview" fill style={{objectFit: 'contain'}} />
-                        ) : (
-                          <span>Click to upload QR</span>
-                        )}
-
-                        {isEditable && (
-                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            {isUploadingQr ? (
-                              <Loader2 className="h-8 w-8 text-white animate-spin" />
-                            ): (
-                              <div className='text-center text-white'>
-                                <Upload className="h-8 w-8 mx-auto" />
-                                <p>Upload QR</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                       <div onClick={() => qrInputRef.current?.click()} className={cn("aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
+                        <input type="file" ref={qrInputRef} onChange={(e) => handleFileChange(e, 'qr')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || isUploadingQr}/>
+                        {previewQr ? (<Image src={previewQr} alt="QR code preview" fill style={{objectFit: 'contain'}} />) : (<span>Click to upload QR</span>)}
+                        {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            {isUploadingQr ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload QR</p></div>)}
+                        </div>)}
                       </div>
                     </FormControl>
                     <FormMessage>{form.formState.errors.qrCodeUrl?.message}</FormMessage>
@@ -543,39 +443,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               <FormItem>
                 <FormLabel className="text-white">Event Image</FormLabel>
                 <FormControl>
-                  <div 
-                    onClick={() => handleImageUpload('event')}
-                    className={cn(
-                      "aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center",
-                      isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50"
-                    )}
-                  >
-                    <input 
-                      type="file" 
-                      ref={imageInputRef} 
-                      onChange={(e) => handleFileChange(e, 'event')} 
-                      className="hidden" 
-                      accept="image/png, image/jpeg, image/webp"
-                      disabled={!isEditable || isUploadingImage}
-                    />
-                    {previewImage ? (
-                      <Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />
-                    ) : (
-                      <span>Click to upload image</span>
-                    )}
-
-                    {isEditable && (
-                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                        {isUploadingImage ? (
-                          <Loader2 className="h-8 w-8 text-white animate-spin" />
-                        ): (
-                          <div className='text-center text-white'>
-                            <Upload className="h-8 w-8 mx-auto" />
-                            <p>Upload Image</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div onClick={() => imageInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
+                    <input type="file" ref={imageInputRef} onChange={(e) => handleFileChange(e, 'event')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || isUploadingImage}/>
+                    {previewImage ? (<Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />) : (<span>Click to upload image</span>)}
+                    {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        {isUploadingImage ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload Image</p></div>)}
+                    </div>)}
                   </div>
                 </FormControl>
                 <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
@@ -587,11 +460,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   <FormItem className="flex flex-col flex-grow">
                     <FormLabel className="text-white">Event Description</FormLabel>
                     <FormControl className="flex-grow">
-                      <Textarea
-                        placeholder="Describe the event, what it's about, and who should attend."
-                        className="resize-none min-h-[150px] flex-grow"
-                        {...field}
-                      />
+                      <Textarea placeholder="Describe the event, what it's about, and who should attend." className="resize-none min-h-[150px] flex-grow" {...field}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -599,19 +468,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               />
             </div>
           </div>
-
           <div className="flex justify-end gap-2 mt-8">
-              {!isEditMode && (
-                <Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}>
-                  <Trash2 className="mr-2 h-4 w-4"/>
-                  Clear Form
-                </Button>
-              )}
-              {isEditMode && (
-                   <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                      Cancel
-                  </Button>
-              )}
+              {!isEditMode && (<Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}><Trash2 className="mr-2 h-4 w-4"/>Clear Form</Button>)}
+              {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
               <Button type="submit" disabled={isSubmitting || !isEditable || isUploading}>
                 {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
               </Button>

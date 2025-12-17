@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // TEMPORARY: Allow read and write access for any authenticated user.
+    // This is for diagnostic purposes to rule out security rules as the cause of timeouts.
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

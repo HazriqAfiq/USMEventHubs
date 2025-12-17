@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
@@ -150,13 +151,39 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
     return { filteredEvents: baseFilteredEvents, availableMonths };
   }, [events, filter, monthFilter, chartMonthFilter]);
 
-  const handleDelete = async (eventId: string, eventTitle: string) => {
+  const handleDelete = async (eventToDelete: Event) => {
     try {
-      await deleteDoc(doc(db, 'events', eventId));
+      // Delete associated images from Firebase Storage first
+      if (eventToDelete.imageUrl) {
+        try {
+          const imageRef = ref(storage, eventToDelete.imageUrl);
+          await deleteObject(imageRef);
+        } catch (storageError: any) {
+          // Log error but don't block deletion of Firestore doc if image not found
+          if (storageError.code !== 'storage/object-not-found') {
+             console.error("Error deleting event image: ", storageError);
+          }
+        }
+      }
+      if (eventToDelete.qrCodeUrl) {
+         try {
+          const qrRef = ref(storage, eventToDelete.qrCodeUrl);
+          await deleteObject(qrRef);
+        } catch (storageError: any) {
+           if (storageError.code !== 'storage/object-not-found') {
+            console.error("Error deleting QR code image: ", storageError);
+           }
+        }
+      }
+
+      // After attempting to delete images, delete the Firestore document
+      await deleteDoc(doc(db, 'events', eventToDelete.id));
+
       toast({
         title: 'Event Deleted',
-        description: `"${eventTitle}" has been removed.`,
+        description: `"${eventToDelete.title}" and its associated images have been removed.`,
       });
+
     } catch (error) {
       console.error("Error removing document: ", error);
       toast({
@@ -264,12 +291,12 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the event "{event.title}".
+                      This action cannot be undone. This will permanently delete the event "{event.title}" and its associated images from storage.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(event.id, event.title)}>
+                    <AlertDialogAction onClick={() => handleDelete(event)}>
                       Continue
                     </AlertDialogAction>
                   </AlertDialogFooter>

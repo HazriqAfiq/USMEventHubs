@@ -58,6 +58,48 @@ const faculties = [
   "School of Biological Sciences", "School of Chemical Sciences", "School of Communication", "School of Computer Sciences", "School of Educational Studies", "School of Housing, Building and Planning", "School of Humanities", "School of Industrial Technology", "School of Language, Literacies and Translation", "School of Management", "School of Mathematical Sciences", "School of Physics", "School of Social Sciences", "School of The Arts", "Other",
 ];
 
+async function resizeImage(file: File, maxSize: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const img = document.createElement('img');
+        
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject('Could not get canvas context');
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL(file.type, 0.9));
+        };
+        img.onerror = reject;
+
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                img.src = e.target.result as string;
+            } else {
+                reject(new Error("FileReader failed to read file."));
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 
 export default function RegistrationForm({ 
   isOpen, onClose, onSubmit, isSubmitting, eventPrice, eventQrCodeUrl, isRegistrationClosed, eventId
@@ -101,25 +143,18 @@ export default function RegistrationForm({
       return;
     }
     
-    let finalPaymentProofUrl = data.paymentProofUrl;
-    if (isPaidEvent && finalPaymentProofUrl && finalPaymentProofUrl.startsWith('data:') && user && eventId) {
-        const storageRef = ref(storage, `payment-proofs/${eventId}/${user.uid}/proof.jpg`);
-        await uploadString(storageRef, finalPaymentProofUrl, 'data_url');
-        finalPaymentProofUrl = await getDownloadURL(storageRef);
-    }
-    
     const finalFaculty = data.faculty === 'Other' ? data.otherFaculty! : data.faculty;
     onSubmit({
         name: data.name,
         matricNo: data.matricNo,
         faculty: finalFaculty,
-        paymentProofUrl: finalPaymentProofUrl,
+        paymentProofUrl: data.paymentProofUrl, // The URL is already the final storage URL from handleFileChange
     });
   };
   
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user || !eventId) return;
 
     if(file.size > 2 * 1024 * 1024) { // 2MB limit
       toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
@@ -128,15 +163,18 @@ export default function RegistrationForm({
     
     setIsUploading(true);
     try {
-      const dataUri = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      form.setValue('paymentProofUrl', dataUri, { shouldValidate: true });
+      const storageRef = ref(storage, `payment-proofs/${eventId}/${user.uid}/proof.jpg`);
+      const resizedDataUrl = await resizeImage(file, 800); // Resize receipt to a max of 800px
+      
+      await uploadString(storageRef, resizedDataUrl, 'data_url');
+      const downloadURL = await getDownloadURL(storageRef);
+
+      form.setValue('paymentProofUrl', downloadURL, { shouldValidate: true, shouldDirty: true });
+      toast({ title: 'Receipt uploaded successfully.' });
+
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Image processing failed', description: 'There was an error processing your image.' });
+      console.error("Receipt upload failed:", error);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'There was an error uploading your receipt.' });
     } finally {
       setIsUploading(false);
     }
@@ -144,7 +182,14 @@ export default function RegistrationForm({
 
   const handleNextStep = async () => {
     const isValid = await form.trigger(['name', 'matricNo', 'faculty', 'otherFaculty']);
-    if (isValid) setStep(2);
+    if (isValid) {
+       if (isPaidEvent) {
+        setStep(2);
+      } else {
+        // If it's a free event, skip payment steps and submit directly
+        handleFormSubmit(form.getValues());
+      }
+    }
   }
 
   const renderStepContent = () => {
@@ -179,7 +224,16 @@ export default function RegistrationForm({
         default: return null;
       }
     } else {
-      return (<DialogFooter className="pt-4"><DialogClose asChild><Button type="button" variant="outline" disabled={isSubmitting || isRegistrationClosed}>Cancel</Button></DialogClose><Button type="submit" disabled={isSubmitting || isRegistrationClosed}>{isSubmitting ? 'Submitting...' : (isRegistrationClosed ? 'Registration Closed' : 'Submit Registration')}</Button></DialogFooter>)
+        return (
+            <DialogFooter className="pt-4">
+                <DialogClose asChild>
+                    <Button type="button" variant="outline" disabled={isSubmitting || isRegistrationClosed}>Cancel</Button>
+                </DialogClose>
+                <Button type="button" onClick={handleNextStep} disabled={isSubmitting || isRegistrationClosed}>
+                    {isSubmitting ? 'Submitting...' : (isRegistrationClosed ? 'Registration Closed' : 'Submit Registration')}
+                </Button>
+            </DialogFooter>
+        );
     }
   }
 

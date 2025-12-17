@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,7 +83,7 @@ export default function ProfileForm() {
     const { user, userProfile, loading } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<ProfileFormValues>({
@@ -101,26 +102,34 @@ export default function ProfileForm() {
     }, [userProfile, form]);
     
     const handleAvatarClick = () => {
-        if (!isUploadingImage) fileInputRef.current?.click();
+        if (!isUploading) fileInputRef.current?.click();
+    }
+
+    const handleImageUpload = async (file: File): Promise<string> => {
+        if (!user) throw new Error("User not authenticated.");
+
+        const filePath = `profile-pictures/${user.uid}/profile.jpg`;
+        const storageRef = ref(storage, filePath);
+        
+        const resizedDataUrl = await resizeImage(file, 200);
+        
+        await uploadString(storageRef, resizedDataUrl, 'data_url');
+        return getDownloadURL(storageRef);
     }
     
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || !user) return;
+        if (!file) return;
 
-        if (file.size > 1 * 1024 * 1024) { // 1MB limit
-            toast({ variant: 'destructive', title: 'File Too Large', description: 'Please select an image smaller than 1MB.' });
-            return;
-        }
-
-        setIsUploadingImage(true);
+        setIsUploading(true);
         try {
-            const dataUri = await resizeImage(file, 200);
-            form.setValue('photoURL', dataUri, { shouldValidate: true, shouldDirty: true });
+            const downloadURL = await handleImageUpload(file);
+            form.setValue('photoURL', downloadURL, { shouldValidate: true, shouldDirty: true });
+            toast({ title: 'Avatar updated', description: 'Click "Save Changes" to apply.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not process your image.' });
         } finally {
-            setIsUploadingImage(false);
+            setIsUploading(false);
         }
     }
 
@@ -134,20 +143,14 @@ export default function ProfileForm() {
         const userDocRef = doc(db, 'users', user.uid);
         
         try {
-            let photoURL = data.photoURL;
-            // Check if photoURL is a new upload (data URI)
-            if (photoURL && photoURL.startsWith('data:')) {
-                const storageRef = ref(storage, `profile-pictures/${user.uid}/profile.jpg`);
-                await uploadString(storageRef, photoURL, 'data_url');
-                photoURL = await getDownloadURL(storageRef);
-            }
-            
             const updateData: { name: string, photoURL?: string | null } = { name: data.name };
-            if (photoURL !== userProfile.photoURL) {
-                updateData.photoURL = photoURL;
+            
+            // Only include photoURL in the update if it has actually changed.
+            if (data.photoURL !== userProfile.photoURL) {
+                updateData.photoURL = data.photoURL;
             }
 
-            if (data.name !== userProfile.name || photoURL !== userProfile.photoURL) {
+            if (data.name !== userProfile.name || data.photoURL !== userProfile.photoURL) {
                  await updateDoc(userDocRef, updateData)
                     .catch((serverError) => {
                         const permissionError = new FirestorePermissionError({
@@ -160,7 +163,7 @@ export default function ProfileForm() {
                     });
 
                 toast({ title: 'Profile Updated', description: 'Your information has been successfully updated.' });
-                form.reset(data, { keepValues: true }); // Resets dirty state
+                form.reset(form.getValues());
             }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not update your profile.' });
@@ -196,12 +199,12 @@ export default function ProfileForm() {
                             <AvatarImage src={form.watch('photoURL') || undefined} />
                             <AvatarFallback className="text-3xl">{getInitials(userProfile?.name, userProfile?.email)}</AvatarFallback>
                         </Avatar>
-                        <button onClick={handleAvatarClick} disabled={isUploadingImage} className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
-                            {isUploadingImage ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<Camera className="h-8 w-8 text-white" />)}
+                        <button onClick={handleAvatarClick} disabled={isUploading} className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
+                            {isUploading ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<Camera className="h-8 w-8 text-white" />)}
                         </button>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" disabled={isUploadingImage} />
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" disabled={isUploading} />
                      </div>
-                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 1MB).</p>
+                     <p className="text-sm text-muted-foreground">Click the image to upload a new one (max 2MB).</p>
                 </div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -226,7 +229,7 @@ export default function ProfileForm() {
                                 <FormItem>
                                     <FormLabel className="text-white">Email Address</FormLabel>
                                     <FormControl>
-                                        <Input disabled {...field} />
+                                        <Input disabled {...field} value={field.value || ''} />
                                     </FormControl>
                                     <FormDescription>Your email address cannot be changed.</FormDescription>
                                     <FormMessage />
@@ -234,7 +237,7 @@ export default function ProfileForm() {
                             )}
                         />
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting || !formIsDirty}>
+                            <Button type="submit" disabled={isSubmitting || !formIsDirty || isUploading}>
                                 {isSubmitting ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
@@ -244,3 +247,5 @@ export default function ProfileForm() {
         </Card>
     );
 }
+
+    

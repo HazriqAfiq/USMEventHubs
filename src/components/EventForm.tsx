@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,14 +30,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { v4 as uuidv4 } from 'uuid';
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
   date: z.date({ required_error: 'A date is required.' }),
-  startTime: z.string({ required_error: 'A start time is required.' }),
-  endTime: z.string({ required_error: 'An end time is required.' }),
+  startTime: z.string({ required_error: 'A start time is required.' }).min(1, { message: 'Start time is required.' }),
+  endTime: z.string({ required_error: 'An end time is required.' }).min(1, { message: 'End time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  imageUrl: z.string({ required_error: 'Please select an event image.' }),
+  imageUrl: z.string({ required_error: 'Please select an event image.' }).min(1, { message: 'Image is required.' }),
   location: z.string().min(3, { message: 'Location must be at least 3 characters.' }),
   price: z.coerce.number().min(0).optional(),
   isFree: z.enum(['free', 'paid']).default('free'),
@@ -129,9 +131,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingQr, setIsUploadingQr] = useState(false);
-
   const imageInputRef = useRef<HTMLInputElement>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
   
@@ -143,43 +142,41 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       ...event,
       isFree: event.isFree ? 'free' : 'paid',
       date: event.date?.toDate(),
+      groupLink: event.groupLink || '',
+      qrCodeUrl: event.qrCodeUrl || '',
     } : {
       title: '',
+      date: undefined,
+      startTime: '',
+      endTime: '',
       description: '',
+      imageUrl: '',
       location: '',
+      price: 0,
       isFree: 'free',
-      price: 1,
+      eventType: undefined,
       groupLink: '',
+      qrCodeUrl: '',
     },
   });
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    
-    if (file.size > 2 * 1024 * 1024) { // 2MB limit
-      toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
-      return;
-    }
-    
-    const setLoading = type === 'event' ? setIsUploadingImage : setIsUploadingQr;
-    setLoading(true);
+  const handleImageUpload = async (file: File, type: 'event' | 'qr'): Promise<string> => {
+    if (!user) throw new Error("User not authenticated for upload.");
 
-    try {
-        const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
-        const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
-        form.setValue(fieldToUpdate, resizedDataUrl, { shouldValidate: true });
-    } catch (error) {
-        console.error("Image processing failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Image processing failed",
-            description: "There was an error processing your image.",
-        });
-    } finally {
-        setLoading(false);
+    let path: string;
+    const eventId = isEditMode ? event.id : form.getValues('title').replace(/\s+/g, '-').toLowerCase() + '-' + uuidv4();
+
+    if (type === 'event') {
+        path = `event-images/${eventId}/event-image.jpg`;
+    } else {
+        path = `qr-codes/${eventId}/qr-code.jpg`;
     }
-  }
+
+    const storageRef = ref(storage, path);
+    const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
+    await uploadString(storageRef, resizedDataUrl, 'data_url');
+    return getDownloadURL(storageRef);
+  };
 
   async function onSubmit(data: EventFormValues) {
     if (!user) {
@@ -189,30 +186,11 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     setIsSubmitting(true);
 
     try {
-        let imageUrl = data.imageUrl;
-        let qrCodeUrl = data.qrCodeUrl;
-        const docId = isEditMode && event ? event.id : doc(collection(db, 'events')).id;
-
-        // Upload event image if it's a data URI
-        if (imageUrl && imageUrl.startsWith('data:')) {
-            const storageRef = ref(storage, `event-images/${docId}/event-image.jpg`);
-            await uploadString(storageRef, imageUrl, 'data_url');
-            imageUrl = await getDownloadURL(storageRef);
-        }
-
-        // Upload QR code if it's a paid event and the URL is a data URI
-        if (data.isFree === 'paid' && qrCodeUrl && qrCodeUrl.startsWith('data:')) {
-            const storageRef = ref(storage, `qr-codes/${docId}/qr-code.jpg`);
-            await uploadString(storageRef, qrCodeUrl, 'data_url');
-            qrCodeUrl = await getDownloadURL(storageRef);
-        }
-
         const eventData = {
             ...data,
-            imageUrl,
-            qrCodeUrl: data.isFree === 'paid' ? qrCodeUrl : '',
             isFree: data.isFree === 'free',
             price: data.isFree === 'paid' ? data.price : 0,
+            qrCodeUrl: data.isFree === 'paid' ? data.qrCodeUrl : '',
         };
 
         if (isEditMode && event) {
@@ -231,6 +209,26 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         setIsSubmitting(false);
     }
   }
+
+  const [uploadProgress, setUploadProgress] = useState<{ type: 'event' | 'qr' | null, loading: boolean }>({ type: null, loading: false });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'event' | 'qr') => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploadProgress({ type, loading: true });
+      try {
+          const downloadURL = await handleImageUpload(file, type);
+          const fieldToUpdate = type === 'event' ? 'imageUrl' : 'qrCodeUrl';
+          form.setValue(fieldToUpdate, downloadURL, { shouldValidate: true, shouldDirty: true });
+          toast({ title: `${type === 'event' ? 'Image' : 'QR Code'} uploaded!` });
+      } catch (error: any) {
+          console.error("Upload failed:", error);
+          toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+      } finally {
+          setUploadProgress({ type, loading: false });
+      }
+  };
   
   const handleReset = () => {
     form.reset({
@@ -239,10 +237,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         date: undefined,
         startTime: '',
         endTime: '',
-        imageUrl: undefined,
+        imageUrl: '',
         location: '',
         isFree: 'free',
-        price: 1,
+        price: 0,
         eventType: undefined,
         groupLink: '',
         qrCodeUrl: '',
@@ -254,7 +252,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const previewImage = form.watch('imageUrl');
   const previewQr = form.watch('qrCodeUrl');
   const getCurrentTime = () => format(getMalaysiaTimeNow(), 'HH:mm');
-  const isUploading = isUploadingImage || isUploadingQr;
+  const isUploading = uploadProgress.loading;
 
   return (
     <Form {...form}>
@@ -401,10 +399,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     <FormLabel className="text-white">Payment QR Code ( Square Format )</FormLabel>
                     <FormControl>
                        <div onClick={() => qrInputRef.current?.click()} className={cn("aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
-                        <input type="file" ref={qrInputRef} onChange={(e) => handleFileChange(e, 'qr')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || isUploadingQr}/>
+                        <input type="file" ref={qrInputRef} onChange={(e) => handleFileChange(e, 'qr')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || (isUploading && uploadProgress.type === 'qr')}/>
                         {previewQr ? (<Image src={previewQr} alt="QR code preview" fill style={{objectFit: 'contain'}} />) : (<span>Click to upload QR</span>)}
                         {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            {isUploadingQr ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload QR</p></div>)}
+                            {(isUploading && uploadProgress.type === 'qr') ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload QR</p></div>)}
                         </div>)}
                       </div>
                     </FormControl>
@@ -444,10 +442,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 <FormLabel className="text-white">Event Image</FormLabel>
                 <FormControl>
                   <div onClick={() => imageInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
-                    <input type="file" ref={imageInputRef} onChange={(e) => handleFileChange(e, 'event')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || isUploadingImage}/>
+                    <input type="file" ref={imageInputRef} onChange={(e) => handleFileChange(e, 'event')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || (isUploading && uploadProgress.type === 'event')}/>
                     {previewImage ? (<Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />) : (<span>Click to upload image</span>)}
                     {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                        {isUploadingImage ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload Image</p></div>)}
+                        {(isUploading && uploadProgress.type === 'event') ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload Image</p></div>)}
                     </div>)}
                   </div>
                 </FormControl>
@@ -480,3 +478,5 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
+
+    

@@ -274,7 +274,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
               </div>
             </div>
             <div className='flex gap-2 flex-shrink-0'>
-               <Link href={`/event/${event.id}`} target="_blank">
+               <Link href={`/event/${event.id}`}>
                 <Button variant="outline" size="icon">
                   <MessageSquare className="h-4 w-4" />
                   <span className="sr-only">View Chat</span>

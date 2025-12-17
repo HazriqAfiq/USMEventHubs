@@ -148,18 +148,13 @@ export default function RegistrationForm({
         name: data.name,
         matricNo: data.matricNo,
         faculty: finalFaculty,
-        paymentProofUrl: data.paymentProofUrl, // The URL is already the final storage URL from handleFileChange
+        paymentProofUrl: data.paymentProofUrl,
     });
   };
   
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user || !eventId) return;
-
-    if(file.size > 2 * 1024 * 1024) { // 2MB limit
-      toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
-      return;
-    }
     
     setIsUploading(true);
     try {

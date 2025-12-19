@@ -30,6 +30,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import ChatRoom from '@/components/ChatRoom';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const toMalaysiaTime = (date: Date) => {
   return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
@@ -272,10 +273,37 @@ export default function EventDetailPage() {
         Back to Events
       </Button>
       <Card className="overflow-hidden mt-4">
-        <div className="relative h-64 md:h-96 w-full">
-          <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
+        <div className="relative">
+          <Carousel className="w-full">
+            <CarouselContent>
+              <CarouselItem>
+                <div className="relative h-64 md:h-96 w-full">
+                  <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
+                </div>
+              </CarouselItem>
+              {event.videoUrl && (
+                <CarouselItem>
+                  <div className="relative h-64 md:h-96 w-full bg-black flex items-center justify-center">
+                    <video
+                      src={event.videoUrl}
+                      controls
+                      className="max-w-full max-h-full"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                </CarouselItem>
+              )}
+            </CarouselContent>
+             {(event.videoUrl) && (
+              <>
+                <CarouselPrevious className="left-4" />
+                <CarouselNext className="right-4" />
+              </>
+            )}
+          </Carousel>
           {isOrganizer && (
-            <Button asChild className="absolute top-4 right-4" variant="secondary">
+            <Button asChild className="absolute top-4 right-4 z-10" variant="secondary">
               <Link href={`/admin/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
                 Edit Event
@@ -465,3 +493,4 @@ export default function EventDetailPage() {
 
 
     
+

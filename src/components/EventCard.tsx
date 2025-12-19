@@ -23,7 +23,7 @@ import type { Event } from '@/types';
 import { Badge } from './ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { GlowEffect } from './GlowEffect';
@@ -64,6 +64,23 @@ export default function EventCard({ event }: EventCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const router = useRouter();
 
+  const [isHovering, setIsHovering] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isHovering && event.videoUrl) {
+        videoRef.current.play().catch(error => {
+          // Autoplay was prevented.
+          console.log("Video autoplay prevented:", error);
+        });
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isHovering, event.videoUrl]);
+
+
   useEffect(() => {
     if (user && event.id) {
       const registrationRef = doc(
@@ -96,7 +113,7 @@ export default function EventCard({ event }: EventCardProps) {
   };
 
   return (
-    <div className="perspective cursor-pointer" onClick={handleCardClick}>
+    <div className="perspective cursor-pointer" onClick={handleCardClick} onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
       <GlowEffect hover intensity="medium" className="h-full">
         <div
           className={cn(
@@ -113,13 +130,30 @@ export default function EventCard({ event }: EventCardProps) {
                 isRegistered && 'border-accent ring-2 ring-accent'
               )}
             >
-              {/* Image */}
+              {/* Image & Video Container */}
               <div className="relative aspect-[16/9] w-full">
+                {event.videoUrl && (
+                  <video
+                    ref={videoRef}
+                    src={event.videoUrl}
+                    muted
+                    loop
+                    playsInline
+                    className={cn(
+                      'absolute inset-0 w-full h-full object-cover transition-opacity duration-500',
+                      isHovering ? 'opacity-100 z-10' : 'opacity-0'
+                    )}
+                  />
+                )}
                 <Image
                   src={event.imageUrl}
                   alt={event.title}
                   fill
                   style={{ objectFit: 'cover' }}
+                  className={cn(
+                    'transition-opacity duration-500',
+                    isHovering && event.videoUrl ? 'opacity-0' : 'opacity-100'
+                  )}
                 />
                 <div className="absolute top-2 right-2 flex gap-2">
                   {isRegistered && (

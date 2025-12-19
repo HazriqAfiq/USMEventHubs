@@ -17,6 +17,7 @@ export interface Event {
   endTime: string;
   description: string;
   imageUrl: string;
+  videoUrl?: string;
   location: string;
   isFree: boolean;
   price?: number;

@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowDown } from 'lucide-react';
 
 interface WelcomePageProps {
     onGetStarted: () => void;
@@ -23,7 +24,7 @@ export function WelcomePage({ onGetStarted, videoSrc = '/videos/welcome-bg.mp4' 
 
     return (
         <div
-            className={`fixed inset-0 z-40 flex items-center justify-center overflow-hidden transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'
+            className={`relative h-screen min-h-[600px] w-full flex items-center justify-center overflow-hidden transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'
                 }`}
         >
             {/* Video Background */}
@@ -98,8 +99,12 @@ export function WelcomePage({ onGetStarted, videoSrc = '/videos/welcome-bg.mp4' 
                 <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-800/20 rounded-full blur-3xl animate-pulse delay-1000" />
             </div>
 
-            {/* Bottom gradient fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent z-0" />
+            {/* Bottom gradient fade and scroll indicator */}
+             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent z-0 flex flex-col items-center justify-end pb-4">
+                <p className="text-white/50 text-sm mb-2 animate-pulse">Scroll Down</p>
+                <ArrowDown className="h-5 w-5 text-white/50 animate-bounce" />
+            </div>
         </div>
     );
 }
+

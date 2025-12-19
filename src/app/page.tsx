@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import EventCard from '@/components/EventCard';
@@ -26,7 +27,8 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
-  const [showWelcome, setShowWelcome] = useState(false);
+  
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -65,12 +67,11 @@ export default function Home() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  // Hide splash screen after a delay, then show welcome page
+  // Hide splash screen after a delay
   useEffect(() => {
     if (!authLoading && user) {
       const timer = setTimeout(() => {
         setShowSplash(false);
-        setShowWelcome(true); // Show welcome page after splash
       }, 1700); // Same duration as splash screen animation
       return () => clearTimeout(timer);
     }
@@ -112,7 +113,7 @@ export default function Home() {
 
 
   const handleGetStarted = () => {
-    setShowWelcome(false);
+    mainContentRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
 
@@ -142,84 +143,82 @@ export default function Home() {
     return <SplashScreen />;
   }
 
-  if (showWelcome) {
-    return <WelcomePage onGetStarted={handleGetStarted} />;
-  }
-
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Featured Events Carousel */}
-      <ScrollAnimation delay={200}>
-        <FeaturedEventsCarousel events={filteredEvents} />
-      </ScrollAnimation>
+    <>
+      <WelcomePage onGetStarted={handleGetStarted} />
+      <div ref={mainContentRef} className="container mx-auto px-4 py-8">
+        {/* Featured Events Carousel */}
+        <ScrollAnimation delay={200}>
+          <FeaturedEventsCarousel events={filteredEvents} />
+        </ScrollAnimation>
 
 
-      <ScrollAnimation delay={400}>
-        <div className="flex justify-center mb-8">
-          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <ToggleGroup
-                type="single"
-                size="sm"
-                variant="outline"
-                value={priceFilter}
-                onValueChange={(value) => setPriceFilter(value as any || 'all')}
-                aria-label="Filter by price"
-              >
-                <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
-                <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
-                <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1" />Paid</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            <div className="flex items-center gap-2">
-              <ToggleGroup
-                type="single"
-                size="sm"
-                variant="outline"
-                value={typeFilter}
-                onValueChange={(value) => setTypeFilter(value as any || 'all')}
-                aria-label="Filter by type"
-              >
-                <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
-                <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1" />Online</ToggleGroupItem>
-                <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1" />Physical</ToggleGroupItem>
-              </ToggleGroup>
+        <ScrollAnimation delay={400}>
+          <div className="flex justify-center mb-8">
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={priceFilter}
+                  onValueChange={(value) => setPriceFilter(value as any || 'all')}
+                  aria-label="Filter by price"
+                >
+                  <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
+                  <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
+                  <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1" />Paid</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              <div className="flex items-center gap-2">
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={typeFilter}
+                  onValueChange={(value) => setTypeFilter(value as any || 'all')}
+                  aria-label="Filter by type"
+                >
+                  <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
+                  <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1" />Online</ToggleGroupItem>
+                  <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1" />Physical</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
           </div>
-        </div>
-      </ScrollAnimation>
+        </ScrollAnimation>
 
-      {loadingEvents ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="space-y-4">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ))}
-        </div>
-      ) : filteredEvents.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredEvents.map((event, index) => (
-            <ScrollAnimation key={event.id} delay={index * 100}>
-              <EventCard event={event} />
-            </ScrollAnimation>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10 animate-fade-in-up">
-          <div className="bg-white/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        {loadingEvents ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
           </div>
-          <p className="text-xl text-white/80 font-medium">No events found matching your criteria.</p>
-          <p className="text-white/50 mt-2">Try adjusting your filters or search terms.</p>
-        </div>
-      )}
-    </div>
+        ) : filteredEvents.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredEvents.map((event, index) => (
+              <ScrollAnimation key={event.id} delay={index * 100}>
+                <EventCard event={event} />
+              </ScrollAnimation>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10 animate-fade-in-up">
+            <div className="bg-white/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <p className="text-xl text-white/80 font-medium">No events found matching your criteria.</p>
+            <p className="text-white/50 mt-2">Try adjusting your filters or search terms.</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

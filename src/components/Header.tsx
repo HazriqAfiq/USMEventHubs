@@ -24,7 +24,7 @@ export function Header() {
 
   const handleLogout = async () => {
     await auth.signOut();
-    router.push('/');
+    router.push('/login');
   };
 
   const getInitials = (name?: string | null, email?: string | null) => {
@@ -41,7 +41,7 @@ export function Header() {
     <header className="bg-card/95 backdrop-blur-sm text-card-foreground border-b sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-14">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={100} height={35} className="object-contain h-8 w-auto" />
+          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={100} height={35} className="object-contain h-8" />
           <span className="font-headline font-bold text-base sm:text-lg tracking-tight">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">

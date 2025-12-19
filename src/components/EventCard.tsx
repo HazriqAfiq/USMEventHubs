@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Laptop, MapPin, Users, Clock, UserCheck } from 'lucide-react';
@@ -13,7 +13,6 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { GlowEffect } from './GlowEffect';
-
 
 interface EventCardProps {
   event: Event;
@@ -38,6 +37,8 @@ const formatTime = (timeString: string) => {
 export default function EventCard({ event }: EventCardProps) {
   const { user } = useAuth();
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (user && event.id) {
@@ -45,25 +46,32 @@ export default function EventCard({ event }: EventCardProps) {
       const unsubscribe = onSnapshot(registrationRef, (doc) => {
         setIsRegistered(doc.exists());
       }, (error) => {
-        // This will likely be a permission error if rules are not set correctly
-        // for non-admins. We can safely ignore it and assume not registered.
         setIsRegistered(false);
       });
       return () => unsubscribe();
     } else {
-      // Ensure that if user is logged out, we reset the registered state.
       setIsRegistered(false);
     }
   }, [user, event.id]);
 
+  const handleCardClick = () => {
+    setIsFlipped(true);
+    setTimeout(() => {
+      router.push(`/event/${event.id}`);
+    }, 300); // Wait for flip animation to partially complete
+  };
+
   return (
-    <Link href={`/event/${event.id}`} className="flex">
-      <GlowEffect hover intensity="medium" className="flex-1">
+    <div className="perspective" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
+      <GlowEffect hover intensity="medium" className={cn(
+          "flex-1 transition-transform duration-500",
+          isFlipped ? '[transform:rotateY(180deg)]' : ''
+        )} style={{ transformStyle: 'preserve-3d' }}>
         <Card className={cn(
-          "flex flex-col overflow-hidden h-[500px] transition-all hover:shadow-xl hover:-translate-y-1 w-full",
-          isRegistered && "border-accent ring-2 ring-accent"
+          "flex flex-col overflow-hidden h-[500px] w-full transition-all duration-300 ease-in-out",
+           isRegistered && "border-accent ring-2 ring-accent"
         )}>
-          <div className="relative aspect-video w-full">
+          <div className="relative aspect-[16/9] w-full">
             <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
             <div className="absolute top-2 right-2 flex gap-2">
               {isRegistered && (
@@ -112,6 +120,6 @@ export default function EventCard({ event }: EventCardProps) {
           </CardFooter>
         </Card>
       </GlowEffect>
-    </Link>
+    </div>
   );
 }

@@ -104,4 +104,3 @@ export function WelcomePage({ onGetStarted, videoSrc = '/videos/welcome-bg.mp4' 
         </div>
     );
 }
-

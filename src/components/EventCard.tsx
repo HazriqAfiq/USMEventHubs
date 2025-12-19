@@ -65,20 +65,42 @@ export default function EventCard({ event }: EventCardProps) {
   const router = useRouter();
 
   const [isHovering, setIsHovering] = useState(false);
+  const [isInView, setIsInView] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (videoRef.current) {
-      if (isHovering && event.videoUrl) {
-        videoRef.current.play().catch(error => {
-          // Autoplay was prevented.
-          console.log("Video autoplay prevented:", error);
-        });
-      } else {
-        videoRef.current.pause();
-      }
+    if (!videoRef.current) return;
+
+    if ((isHovering || isInView) && event.videoUrl) {
+      videoRef.current.play().catch(error => {
+        console.log("Video autoplay prevented:", error);
+      });
+    } else {
+      videoRef.current.pause();
     }
-  }, [isHovering, event.videoUrl]);
+  }, [isHovering, isInView, event.videoUrl]);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting);
+      },
+      {
+        threshold: 0.5, // Trigger when 50% of the element is visible
+      }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -113,7 +135,13 @@ export default function EventCard({ event }: EventCardProps) {
   };
 
   return (
-    <div className="perspective cursor-pointer" onClick={handleCardClick} onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
+    <div 
+      ref={cardRef}
+      className="perspective cursor-pointer" 
+      onClick={handleCardClick} 
+      onMouseEnter={() => setIsHovering(true)} 
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <GlowEffect hover intensity="medium" className="h-full">
         <div
           className={cn(
@@ -141,7 +169,7 @@ export default function EventCard({ event }: EventCardProps) {
                     playsInline
                     className={cn(
                       'absolute inset-0 w-full h-full object-cover transition-opacity duration-500',
-                      isHovering ? 'opacity-100 z-10' : 'opacity-0'
+                      (isHovering || isInView) ? 'opacity-100 z-10' : 'opacity-0'
                     )}
                   />
                 )}
@@ -152,7 +180,7 @@ export default function EventCard({ event }: EventCardProps) {
                   style={{ objectFit: 'cover' }}
                   className={cn(
                     'transition-opacity duration-500',
-                    isHovering && event.videoUrl ? 'opacity-0' : 'opacity-100'
+                    (isHovering || isInView) && event.videoUrl ? 'opacity-0' : 'opacity-100'
                   )}
                 />
                 <div className="absolute top-2 right-2 flex gap-2">
@@ -228,7 +256,7 @@ export default function EventCard({ event }: EventCardProps) {
 
               {/* Content (fixed height) */}
               <CardContent className="h-[110px] overflow-hidden flex-grow">
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                   {truncateWords(event.description, 15)}
                 </p>
               </CardContent>

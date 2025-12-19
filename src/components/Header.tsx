@@ -38,11 +38,11 @@ export function Header() {
   };
 
   return (
-    <header className="bg-card text-card-foreground border-b sticky top-0 z-50">
-      <div className="container mx-auto px-4 flex justify-between items-center h-20">
-        <Link href="/" className="flex items-center gap-3">
-          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={180} height={60} className="object-contain h-12 w-auto" />
-          <span className="hidden sm:block font-headline font-bold text-xl md:text-2xl tracking-tight">USM Event Hub</span>
+    <header className="bg-card/95 backdrop-blur-sm text-card-foreground border-b sticky top-0 z-50">
+      <div className="container mx-auto px-4 flex justify-between items-center h-16">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={120} height={40} className="object-contain h-8 sm:h-10 w-auto" />
+          <span className="hidden sm:block font-headline font-bold text-lg md:text-xl tracking-tight">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
           {!loading && (
@@ -50,7 +50,7 @@ export function Header() {
               {user && userProfile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-11 w-11 rounded-full border-2 border-primary/50 p-0 overflow-hidden hover:border-primary transition-all">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/50 p-0 overflow-hidden hover:border-primary transition-all">
                       <Avatar className="h-full w-full">
                         <AvatarImage src={userProfile.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} className="object-cover w-full h-full" />
                         <AvatarFallback>{getInitials(userProfile.name, user.email)}</AvatarFallback>

@@ -136,18 +136,6 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
 
   return (
     <div className="relative w-full h-[400px] md:h-[450px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
-      {/* Background Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover -z-20"
-      >
-        <source src="/videos/welcome-bg.MP4" type="video/mp4" />
-      </video>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm -z-10" />
-
       {/* Main slides container */}
       <div className="relative w-full max-w-lg h-full flex items-center justify-center">
         <AnimatePresence initial={false} custom={direction}>

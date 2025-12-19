@@ -78,38 +78,33 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-  const upcomingEvents = useMemo(() => {
+  // Base list of events that are currently active for registration.
+  const activeEvents = useMemo(() => {
     return events.filter(event => {
-      if (event.date && event.endTime) {
+      if (event.date && event.endTime && event.startTime) {
         const eventDate = event.date.toDate();
+        
+        // Calculate when the event ends
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+
+        // An event is active if it hasn't ended yet.
         return now < endDateTime;
       }
+      // If date/time is missing, don't show it in the active list.
       return false;
-    });
+    }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime()); // Ensure they are sorted by date
   }, [events, now]);
-
+  
   // A separate list for the carousel, showing the 3 nearest upcoming events.
   const featuredEvents = useMemo(() => {
-    // Sort by date, then take the first 3.
-    return upcomingEvents.slice(0, 3);
-  }, [upcomingEvents]);
+    // Show the 3 nearest events from the active list.
+    return activeEvents.slice(0, 3);
+  }, [activeEvents]);
 
 
   const filteredEvents = useMemo(() => {
-    const visibleEvents = upcomingEvents.filter(event => {
-      if (event.date && event.startTime) {
-        const eventDate = event.date.toDate();
-        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
-        const registrationDeadline = addMinutes(startDateTime, 15);
-        return now < registrationDeadline;
-      }
-      return true; // if no start time, don't filter it out here
-    });
-
-    return visibleEvents.filter(event => {
+    return activeEvents.filter(event => {
       const priceMatch =
         priceFilter === 'all' ||
         (priceFilter === 'free' && event.isFree) ||
@@ -121,7 +116,7 @@ export default function Home() {
 
       return priceMatch && typeMatch;
     });
-  }, [upcomingEvents, priceFilter, typeFilter, now]);
+  }, [activeEvents, priceFilter, typeFilter]);
 
 
   const handleGetStarted = () => {

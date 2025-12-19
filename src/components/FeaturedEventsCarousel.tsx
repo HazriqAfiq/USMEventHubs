@@ -61,7 +61,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
     const currentEvent = featuredEvents[currentIndex];
 
     return (
-        <div className="relative w-full rounded-2xl overflow-hidden mb-8 p-8 md:p-12">
+        <div className="relative w-full rounded-2xl overflow-hidden mb-8 p-4 md:p-8">
             {/* Video Background for entire section */}
             <video
                 key="welcome-bg-video-final"
@@ -80,26 +80,26 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             {/* Glow effect border - Purple Only */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-800 via-purple-500 to-purple-800 rounded-2xl opacity-50 blur-lg -z-20 animate-pulse" />
 
-            {/* Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center min-h-[400px]">
+            {/* Layout: Single column on mobile, two columns on desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
 
                 {/* Left Side - Event Details */}
-                <div className="space-y-6">
+                <div className="space-y-4 md:space-y-6 order-2 lg:order-1">
 
                     {/* Branding Image */}
                     <div className="flex justify-start">
                         <Image
                             src="/images/splash screen/TULISAN (1).png"
                             alt="USM Event Hub"
-                            width={300}
-                            height={100}
-                            className="object-contain"
+                            width={250}
+                            height={80}
+                            className="object-contain w-[200px] md:w-[250px]"
                         />
                     </div>
 
                     {/* Current Event Info */}
-                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-                        <h3 className="text-2xl font-bold text-white">{currentEvent.title}</h3>
+                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-6 border border-white/20">
+                        <h3 className="text-xl md:text-2xl font-bold text-white">{currentEvent.title}</h3>
 
                         <div className="space-y-2 text-white/90">
                             <div className="flex items-center gap-2">
@@ -135,29 +135,48 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                         </Link>
                     </div>
 
-                    {/* Navigation Arrows */}
-                    {featuredEvents.length > 1 && (
-                        <div className="flex gap-3">
-                            <button
-                                onClick={prevSlide}
-                                className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm transition-all border border-white/20"
-                                aria-label="Previous event"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={nextSlide}
-                                className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm transition-all border border-white/20"
-                                aria-label="Next event"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
+                    {/* Navigation */}
+                    <div className="flex justify-between items-center">
+                       {/* Navigation Arrows */}
+                        {featuredEvents.length > 1 && (
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={prevSlide}
+                                    className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm transition-all border border-white/20"
+                                    aria-label="Previous event"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={nextSlide}
+                                    className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm transition-all border border-white/20"
+                                    aria-label="Next event"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+                        {/* Dot Indicators */}
+                        {featuredEvents.length > 1 && (
+                            <div className="flex justify-center gap-2">
+                                {featuredEvents.map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => goToSlide(index)}
+                                        className={`h-2 rounded-full transition-all ${index === currentIndex
+                                            ? 'bg-white w-6'
+                                            : 'bg-white/40 w-2 hover:bg-white/60'
+                                            }`}
+                                        aria-label={`Go to event ${index + 1}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Side - Clean Video/Poster Display */}
-                <div className="relative h-[400px] lg:h-[450px] rounded-2xl overflow-hidden shadow-2xl">
+                <div className="relative h-[300px] lg:h-[400px] rounded-2xl overflow-hidden shadow-2xl order-1 lg:order-2">
                     {/* Video Background */}
                     <video
                         autoPlay
@@ -180,23 +199,6 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
                 </div>
             </div>
-
-            {/* Dot Indicators */}
-            {featuredEvents.length > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
-                    {featuredEvents.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => goToSlide(index)}
-                            className={`h-2 rounded-full transition-all ${index === currentIndex
-                                ? 'bg-white w-8'
-                                : 'bg-white/40 w-2 hover:bg-white/60'
-                                }`}
-                            aria-label={`Go to event ${index + 1}`}
-                        />
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

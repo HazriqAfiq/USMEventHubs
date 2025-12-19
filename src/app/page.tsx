@@ -90,6 +90,12 @@ export default function Home() {
     });
   }, [events, now]);
 
+  // A separate list for the carousel, showing the 3 nearest upcoming events.
+  const featuredEvents = useMemo(() => {
+    // Sort by date, then take the first 3.
+    return upcomingEvents.slice(0, 3);
+  }, [upcomingEvents]);
+
 
   const filteredEvents = useMemo(() => {
     const visibleEvents = upcomingEvents.filter(event => {
@@ -152,10 +158,10 @@ export default function Home() {
   return (
     <>
       <WelcomePage onGetStarted={handleGetStarted} />
-      <div ref={mainContentRef} className="container mx-auto px-4 pt-16 pb-8">
+      <div ref={mainContentRef} className="container mx-auto px-4 pt-24 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
-          <FeaturedEventsCarousel events={upcomingEvents} />
+          <FeaturedEventsCarousel events={featuredEvents} />
         </ScrollAnimation>
 
 

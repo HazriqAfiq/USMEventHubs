@@ -26,11 +26,8 @@ const formatTime = (timeString: string) => {
     return format(malaysianDate, 'p');
 };
 
-export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) {
+export function FeaturedEventsCarousel({ events: featuredEvents }: FeaturedEventsCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
-
-    // Get top 3 nearest events
-    const featuredEvents = events.slice(0, 3);
 
     // Auto-slide every 5 seconds
     useEffect(() => {
@@ -58,12 +55,14 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
     if (featuredEvents.length === 0) {
         return null;
     }
-
-    const currentEvent = featuredEvents[currentIndex];
-
-    // Add a check to ensure currentEvent is not undefined
+    
+    // Ensure currentIndex is always valid
+    const safeCurrentIndex = currentIndex % featuredEvents.length;
+    const currentEvent = featuredEvents[safeCurrentIndex];
+    
+    // Add a final check to ensure currentEvent is not undefined before rendering.
     if (!currentEvent) {
-        return null; // Don't render anything if there's no event
+        return null; 
     }
 
     return (
@@ -104,8 +103,8 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                     </div>
 
                     {/* Current Event Info */}
-                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 min-h-[320px] md:min-h-[280px] flex flex-col">
-                        <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-2 min-h-[3.5rem]">{currentEvent.title}</h3>
+                    <div className="space-y-6 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 min-h-[320px] md:min-h-[280px] flex flex-col">
+                        <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-2 h-14">{currentEvent.title}</h3>
 
                         <div className="space-y-2 text-white/90">
                             <div className="flex items-center gap-2">
@@ -169,7 +168,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                                     <button
                                         key={index}
                                         onClick={() => goToSlide(index)}
-                                        className={`h-2 rounded-full transition-all ${index === currentIndex
+                                        className={`h-2 rounded-full transition-all ${index === safeCurrentIndex
                                             ? 'bg-white w-6'
                                             : 'bg-white/40 w-2 hover:bg-white/60'
                                             }`}

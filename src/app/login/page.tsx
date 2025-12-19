@@ -23,6 +23,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -30,6 +33,7 @@ export default function LoginPage() {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
+  const [registerCampus, setRegisterCampus] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -92,6 +96,14 @@ export default function LoginPage() {
       });
       return;
     }
+    if (!registerCampus) {
+        toast({
+            variant: 'destructive',
+            title: 'Campus is required.',
+            description: 'Please select your campus.',
+        });
+        return;
+    }
     setIsLoading(true);
 
     try {
@@ -104,6 +116,7 @@ export default function LoginPage() {
         role: 'student',
         name: registerName,
         photoURL: null,
+        campus: registerCampus,
       });
       
       toast({
@@ -300,6 +313,19 @@ export default function LoginPage() {
                           onChange={(e) => setRegisterName(e.target.value)}
                           disabled={isLoading}
                       />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="register-campus">Campus</Label>
+                        <Select onValueChange={setRegisterCampus} value={registerCampus} disabled={isLoading}>
+                            <SelectTrigger id="register-campus">
+                                <SelectValue placeholder="Select your campus" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {campuses.map(campus => (
+                                    <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                     <Label htmlFor="register-email">Email</Label>

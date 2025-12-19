@@ -35,4 +35,5 @@ export interface UserProfile {
   role: 'admin' | 'student';
   name?: string;
   photoURL?: string | null;
+  campus?: string;
 }

@@ -53,7 +53,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
   const rightIndex = getRightIndex();
 
   return (
-    <div className="relative w-full flex justify-center items-center py-8 overflow-hidden h-[400px]">
+    <div className="relative w-full md:h-[560px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex justify-center items-center">
       {/* Background Video */}
       <video
         autoPlay

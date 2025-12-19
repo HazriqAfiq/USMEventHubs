@@ -33,7 +33,6 @@ import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { v4 as uuidv4 } from 'uuid';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
 import { Badge } from './ui/badge';
 
@@ -52,7 +51,6 @@ const formSchema = z.object({
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
   groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   qrCodeUrl: z.string().optional(),
-  conductingCampus: z.string().min(1, { message: 'Please select the conducting campus.' }),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
 }).refine(data => {
     if (data.isFree === 'paid') {
@@ -162,7 +160,7 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
 export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +177,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       groupLink: event.groupLink || '',
       qrCodeUrl: event.qrCodeUrl || '',
       price: event.price ?? 1,
-      conductingCampus: event.conductingCampus || '',
       eligibleCampuses: event.eligibleCampuses || [],
     } : {
       title: '',
@@ -194,7 +191,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       eventType: undefined,
       groupLink: '',
       qrCodeUrl: '',
-      conductingCampus: undefined,
       eligibleCampuses: [],
     },
   });
@@ -219,14 +215,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   };
 
   async function onSubmit(data: EventFormValues) {
-    if (!user) {
+    if (!user || !userProfile) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
       return;
     }
     setIsSubmitting(true);
 
     try {
-        const eventData = {
+        const eventData: any = {
             ...data,
             isFree: data.isFree === 'free',
             price: data.isFree === 'paid' ? data.price : 0,
@@ -238,7 +234,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
             router.push('/admin');
         } else {
-            await addDoc(collection(db, 'events'), { ...eventData, createdAt: serverTimestamp(), organizerId: user.uid });
+            await addDoc(collection(db, 'events'), { 
+              ...eventData, 
+              createdAt: serverTimestamp(), 
+              organizerId: user.uid,
+              conductingCampus: userProfile.campus,
+            });
             toast({ title: 'Event Created!', description: `"${data.title}" has been added.` });
             handleReset();
         }
@@ -287,7 +288,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         eventType: undefined,
         groupLink: '',
         qrCodeUrl: '',
-        conductingCampus: undefined,
         eligibleCampuses: [],
     });
   }
@@ -477,28 +477,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     <FormControl>
                       <Input placeholder="e.g., https://chat.whatsapp.com/..." {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="conductingCampus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Conducting Campus</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select which campus is conducting the event" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {campuses.map(campus => (
-                          <SelectItem key={campus} value={campus}>{campus}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

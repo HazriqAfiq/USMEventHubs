@@ -61,6 +61,11 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
 
     const currentEvent = featuredEvents[currentIndex];
 
+    // Add a check to ensure currentEvent is not undefined
+    if (!currentEvent) {
+        return null; // Don't render anything if there's no event
+    }
+
     return (
         <div className="relative w-full rounded-2xl overflow-hidden mb-8 p-4 md:p-6">
             {/* Video Background for entire section */}
@@ -99,8 +104,8 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                     </div>
 
                     {/* Current Event Info */}
-                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 h-[300px] md:h-auto flex flex-col">
-                        <h3 className="text-xl md:text-2xl font-bold text-white h-16 line-clamp-2">{currentEvent.title}</h3>
+                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 min-h-[320px] md:min-h-[280px] flex flex-col">
+                        <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-2 min-h-[3.5rem]">{currentEvent.title}</h3>
 
                         <div className="space-y-2 text-white/90">
                             <div className="flex items-center gap-2">
@@ -122,7 +127,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                         </div>
 
                         {/* Description snippet */}
-                        <p className="text-white/70 text-sm line-clamp-2 flex-grow">
+                        <p className="text-white/70 text-sm line-clamp-3 flex-grow">
                             {currentEvent.description}
                         </p>
 

@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -267,6 +267,10 @@ export default function EventDetailPage() {
   return (
     <>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+       <Button variant="ghost" onClick={() => router.push('/')} className="mb-4 text-white hover:text-white/80">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Events
+      </Button>
       <Card className="overflow-hidden mt-4">
         <div className="relative h-64 md:h-96 w-full">
           <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} priority />
@@ -436,3 +440,6 @@ export default function EventDetailPage() {
 
     
 
+
+
+    

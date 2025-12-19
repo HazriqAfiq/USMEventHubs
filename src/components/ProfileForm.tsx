@@ -235,21 +235,12 @@ export default function ProfileForm() {
                           name="campus"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-white">Campus</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled>
+                                <FormLabel className="text-white">Campus</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select your campus" />
-                                  </SelectTrigger>
+                                    <Input disabled {...field} value={field.value || ''} />
                                 </FormControl>
-                                <SelectContent>
-                                  {campuses.map(campus => (
-                                    <SelectItem key={campus} value={campus}>{campus}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormDescription>Your campus cannot be changed.</FormDescription>
-                              <FormMessage />
+                                <FormDescription>Your campus cannot be changed.</FormDescription>
+                                <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -278,3 +269,4 @@ export default function ProfileForm() {
         </Card>
     );
 }
+

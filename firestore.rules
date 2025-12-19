@@ -103,18 +103,20 @@ service cloud.firestore {
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.photoURL == null
-                    && request.resource.data.role == 'student';
+                    && request.resource.data.role == 'student'
+                    && request.resource.data.campus is string;
 
       // Allow authenticated users to read profiles (needed to show display name/avatar in chat).
       // If you need stricter privacy, change this to only allow admins or the profile owner.
       allow read: if request.auth != null;
 
-      // A user can update their own 'name' or 'photoURL'. Admins can update any field.
+      // A user can update their own 'name' or 'photoURL'. Admins can update any field except campus/email.
       allow update: if (request.auth.uid == userId 
                       // Ensure no other fields are being changed by the user.
                       && request.resource.data.uid == resource.data.uid
                       && request.resource.data.email == resource.data.email
                       && request.resource.data.role == resource.data.role
+                      && request.resource.data.campus == resource.data.campus
                       // Validate incoming data types for user updates
                       && request.resource.data.name is string
                       && request.resource.data.name.size() > 0
@@ -124,7 +126,9 @@ service cloud.firestore {
                         (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
                         )
                     ) 
-                    || (request.auth != null && isAdmin(request.auth.uid));
+                    || (request.auth != null && isAdmin(request.auth.uid) 
+                        && request.resource.data.campus == resource.data.campus
+                        && request.resource.data.email == resource.data.email);
     }
   }
 }

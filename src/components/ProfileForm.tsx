@@ -149,9 +149,8 @@ export default function ProfileForm() {
         const userDocRef = doc(db, 'users', user.uid);
         
         try {
-            const updateData: { name: string, campus?: string, photoURL?: string | null } = { 
+            const updateData: { name: string, photoURL?: string | null } = { 
                 name: data.name,
-                campus: data.campus
             };
             
             // Only include photoURL in the update if it has actually changed.
@@ -159,7 +158,7 @@ export default function ProfileForm() {
                 updateData.photoURL = data.photoURL;
             }
 
-            if (data.name !== userProfile.name || data.photoURL !== userProfile.photoURL || data.campus !== userProfile.campus) {
+            if (data.name !== userProfile.name || data.photoURL !== userProfile.photoURL) {
                  await updateDoc(userDocRef, updateData)
                     .catch((serverError) => {
                         const permissionError = new FirestorePermissionError({
@@ -237,7 +236,7 @@ export default function ProfileForm() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-white">Campus</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                              <Select onValueChange={field.onChange} value={field.value} disabled>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select your campus" />
@@ -249,7 +248,7 @@ export default function ProfileForm() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <FormDescription>This helps us recommend relevant events.</FormDescription>
+                              <FormDescription>Your campus cannot be changed.</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}

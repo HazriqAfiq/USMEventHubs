@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -77,24 +78,29 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-
-  const filteredEvents = useMemo(() => {
-    const visibleEvents = events.filter(event => {
-      if (event.date && event.startTime && event.endTime) {
+  const upcomingEvents = useMemo(() => {
+    return events.filter(event => {
+      if (event.date && event.endTime) {
         const eventDate = event.date.toDate();
-
-        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
-
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
-
-        const registrationDeadline = addMinutes(startDateTime, 15);
-
-        // An event should be hidden if it's over OR registration has closed.
-        return now < endDateTime && now < registrationDeadline;
+        return now < endDateTime;
       }
-      return false; // Don't show events without complete time info
+      return false;
+    });
+  }, [events, now]);
+
+
+  const filteredEvents = useMemo(() => {
+    const visibleEvents = upcomingEvents.filter(event => {
+      if (event.date && event.startTime) {
+        const eventDate = event.date.toDate();
+        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
+        const registrationDeadline = addMinutes(startDateTime, 15);
+        return now < registrationDeadline;
+      }
+      return true; // if no start time, don't filter it out here
     });
 
     return visibleEvents.filter(event => {
@@ -109,7 +115,7 @@ export default function Home() {
 
       return priceMatch && typeMatch;
     });
-  }, [events, priceFilter, typeFilter, now]);
+  }, [upcomingEvents, priceFilter, typeFilter, now]);
 
 
   const handleGetStarted = () => {
@@ -149,7 +155,7 @@ export default function Home() {
       <div ref={mainContentRef} className="container mx-auto px-4 pt-16 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
-          <FeaturedEventsCarousel events={filteredEvents} />
+          <FeaturedEventsCarousel events={upcomingEvents} />
         </ScrollAnimation>
 
 
@@ -192,7 +198,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="space-y-4">
-                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-56 w-full" />
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
                 <Skeleton className="h-10 w-full" />

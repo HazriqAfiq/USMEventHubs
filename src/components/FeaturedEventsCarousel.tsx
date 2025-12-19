@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -61,7 +62,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
     const currentEvent = featuredEvents[currentIndex];
 
     return (
-        <div className="relative w-full rounded-2xl overflow-hidden mb-8 p-4 md:p-8">
+        <div className="relative w-full rounded-2xl overflow-hidden mb-8 p-4 md:p-6">
             {/* Video Background for entire section */}
             <video
                 key="welcome-bg-video-final"
@@ -81,7 +82,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-800 via-purple-500 to-purple-800 rounded-2xl opacity-50 blur-lg -z-20 animate-pulse" />
 
             {/* Layout: Single column on mobile, two columns on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-center">
 
                 {/* Left Side - Event Details */}
                 <div className="space-y-4 md:space-y-6 order-2 lg:order-1">
@@ -93,13 +94,13 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                             alt="USM Event Hub"
                             width={250}
                             height={80}
-                            className="object-contain w-[200px] md:w-[250px]"
+                            className="object-contain w-[180px] md:w-[250px]"
                         />
                     </div>
 
                     {/* Current Event Info */}
-                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-6 border border-white/20">
-                        <h3 className="text-xl md:text-2xl font-bold text-white">{currentEvent.title}</h3>
+                    <div className="space-y-4 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 h-[300px] md:h-auto flex flex-col">
+                        <h3 className="text-xl md:text-2xl font-bold text-white h-16 line-clamp-2">{currentEvent.title}</h3>
 
                         <div className="space-y-2 text-white/90">
                             <div className="flex items-center gap-2">
@@ -121,7 +122,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                         </div>
 
                         {/* Description snippet */}
-                        <p className="text-white/70 text-sm line-clamp-2">
+                        <p className="text-white/70 text-sm line-clamp-2 flex-grow">
                             {currentEvent.description}
                         </p>
 
@@ -176,7 +177,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                 </div>
 
                 {/* Right Side - Clean Video/Poster Display */}
-                <div className="relative h-[300px] lg:h-[400px] rounded-2xl overflow-hidden shadow-2xl order-1 lg:order-2">
+                <div className="relative h-[250px] lg:h-[400px] rounded-2xl overflow-hidden shadow-2xl order-1 lg:order-2">
                     {/* Video Background */}
                     <video
                         autoPlay

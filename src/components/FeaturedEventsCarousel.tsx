@@ -135,7 +135,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
   }
 
   return (
-    <div className="relative w-full h-[500px] md:h-[560px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex justify-center items-center">
+    <div className="relative w-full h-[400px] md:h-[450px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
       {/* Background Video */}
       <video
         autoPlay

@@ -65,7 +65,7 @@ export default function EventCard({ event }: EventCardProps) {
   return (
     <div className="perspective cursor-pointer" onClick={handleCardClick}>
         <GlowEffect hover intensity="medium" className="h-full">
-            <div className={cn("relative w-full min-h-[500px] transition-transform duration-500", isFlipped ? '[transform:rotateY(180deg)]' : '')} style={{ transformStyle: 'preserve-3d' }}>
+            <div className={cn("relative w-full min-h-[520px] transition-transform duration-500", isFlipped ? '[transform:rotateY(180deg)]' : '')} style={{ transformStyle: 'preserve-3d' }}>
                 {/* Front Face */}
                 <div className="absolute inset-0 w-full h-full [backface-visibility:hidden]">
                     <Card className={cn("flex flex-col overflow-hidden h-full w-full", isRegistered && "border-accent ring-2 ring-accent")}>
@@ -110,8 +110,8 @@ export default function EventCard({ event }: EventCardProps) {
                             <span>{event.location}</span>
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-grow flex flex-col">
-                            <p className="text-sm text-muted-foreground line-clamp-3 flex-grow">{event.description}</p>
+                        <CardContent className="flex-grow">
+                            <p className="text-sm text-muted-foreground line-clamp-3">{event.description}</p>
                         </CardContent>
                         <CardFooter>
                             <span className="text-sm font-semibold text-primary">Read More</span>

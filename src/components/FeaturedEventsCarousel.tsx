@@ -52,8 +52,80 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
   const leftIndex = getLeftIndex();
   const rightIndex = getRightIndex();
 
+  const renderSlide = (index: number, position: 'left' | 'center' | 'right') => {
+    const event = events[index];
+    if (!event) return null;
+
+    if (position !== 'center') {
+      return (
+        <motion.div
+          key={`${event.id}-${position}`}
+          className="rounded-2xl overflow-hidden"
+          style={{ 
+            width: imageWidth, 
+            height: imageHeight, 
+            filter: 'blur(3px)', 
+            opacity: 0.5 
+          }}
+          initial={{ x: position === 'left' ? -200 : 200, scale: 0.85 }}
+          animate={{ x: position === 'left' ? -100 : 100, scale: 0.85 }}
+          transition={{ duration: 0.5 }}
+        >
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover rounded-2xl"
+          />
+        </motion.div>
+      );
+    }
+
+    return (
+       <motion.div
+        key={`${event.id}-center`}
+        className="relative flex flex-col items-center gap-4"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div 
+          className="relative rounded-2xl overflow-hidden shadow-2xl"
+          style={{ width: imageWidth, height: imageHeight }}
+        >
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover rounded-2xl"
+          />
+        </div>
+
+        <AnimatePresence mode="wait">
+          {showInfo && (
+            <motion.div
+              key={`${event.id}-info`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center gap-3 text-white text-center w-[432.67px]"
+            >
+              <h3 className="text-xl font-bold line-clamp-2" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
+                {event.title}
+              </h3>
+              <Link href={`/event/${event.id}`} className="w-full">
+                <Button className="w-full max-w-xs bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold transition-all hover:scale-[1.02]">
+                  View Event Details
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  }
+
   return (
-    <div className="relative w-full md:h-[560px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex justify-center items-center">
+    <div className="relative w-full h-[450px] md:h-[500px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex justify-center items-center">
       {/* Background Video */}
       <video
         autoPlay
@@ -67,98 +139,38 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
       <div className="absolute inset-0 bg-black/25 -z-10" />
 
       {/* Left Image */}
-      {events.length > 1 && (
-        <motion.div
-          key={`${events[leftIndex].id}-left`}
-          className="rounded-2xl overflow-hidden"
-          style={{ width: imageWidth, height: imageHeight, filter: 'blur(3px)', opacity: 0.5 }}
-          initial={{ x: -200, scale: 0.85 }}
-          animate={{ x: -100, scale: 0.85 }}
-          transition={{ duration: 0.5 }}
-        >
-          <img
-            src={events[leftIndex].imageUrl}
-            alt={events[leftIndex].title}
-            className="w-full h-full object-cover rounded-2xl"
-          />
-        </motion.div>
-      )}
+      {events.length > 1 && renderSlide(leftIndex, 'left')}
 
-      {/* Center Image */}
-      {events.length > 0 && (
-          <motion.div
-            key={`${events[currentIndex].id}-center`}
-            className="relative rounded-2xl overflow-hidden shadow-2xl"
-            style={{ width: imageWidth, height: imageHeight }}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-          >
-            <img
-              src={events[currentIndex].imageUrl}
-              alt={events[currentIndex].title}
-              className="w-full h-full object-cover rounded-2xl"
-            />
-
-            {/* Info Overlay */}
-            <AnimatePresence mode="wait">
-              {showInfo && (
-                <motion.div
-                  key={`${events[currentIndex].id}-info`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.6 }}
-                  className="absolute bottom-0 left-0 w-full h-full bg-white/10 backdrop-blur-[1px] rounded-2xl flex flex-col justify-end p-4 gap-2 text-white"
-                >
-                  <h3 className="text-lg md:text-xl font-bold line-clamp-2 text-center">
-                    {events[currentIndex].title}
-                  </h3>
-                  <Link href={`/event/${events[currentIndex].id}`} className="w-full">
-                    <Button className="w-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold transition-all hover:scale-[1.02]">
-                      View Event Details
-                    </Button>
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-      )}
-
+      {/* Center Slide (Image + Info) */}
+      {events.length > 0 && renderSlide(currentIndex, 'center')}
 
       {/* Right Image */}
-      {events.length > 1 && (
-        <motion.div
-          key={`${events[rightIndex].id}-right`}
-          className="rounded-2xl overflow-hidden"
-          style={{ width: imageWidth, height: imageHeight, filter: 'blur(3px)', opacity: 0.5 }}
-          initial={{ x: 200, scale: 0.85 }}
-          animate={{ x: 100, scale: 0.85 }}
-          transition={{ duration: 0.5 }}
-        >
-          <img
-            src={events[rightIndex].imageUrl}
-            alt={events[rightIndex].title}
-            className="w-full h-full object-cover rounded-2xl"
-          />
-        </motion.div>
-      )}
+      {events.length > 1 && renderSlide(rightIndex, 'right')}
+
 
       {/* Navigation */}
       {events.length > 1 && (
         <>
           <button
-            onClick={() =>
-              setCurrentIndex((i) => (i - 1 + events.length) % events.length)
-            }
+            onClick={() => {
+                setShowInfo(false);
+                setTimeout(() => {
+                    setCurrentIndex((i) => (i - 1 + events.length) % events.length);
+                    setShowInfo(true);
+                }, 400);
+            }}
             className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
-            onClick={() =>
-              setCurrentIndex((i) => (i + 1) % events.length)
-            }
+            onClick={() => {
+                setShowInfo(false);
+                setTimeout(() => {
+                    setCurrentIndex((i) => (i + 1) % events.length);
+                    setShowInfo(true);
+                }, 400);
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
           >
             <ChevronRight className="w-5 h-5" />

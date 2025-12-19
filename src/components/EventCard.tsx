@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -119,8 +120,15 @@ export default function EventCard({ event }: EventCardProps) {
                 </div>
 
                 {/* Back Face */}
-                <div className="absolute inset-0 w-full h-full [transform:rotateY(180deg)] [backface-visibility:hidden] bg-card rounded-lg flex items-center justify-center">
-                    {/* Plain color background is handled by bg-card */}
+                <div className="absolute inset-0 w-full h-full [transform:rotateY(180deg)] [backface-visibility:hidden] bg-card rounded-lg flex items-center justify-center overflow-hidden">
+                    <Image
+                        src="/images/usmbg.jpg"
+                        alt="USM Background"
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        className="opacity-40"
+                    />
+                    <div className="absolute inset-0 bg-black/50" />
                 </div>
             </div>
         </GlowEffect>

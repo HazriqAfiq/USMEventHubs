@@ -146,7 +146,7 @@ export default function Home() {
   return (
     <>
       <WelcomePage onGetStarted={handleGetStarted} />
-      <div ref={mainContentRef} className="container mx-auto px-4 py-8">
+      <div ref={mainContentRef} className="container mx-auto px-4 pt-16 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
           <FeaturedEventsCarousel events={filteredEvents} />

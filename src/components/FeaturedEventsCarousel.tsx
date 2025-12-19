@@ -98,7 +98,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
           opacity: { duration: 0.2 },
           scale: { duration: 0.3 }
         }}
-        className="absolute w-full h-full flex flex-col items-center justify-center gap-4"
+        className="absolute w-full h-full flex flex-col items-center justify-center"
       >
         <div 
           className="relative rounded-2xl overflow-hidden shadow-2xl"
@@ -111,7 +111,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
           />
         </div>
         <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
-            <h3 className="text-xl font-bold line-clamp-2" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
+            <h3 className="text-xl font-bold line-clamp-2 mt-4" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
             {event.title}
             </h3>
             <div className="text-sm text-white/90 space-y-1">
@@ -145,7 +145,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
     return (
       <motion.div
         key={index + (isLeft ? 'left' : 'right')}
-        className="absolute top-1/2 -translate-y-1/2 rounded-2xl overflow-hidden"
+        className="absolute rounded-2xl overflow-hidden"
         style={{
           width: 300,
           height: 168.75,
@@ -166,14 +166,15 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
     <div className="relative w-full h-[450px] md:h-[500px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
       {/* Main slides container */}
       <div className="relative w-full max-w-lg h-full flex items-center justify-center">
+        {/* Side slides for visual effect */}
+        {renderSideSlide(-1)}
+        {renderSideSlide(1)}
+
+        {/* Center slide */}
         <AnimatePresence initial={false} custom={direction}>
           {renderSlide(currentIndex)}
         </AnimatePresence>
       </div>
-
-       {/* Side slides for visual effect */}
-      {renderSideSlide(-1)}
-      {renderSideSlide(1)}
 
       {/* Navigation */}
       {events.length > 1 && (

@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import type { Event } from '@/types';
 import { Button } from './ui/button';
@@ -12,46 +12,49 @@ interface FeaturedEventsCarouselProps {
   events: Event[];
 }
 
-const toMalaysiaTime = (date: Date) => {
-  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
-};
-
-const formatTime = (timeString: string) => {
-  if (!timeString) return '';
-  const [hours, minutes] = timeString.split(':');
-  const malaysianDate = toMalaysiaTime(new Date());
-  malaysianDate.setHours(parseInt(hours, 10));
-  malaysianDate.setMinutes(parseInt(minutes, 10));
-  return format(malaysianDate, 'p');
-};
-
-export function FeaturedEventsCarousel({ events: featuredEvents }: FeaturedEventsCarouselProps) {
+export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showInfo, setShowInfo] = useState(true);
 
+  const imageWidth = 432.67;
+  const imageHeight = 243.38;
+
+  // Automatic loop
   useEffect(() => {
-    if (featuredEvents.length <= 1) return;
+    if (events.length <= 1) return;
 
-    const timer = setInterval(() => {
-      setShowDetails(false); // hide details first
+    const interval = setInterval(() => {
+      setShowInfo(false); // hide info
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % featuredEvents.length);
-        setShowDetails(true); // show details after image switches
-      }, 500);
-    }, 6000); // total time per slide
+        setCurrentIndex((prev) => (prev + 1) % events.length);
+        setShowInfo(true); // show info on new center
+      }, 400); // small delay for smooth transition
+    }, 5000);
 
-    return () => clearInterval(timer);
-  }, [featuredEvents.length]);
+    return () => clearInterval(interval);
+  }, [events.length]);
 
-  if (featuredEvents.length === 0) return null;
+  if (!events || events.length === 0) return null;
 
-  const currentEvent = featuredEvents[currentIndex];
+  // Get indices for left and right
+  const getLeftIndex = () => {
+    if (events.length === 0) return 0;
+    if (events.length === 1) return 0;
+    return (currentIndex - 1 + events.length) % events.length;
+  };
 
-  if (!currentEvent) return null;
+  const getRightIndex = () => {
+    if (events.length === 0) return 0;
+    if (events.length === 1) return 0;
+    return (currentIndex + 1) % events.length;
+  };
+
+  const leftIndex = getLeftIndex();
+  const rightIndex = getRightIndex();
 
   return (
-    <div className="relative w-full md:h-[560px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6">
-      {/* Background video */}
+    <div className="relative w-full flex justify-center items-center py-8 overflow-hidden h-[400px]">
+      {/* Background Video */}
       <video
         autoPlay
         loop
@@ -61,119 +64,107 @@ export function FeaturedEventsCarousel({ events: featuredEvents }: FeaturedEvent
       >
         <source src="/videos/welcome-bg.MP4" type="video/mp4" />
       </video>
+      <div className="absolute inset-0 bg-black/25 -z-10" />
 
-      {/* Overlay gradient */}
-      <div className="absolute inset-0 bg-black/30 -z-10" />
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-700 via-purple-500 to-purple-700 rounded-3xl opacity-30 blur-lg -z-20" />
+      {/* Left Image */}
+      {events.length > 1 && (
+        <motion.div
+          key={`${events[leftIndex].id}-left`}
+          className="rounded-2xl overflow-hidden"
+          style={{ width: imageWidth, height: imageHeight, filter: 'blur(3px)', opacity: 0.5 }}
+          initial={{ x: -200, scale: 0.85 }}
+          animate={{ x: -100, scale: 0.85 }}
+          transition={{ duration: 0.5 }}
+        >
+          <img
+            src={events[leftIndex].imageUrl}
+            alt={events[leftIndex].title}
+            className="w-full h-full object-cover rounded-2xl"
+          />
+        </motion.div>
+      )}
 
-      {/* Event Image */}
-      <div className="relative h-[300px] md:h-[450px] lg:h-[520px] rounded-3xl overflow-hidden shadow-2xl">
-        <img
-          src={currentEvent.imageUrl}
-          alt={currentEvent.title}
-          className="absolute inset-0 w-full h-full object-cover rounded-3xl"
-        />
+      {/* Center Image */}
+      {events.length > 0 && (
+          <motion.div
+            key={`${events[currentIndex].id}-center`}
+            className="relative rounded-2xl overflow-hidden shadow-2xl"
+            style={{ width: imageWidth, height: imageHeight }}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          >
+            <img
+              src={events[currentIndex].imageUrl}
+              alt={events[currentIndex].title}
+              className="w-full h-full object-cover rounded-2xl"
+            />
 
-        {/* Frosted glass info overlay */}
-        <AnimatePresence mode="wait">
-          {showDetails && (
-            <motion.div
-              key={currentEvent.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] md:w-3/4 bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex flex-col gap-3 text-white"
-            >
-              {/* Title */}
-              <motion.h3
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-xl md:text-2xl font-bold line-clamp-2"
-              >
-                {currentEvent.title}
-              </motion.h3>
+            {/* Info Overlay */}
+            <AnimatePresence mode="wait">
+              {showInfo && (
+                <motion.div
+                  key={`${events[currentIndex].id}-info`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute bottom-0 left-0 w-full h-full bg-white/10 backdrop-blur-[1px] rounded-2xl flex flex-col justify-end p-4 gap-2 text-white"
+                >
+                  <h3 className="text-lg md:text-xl font-bold line-clamp-2 text-center">
+                    {events[currentIndex].title}
+                  </h3>
+                  <Link href={`/event/${events[currentIndex].id}`} className="w-full">
+                    <Button className="w-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold transition-all hover:scale-[1.02]">
+                      View Event Details
+                    </Button>
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+      )}
 
-              {/* Meta */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-col md:flex-row gap-2 md:gap-6 text-sm text-white/90"
-              >
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 opacity-80" />
-                  <span>{currentEvent.date ? format(toMalaysiaTime(currentEvent.date.toDate()), 'MMMM d, yyyy') : 'Date TBA'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 opacity-80" />
-                  <span>{formatTime(currentEvent.startTime)} – {formatTime(currentEvent.endTime)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 opacity-80" />
-                  <span className="line-clamp-1">{currentEvent.location}</span>
-                </div>
-              </motion.div>
 
-              {/* Description */}
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="text-white/70 text-sm leading-relaxed line-clamp-3"
-              >
-                {currentEvent.description}
-              </motion.p>
+      {/* Right Image */}
+      {events.length > 1 && (
+        <motion.div
+          key={`${events[rightIndex].id}-right`}
+          className="rounded-2xl overflow-hidden"
+          style={{ width: imageWidth, height: imageHeight, filter: 'blur(3px)', opacity: 0.5 }}
+          initial={{ x: 200, scale: 0.85 }}
+          animate={{ x: 100, scale: 0.85 }}
+          transition={{ duration: 0.5 }}
+        >
+          <img
+            src={events[rightIndex].imageUrl}
+            alt={events[rightIndex].title}
+            className="w-full h-full object-cover rounded-2xl"
+          />
+        </motion.div>
+      )}
 
-              {/* Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="mt-2"
-              >
-                <Link href={`/event/${currentEvent.id}`}>
-                  <Button className="w-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold transition-all hover:scale-[1.02]">
-                    View Event Details
-                  </Button>
-                </Link>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Navigation Arrows */}
-        {featuredEvents.length > 1 && (
-          <>
-            <button
-              onClick={() => setCurrentIndex((i) => (i - 1 + featuredEvents.length) % featuredEvents.length)}
-              className="absolute top-1/2 left-4 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setCurrentIndex((i) => (i + 1) % featuredEvents.length)}
-              className="absolute top-1/2 right-4 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
-
-        {/* Dot Indicators */}
-        {featuredEvents.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {featuredEvents.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`h-2 rounded-full transition-all ${index === currentIndex ? 'bg-white w-6' : 'bg-white/40 w-2'}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Navigation */}
+      {events.length > 1 && (
+        <>
+          <button
+            onClick={() =>
+              setCurrentIndex((i) => (i - 1 + events.length) % events.length)
+            }
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() =>
+              setCurrentIndex((i) => (i + 1) % events.length)
+            }
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-sm border border-white/20"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

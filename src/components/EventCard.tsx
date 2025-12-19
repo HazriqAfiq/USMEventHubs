@@ -122,7 +122,7 @@ export default function EventCard({ event }: EventCardProps) {
                 {/* Back Face */}
                 <div className="absolute inset-0 w-full h-full [transform:rotateY(180deg)] [backface-visibility:hidden] bg-card rounded-lg flex items-center justify-center overflow-hidden">
                     <Image
-                        src="/images/usmbg.jpg"
+                        src="/images/usmcircle.jpg"
                         alt="USM Background"
                         fill
                         style={{ objectFit: 'cover' }}

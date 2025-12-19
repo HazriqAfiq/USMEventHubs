@@ -13,13 +13,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Trash2, Upload, Loader2 } from 'lucide-react';
+import { CalendarIcon, Trash2, Upload, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
@@ -32,6 +33,11 @@ import type { Event } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { v4 as uuidv4 } from 'uuid';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
+import { Badge } from './ui/badge';
+
+const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
@@ -46,6 +52,8 @@ const formSchema = z.object({
   eventType: z.enum(['online', 'physical'], { required_error: 'Please select an event type.' }),
   groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   qrCodeUrl: z.string().optional(),
+  conductingCampus: z.string().min(1, { message: 'Please select the conducting campus.' }),
+  eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price >= 1;
@@ -171,6 +179,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       groupLink: event.groupLink || '',
       qrCodeUrl: event.qrCodeUrl || '',
       price: event.price ?? 1,
+      conductingCampus: event.conductingCampus || '',
+      eligibleCampuses: event.eligibleCampuses || [],
     } : {
       title: '',
       description: '',
@@ -184,6 +194,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       eventType: undefined,
       groupLink: '',
       qrCodeUrl: '',
+      conductingCampus: undefined,
+      eligibleCampuses: [],
     },
   });
 
@@ -275,6 +287,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         eventType: undefined,
         groupLink: '',
         qrCodeUrl: '',
+        conductingCampus: undefined,
+        eligibleCampuses: [],
     });
   }
 
@@ -467,6 +481,28 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="conductingCampus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Conducting Campus</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select which campus is conducting the event" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {campuses.map(campus => (
+                          <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <div className="space-y-4 flex flex-col">
               <FormItem>
@@ -491,6 +527,75 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     <FormControl className="flex-grow">
                       <Textarea placeholder="Describe the event, what it's about, and who should attend." className="resize-none min-h-[150px] flex-grow" {...field}/>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="eligibleCampuses"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="text-white">Eligible Campuses</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value?.length && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="truncate">
+                              {field.value?.length ? `${field.value.length} selected` : "Select eligible campuses"}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search campus..." />
+                          <CommandEmpty>No campus found.</CommandEmpty>
+                          <CommandGroup>
+                            {campuses.map((campus) => (
+                              <CommandItem
+                                key={campus}
+                                onSelect={() => {
+                                  const selected = field.value || [];
+                                  const isSelected = selected.includes(campus);
+                                  const newSelection = isSelected
+                                    ? selected.filter((item) => item !== campus)
+                                    : [...selected, campus];
+                                  field.onChange(newSelection);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    (field.value || []).includes(campus)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {campus}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                       {field.value?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {field.value.map(campus => (
+                            <Badge key={campus} variant="secondary">{campus}</Badge>
+                          ))}
+                        </div>
+                       )}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

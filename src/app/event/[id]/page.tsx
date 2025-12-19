@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -314,6 +314,28 @@ export default function EventDetailPage() {
             {event.description}
           </div>
           
+          {(event.conductingCampus || event.eligibleCampuses) && (
+            <div className='space-y-4 rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
+                <h3 className="font-semibold flex items-center"><Building2 className='mr-2 h-5 w-5'/>Campus Information</h3>
+                {event.conductingCampus && (
+                    <div className="text-sm">
+                        <p className="font-medium">Conducted by:</p>
+                        <p className="text-muted-foreground">{event.conductingCampus}</p>
+                    </div>
+                )}
+                {event.eligibleCampuses && event.eligibleCampuses.length > 0 && (
+                     <div className="text-sm">
+                        <p className="font-medium">Open to:</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                            {event.eligibleCampuses.map(campus => (
+                                <Badge key={campus} variant='outline'>{campus}</Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+          )}
+
           {!isAdmin && user && (
             isRegistered ? (
               <Card className="bg-green-500/10 border-green-500/50">

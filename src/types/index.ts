@@ -25,6 +25,8 @@ export interface Event {
   organizerId?: string; // UID of the admin who created the event
   groupLink?: string;
   qrCodeUrl?: string;
+  conductingCampus?: string;
+  eligibleCampuses?: string[];
 }
 
 export interface UserProfile {

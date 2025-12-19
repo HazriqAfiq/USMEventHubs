@@ -169,6 +169,9 @@ export default function Home() {
       <div className="container mx-auto px-4 pt-24 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
+          <h1 className="text-4xl font-bold font-headline text-center text-white mb-8 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+            Featured Events
+          </h1>
           <FeaturedEventsCarousel events={featuredEvents} />
         </ScrollAnimation>
 

@@ -110,7 +110,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             className="w-full h-full object-cover rounded-2xl"
           />
         </div>
-        <div className="flex flex-col items-center gap-3 text-white text-center w-[432.67px]">
+        <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
             <h3 className="text-xl font-bold line-clamp-2" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
             {event.title}
             </h3>

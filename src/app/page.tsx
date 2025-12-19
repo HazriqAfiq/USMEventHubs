@@ -12,6 +12,10 @@ import { DollarSign, Laptop, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { SplashScreen } from '@/components/SplashScreen';
+import { WelcomePage } from '@/components/WelcomePage';
+import { FeaturedEventsCarousel } from '@/components/FeaturedEventsCarousel';
+import { ScrollAnimation } from '@/components/ScrollAnimation';
+
 import { addMinutes } from 'date-fns';
 
 export default function Home() {
@@ -22,6 +26,8 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -44,7 +50,7 @@ export default function Home() {
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         const event = { id: doc.id, ...doc.data() } as Event;
         eventsData.push(event);
@@ -59,56 +65,64 @@ export default function Home() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  // Hide splash screen after a delay, but only if auth is finished.
+  // Hide splash screen after a delay, then show welcome page
   useEffect(() => {
     if (!authLoading && user) {
       const timer = setTimeout(() => {
         setShowSplash(false);
+        setShowWelcome(true); // Show welcome page after splash
       }, 1700); // Same duration as splash screen animation
       return () => clearTimeout(timer);
     }
   }, [authLoading, user]);
 
+
   const filteredEvents = useMemo(() => {
     const visibleEvents = events.filter(event => {
       if (event.date && event.startTime && event.endTime) {
-          const eventDate = event.date.toDate();
+        const eventDate = event.date.toDate();
 
-          const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-          const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
-          
-          const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-          const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
 
-          const registrationDeadline = addMinutes(startDateTime, 15);
-          
-          // An event should be hidden if it's over OR registration has closed.
-          return now < endDateTime && now < registrationDeadline;
+        const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+        const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+
+        const registrationDeadline = addMinutes(startDateTime, 15);
+
+        // An event should be hidden if it's over OR registration has closed.
+        return now < endDateTime && now < registrationDeadline;
       }
       return false; // Don't show events without complete time info
     });
 
     return visibleEvents.filter(event => {
-      const priceMatch = 
-        priceFilter === 'all' || 
-        (priceFilter === 'free' && event.isFree) || 
+      const priceMatch =
+        priceFilter === 'all' ||
+        (priceFilter === 'free' && event.isFree) ||
         (priceFilter === 'paid' && !event.isFree);
-      
-      const typeMatch = 
-        typeFilter === 'all' || 
+
+      const typeMatch =
+        typeFilter === 'all' ||
         typeFilter === event.eventType;
 
       return priceMatch && typeMatch;
     });
   }, [events, priceFilter, typeFilter, now]);
-  
+
+
+  const handleGetStarted = () => {
+    setShowWelcome(false);
+  };
+
+
   if (authLoading || !user) {
     // Show a skeleton loader while checking for auth or redirecting
     return (
-       <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-            <Skeleton className="h-12 w-1/2 mx-auto" />
-            <Skeleton className="h-6 w-3/4 mx-auto mt-4" />
+          <Skeleton className="h-12 w-1/2 mx-auto" />
+          <Skeleton className="h-6 w-3/4 mx-auto mt-4" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
@@ -128,48 +142,54 @@ export default function Home() {
     return <SplashScreen />;
   }
 
+  if (showWelcome) {
+    return <WelcomePage onGetStarted={handleGetStarted} />;
+  }
+
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold font-headline text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]">Upcoming Events</h1>
-         <p className="text-lg text-white/90 mt-2 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-          Join events conducted in USM and get your MyCSD points.
-        </p>
-      </div>
+      {/* Featured Events Carousel */}
+      <ScrollAnimation delay={200}>
+        <FeaturedEventsCarousel events={filteredEvents} />
+      </ScrollAnimation>
 
-       <div className="flex justify-center mb-8">
-        <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
+
+      <ScrollAnimation delay={400}>
+        <div className="flex justify-center mb-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-                <ToggleGroup
-                  type="single"
-                  size="sm"
-                  variant="outline"
-                  value={priceFilter}
-                  onValueChange={(value) => setPriceFilter(value as any || 'all')}
-                  aria-label="Filter by price"
-                >
-                  <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
-                  <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
-                  <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1"/>Paid</ToggleGroupItem>
-                </ToggleGroup>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                variant="outline"
+                value={priceFilter}
+                onValueChange={(value) => setPriceFilter(value as any || 'all')}
+                aria-label="Filter by price"
+              >
+                <ToggleGroupItem value="all" aria-label="All prices">All</ToggleGroupItem>
+                <ToggleGroupItem value="free" aria-label="Free events">Free</ToggleGroupItem>
+                <ToggleGroupItem value="paid" aria-label="Paid events"><DollarSign className="h-4 w-4 mr-1" />Paid</ToggleGroupItem>
+              </ToggleGroup>
             </div>
-             <div className="flex items-center gap-2">
-                 <ToggleGroup
-                  type="single"
-                  size="sm"
-                  variant="outline"
-                  value={typeFilter}
-                  onValueChange={(value) => setTypeFilter(value as any || 'all')}
-                  aria-label="Filter by type"
-                >
-                  <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
-                  <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1"/>Online</ToggleGroupItem>
-                  <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1"/>Physical</ToggleGroupItem>
-                </ToggleGroup>
+            <div className="flex items-center gap-2">
+              <ToggleGroup
+                type="single"
+                size="sm"
+                variant="outline"
+                value={typeFilter}
+                onValueChange={(value) => setTypeFilter(value as any || 'all')}
+                aria-label="Filter by type"
+              >
+                <ToggleGroupItem value="all" aria-label="All event types">All</ToggleGroupItem>
+                <ToggleGroupItem value="online" aria-label="Online events"><Laptop className="h-4 w-4 mr-1" />Online</ToggleGroupItem>
+                <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1" />Physical</ToggleGroupItem>
+              </ToggleGroup>
             </div>
+          </div>
         </div>
-      </div>
-      
+      </ScrollAnimation>
+
       {loadingEvents ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
@@ -183,14 +203,21 @@ export default function Home() {
         </div>
       ) : filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
+          {filteredEvents.map((event, index) => (
+            <ScrollAnimation key={event.id} delay={index * 100}>
+              <EventCard event={event} />
+            </ScrollAnimation>
           ))}
         </div>
       ) : (
-        <div className="text-center py-16 border-2 border-dashed rounded-lg bg-black/20">
-          <h2 className="text-xl font-semibold text-white">No Matching Events Found</h2>
-          <p className="text-white/80 mt-2">Try adjusting your filters or check back soon!</p>
+        <div className="text-center py-20 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10 animate-fade-in-up">
+          <div className="bg-white/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <p className="text-xl text-white/80 font-medium">No events found matching your criteria.</p>
+          <p className="text-white/50 mt-2">Try adjusting your filters or search terms.</p>
         </div>
       )}
     </div>

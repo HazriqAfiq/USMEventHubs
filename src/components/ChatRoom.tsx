@@ -86,7 +86,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     // cleanup unsubscribed profiles that are no longer needed
     Object.keys(profileUnsubs.current).forEach((id) => {
       if (!senderIds.includes(id)) {
-        try { profileUnsubs.current[id]?.(); } catch {};
+        try { profileUnsubs.current[id]?.(); } catch { };
         delete profileUnsubs.current[id];
         setProfiles((p) => {
           const copy = { ...p };
@@ -99,7 +99,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     // on unmount remove all listeners
     return () => {
       Object.keys(profileUnsubs.current).forEach((id) => {
-        try { profileUnsubs.current[id]?.(); } catch {};
+        try { profileUnsubs.current[id]?.(); } catch { };
       });
       profileUnsubs.current = {};
     };
@@ -125,7 +125,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
       };
 
       await addDoc(collection(db, 'events', eventId, 'messages'), messageData)
-      .catch((serverError) => {
+        .catch((serverError) => {
           const permissionError = new FirestorePermissionError({
             path: `events/${eventId}/messages`,
             operation: 'create',
@@ -133,12 +133,12 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
           }, serverError);
           errorEmitter.emit('permission-error', permissionError);
           throw serverError; // re-throw to be caught by outer catch
-      });
+        });
 
       setText('');
     } catch (err) {
       console.error('Failed to send message', err);
-       toast({ title: 'Error', description: 'Failed to send message. Check console for details.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to send message. Check console for details.', variant: 'destructive' });
     }
   };
 
@@ -191,7 +191,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     try {
       const messageRef = doc(db, 'events', eventId, 'messages', messageId);
       await updateDoc(messageRef, { pinned: !currentPinned })
-       .catch((serverError) => {
+        .catch((serverError) => {
           const permissionError = new FirestorePermissionError({
             path: messageRef.path,
             operation: 'update',
@@ -199,7 +199,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
           }, serverError);
           errorEmitter.emit('permission-error', permissionError);
           throw serverError; // re-throw to be caught by outer catch
-      });
+        });
 
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pinned: !currentPinned } : m)));
       toast({ title: currentPinned ? 'Unpinned' : 'Pinned', description: currentPinned ? 'Message unpinned.' : 'Message pinned.' });
@@ -213,21 +213,21 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     if (hasAccess === null) {
       return (
         <div className="h-[40rem] flex flex-col items-center justify-center text-sm text-neutral-400">
-           <Loader2 className="h-6 w-6 animate-spin mb-4" />
-           <p>Checking chat access...</p>
+          <Loader2 className="h-6 w-6 animate-spin mb-4" />
+          <p>Checking chat access...</p>
         </div>
       );
     }
 
     if (hasAccess === false) {
       return (
-         <div className="h-[40rem] flex flex-col items-center justify-center text-center text-sm text-neutral-400">
+        <div className="h-[40rem] flex flex-col items-center justify-center text-center text-sm text-neutral-400">
           <p className='font-semibold'>Access Denied</p>
           <p className='mt-1 max-w-xs'>Your registration might still be processing. Please wait a moment or try refreshing the page if this persists.</p>
         </div>
       );
     }
-    
+
     return (
       <>
         <div className="h-[40rem] overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
@@ -292,37 +292,52 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <div className="bg-neutral-900 rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">Event Chat</h3>
-          {user?.uid === organizerId && (
-            <>
-              <button
-                onClick={() => setShowClearDialog(true)}
-                disabled={isClearing}
-                className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
-              >
-                {isClearing ? 'Clearing...' : 'Clear Chat'}
-              </button>
+      <div className="bg-neutral-900/90 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10">
+        {/* Wallpaper Background */}
+        <div
+          className="absolute inset-0 z-0 opacity-100" // Adjustable opacity
+          style={{
+            backgroundImage: "url('/images/WALL.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        {/* Dark Overlay for readability */}
+        <div className="absolute inset-0 z-0 bg-black/60 backdrop-blur-[1px]" />
 
-              <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Clear Chat</DialogTitle>
-                  </DialogHeader>
-                  <div className="text-sm text-muted-foreground">Are you sure you want to delete all messages for this event? This action cannot be undone.</div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={() => handleClearChat()} disabled={isClearing} className="ml-2">{isClearing ? 'Clearing...' : 'Yes, delete all'}</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+        {/* Content */}
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">Event Chat</h3>
+            {user?.uid === organizerId && (
+              <>
+                <button
+                  onClick={() => setShowClearDialog(true)}
+                  disabled={isClearing}
+                  className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
+                >
+                  {isClearing ? 'Clearing...' : 'Clear Chat'}
+                </button>
+
+                <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Confirm Clear Chat</DialogTitle>
+                    </DialogHeader>
+                    <div className="text-sm text-muted-foreground">Are you sure you want to delete all messages for this event? This action cannot be undone.</div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button onClick={() => handleClearChat()} disabled={isClearing} className="ml-2">{isClearing ? 'Clearing...' : 'Yes, delete all'}</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
+          {renderContent()}
         </div>
-        {renderContent()}
       </div>
     </div>
   );

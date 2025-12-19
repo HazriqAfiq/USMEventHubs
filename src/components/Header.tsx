@@ -39,10 +39,10 @@ export function Header() {
 
   return (
     <header className="bg-card text-card-foreground border-b sticky top-0 z-50">
-      <div className="container mx-auto px-4 flex justify-between items-center h-20">
-        <Link href="/" className="flex items-center gap-2 text-lg">
-          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={120} height={120} />
-          <span className="font-headline font-bold">USM Event Hub</span>
+      <div className="container mx-auto px-4 flex justify-between items-center h-24">
+        <Link href="/" className="flex items-center gap-4">
+          <Image src="/images/usm.png" alt="USM Event Hub Logo" width={220} height={80} className="object-contain h-16 w-auto" />
+          <span className="font-headline font-bold text-3xl tracking-tight">USM Event Hub</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
           {!loading && (
@@ -50,9 +50,9 @@ export function Header() {
               {user && userProfile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={userProfile.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} />
+                    <Button variant="ghost" className="relative h-12 w-12 rounded-full border-2 border-purple-500 p-0 overflow-hidden hover:border-purple-400 transition-all">
+                      <Avatar className="h-full w-full">
+                        <AvatarImage src={userProfile.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || ''} className="object-cover w-full h-full" />
                         <AvatarFallback>{getInitials(userProfile.name, user.email)}</AvatarFallback>
                       </Avatar>
                     </Button>
@@ -67,20 +67,20 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                     <DropdownMenuItem onClick={() => router.push('/profile')}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
-                      </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/profile')}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </DropdownMenuItem>
                     {isAdmin ? (
                       <DropdownMenuItem onClick={() => router.push('/admin')}>
                         <UserCircle className="mr-2 h-4 w-4" />
                         <span>Admin Dashboard</span>
                       </DropdownMenuItem>
                     ) : (
-                        <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            <span>My Dashboard</span>
-                        </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>My Dashboard</span>
+                      </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>

@@ -104,7 +104,7 @@ export function FeaturedEventsCarousel({ events: featuredEvents }: FeaturedEvent
 
                     {/* Current Event Info */}
                     <div className="space-y-6 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 min-h-[320px] md:min-h-[280px] flex flex-col">
-                        <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-2 h-14">{currentEvent.title}</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-3">{currentEvent.title}</h3>
 
                         <div className="space-y-2 text-white/90">
                             <div className="flex items-center gap-2">

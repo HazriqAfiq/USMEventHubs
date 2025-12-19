@@ -17,7 +17,6 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { WelcomePage } from '@/components/WelcomePage';
 import { FeaturedEventsCarousel } from '@/components/FeaturedEventsCarousel';
 import { ScrollAnimation } from '@/components/ScrollAnimation';
-
 import { addMinutes } from 'date-fns';
 
 export default function Home() {
@@ -28,9 +27,15 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
-  
-  const mainContentRef = useRef<HTMLDivElement>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
 
+  useEffect(() => {
+    // Check session storage to see if welcome screen should be skipped
+    const welcomeDismissed = sessionStorage.getItem('welcomeDismissed');
+    if (welcomeDismissed === 'true') {
+      setShowWelcome(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -78,27 +83,31 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-  // Base list of events that are currently active for registration.
+  // This is the base list of events that are currently active for registration.
   const activeEvents = useMemo(() => {
     return events.filter(event => {
-      if (event.date && event.endTime && event.startTime) {
+      if (event.date && event.startTime && event.endTime) {
         const eventDate = event.date.toDate();
         
-        // Calculate when the event ends
+        // Registration closes 15 minutes after the event starts.
+        const [startHours, startMinutes] = event.startTime.split(':');
+        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(startHours), parseInt(startMinutes));
+        const registrationDeadline = addMinutes(startDateTime, 15);
+        
+        // Event is over when the end time is passed
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
 
-        // An event is active if it hasn't ended yet.
-        return now < endDateTime;
+        // An event is active if registration is still open and the event is not over.
+        return now < registrationDeadline && now < endDateTime;
       }
       // If date/time is missing, don't show it in the active list.
       return false;
     }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime()); // Ensure they are sorted by date
   }, [events, now]);
   
-  // A separate list for the carousel, showing the 3 nearest upcoming events.
+  // A separate list for the carousel, showing the 3 nearest upcoming events from the active list.
   const featuredEvents = useMemo(() => {
-    // Show the 3 nearest events from the active list.
     return activeEvents.slice(0, 3);
   }, [activeEvents]);
 
@@ -120,7 +129,8 @@ export default function Home() {
 
 
   const handleGetStarted = () => {
-    mainContentRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowWelcome(false);
+    sessionStorage.setItem('welcomeDismissed', 'true');
   };
 
 
@@ -150,10 +160,13 @@ export default function Home() {
     return <SplashScreen />;
   }
 
+  if (showWelcome) {
+    return <WelcomePage onGetStarted={handleGetStarted} />;
+  }
+
   return (
     <>
-      <WelcomePage onGetStarted={handleGetStarted} />
-      <div ref={mainContentRef} className="container mx-auto px-4 pt-24 pb-8">
+      <div className="container mx-auto px-4 pt-24 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
           <FeaturedEventsCarousel events={featuredEvents} />

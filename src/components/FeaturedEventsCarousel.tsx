@@ -7,16 +7,34 @@ import Link from 'next/link';
 import type { Event } from '@/types';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { Calendar, Clock } from 'lucide-react';
 
 interface FeaturedEventsCarouselProps {
   events: Event[];
 }
 
+const toMalaysiaTime = (date: Date) => {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+};
+
+const formatTime = (timeString: string) => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':');
+  
+  const date = new Date();
+  date.setHours(parseInt(hours,10));
+  date.setMinutes(parseInt(minutes,10));
+  date.setSeconds(0);
+
+  return format(date, 'p');
+};
+
+
 export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(1); // 1 for right, -1 for left
+  const [direction, setDirection] = useState(1);
 
-  // Automatic loop
   useEffect(() => {
     if (events.length <= 1) return;
 
@@ -96,7 +114,17 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             <h3 className="text-xl font-bold line-clamp-2" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
             {event.title}
             </h3>
-            <Link href={`/event/${event.id}`} className="w-full">
+            <div className="text-sm text-white/90 space-y-1">
+              <div className="flex items-center justify-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{event.date ? format(toMalaysiaTime(event.date.toDate()), 'MMM d, yyyy') : 'No date'}</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
+              </div>
+            </div>
+            <Link href={`/event/${event.id}`} className="w-full mt-2">
             <Button className="w-full max-w-xs bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold transition-all hover:scale-[1.02]">
                 View Event Details
             </Button>
@@ -135,7 +163,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
   }
 
   return (
-    <div className="relative w-full h-[400px] md:h-[450px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
+    <div className="relative w-full h-[450px] md:h-[500px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
       {/* Main slides container */}
       <div className="relative w-full max-w-lg h-full flex items-center justify-center">
         <AnimatePresence initial={false} custom={direction}>

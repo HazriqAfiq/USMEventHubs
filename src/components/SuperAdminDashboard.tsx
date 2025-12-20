@@ -5,9 +5,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { getMonth, getYear, format, isSameYear } from 'date-fns';
-import { Users, Calendar, BarChart2, ShieldCheck, Building } from 'lucide-react';
+import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -27,32 +27,39 @@ interface SuperAdminDashboardProps {
   onCampusClick: (campus: string | null) => void;
 }
 
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+      {`${payload.value} (${(percent * 100).toFixed(0)}%)`}
+    </text>
+  );
+};
+
+
 export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-
+  
   const availableYears = useMemo(() => {
-    if (events.length === 0) {
-      return [new Date().getFullYear()];
-    }
-    const yearSet = new Set<number>();
-    events.forEach(event => {
-      if (event.date) {
-        yearSet.add(getYear(event.date.toDate()));
-      }
-    });
-    
-    return Array.from(yearSet).sort((a, b) => b - a);
+    if (events.length === 0) return [getYear(new Date())];
+    const yearSet = new Set(events.map(e => getYear(e.date.toDate())));
+    return Array.from(yearSet).sort((a,b) => b - a);
   }, [events]);
 
+  const [selectedYear, setSelectedYear] = useState<number>(() => availableYears[0] || getYear(new Date()));
+
   useEffect(() => {
-    if (availableYears.length > 0) {
+    if(availableYears.length > 0) {
       setSelectedYear(availableYears[0]);
     }
-  }, [availableYears]);
+  },[availableYears]);
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -87,6 +94,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     totalOrganizers,
     monthlyEventData,
     campusUserData,
+    roleData,
   } = useMemo(() => {
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
@@ -105,6 +113,12 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     }));
     
     const organizerCount = users.filter(u => u.role === 'organizer').length;
+    const studentCount = users.filter(u => u.role === 'student').length;
+
+    const roleData = [
+        { name: 'Students', value: studentCount },
+        { name: 'Organizers', value: organizerCount },
+    ];
 
     const campusCounts: { [key: string]: number } = {};
     users.forEach(u => {
@@ -125,6 +139,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
       totalOrganizers: organizerCount,
       monthlyEventData,
       campusUserData,
+      roleData,
     };
   }, [events, users, selectedYear]);
 
@@ -134,7 +149,8 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32"/>)}
         </div>
-        <div className="mt-8">
+        <div className="mt-8 grid md:grid-cols-2 gap-8">
+          <Skeleton className="h-[350px] w-full" />
           <Skeleton className="h-[350px] w-full" />
         </div>
          <div className="mt-8">
@@ -152,6 +168,8 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
       }
     }
   };
+  
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
 
 
   return (
@@ -222,49 +240,90 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
+         <Card>
+            <CardHeader>
                 <CardTitle className="flex items-center">
-                  <BarChart2 className="mr-2 h-5 w-5" />
-                  Platform-Wide Event Creation
+                    <PieChartIcon className="mr-2 h-5 w-5" />
+                    User Role Distribution
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Total events created per month.
+                    Breakdown of students and organizers.
                 </p>
-              </div>
-              {availableYears.length > 0 && (
-                <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Select Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableYears.map(year => (
-                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={monthlyEventData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip 
-                  contentStyle={{
-                    background: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                />
-                <Bar dataKey="events" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
+            </CardHeader>
+            <CardContent>
+                 <ResponsiveContainer width="100%" height={350}>
+                    <PieChart>
+                        <Pie
+                            data={roleData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                        >
+                            {roleData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Legend />
+                        <Tooltip
+                             contentStyle={{
+                                background: "hsl(var(--background))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "var(--radius)",
+                            }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
+            </CardContent>
+         </Card>
+      </div>
+      <div className="mt-8">
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle className="flex items-center">
+                    <BarChart2 className="mr-2 h-5 w-5" />
+                    Platform-Wide Event Creation
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                    Total events created per month.
+                    </p>
+                </div>
+                {availableYears.length > 0 && (
+                    <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                    <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableYears.map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                )}
+                </div>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={monthlyEventData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip 
+                    contentStyle={{
+                        background: "hsl(var(--background))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                    }}
+                    />
+                    <Bar dataKey="events" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
         </Card>
       </div>
     </div>

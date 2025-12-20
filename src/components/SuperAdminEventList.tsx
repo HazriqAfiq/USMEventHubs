@@ -8,7 +8,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +30,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 
-export default function SuperAdminEventList() {
+interface SuperAdminEventListProps {
+  organizerFilter: { id: string, name: string } | null;
+  onClearOrganizerFilter: () => void;
+}
+
+
+export default function SuperAdminEventList({ organizerFilter, onClearOrganizerFilter }: SuperAdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
@@ -106,10 +112,12 @@ export default function SuperAdminEventList() {
         !searchQuery ||
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.id.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const organizerMatch = !organizerFilter || event.organizerId === organizerFilter.id;
 
-      return timeFilter && searchFilter;
+      return timeFilter && searchFilter && organizerMatch;
     });
-  }, [events, filter, searchQuery]);
+  }, [events, filter, searchQuery, organizerFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     if (!isSuperAdmin) {
@@ -187,6 +195,19 @@ export default function SuperAdminEventList() {
           className="max-w-sm"
         />
       </div>
+
+       {organizerFilter && (
+        <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">Filtering by organizer:</p>
+            <Badge variant="secondary" className="text-base">
+            {organizerFilter.name}
+            <button onClick={onClearOrganizerFilter} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
+                <XCircle className="h-3 w-3"/>
+            </button>
+            </Badge>
+        </div>
+      )}
+
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">

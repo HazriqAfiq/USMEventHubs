@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { getMonth, getYear, format, isSameYear } from 'date-fns';
-import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon } from 'lucide-react';
+import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon, UserCheck } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -23,8 +23,15 @@ type CampusCount = {
   count: number;
 };
 
+type OrganizerEventCount = {
+    organizerId: string;
+    name: string;
+    count: number;
+}
+
 interface SuperAdminDashboardProps {
   onCampusClick: (campus: string | null) => void;
+  onOrganizerClick: (organizer: {id: string, name: string} | null) => void;
 }
 
 const RADIAN = Math.PI / 180;
@@ -33,15 +40,17 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
+  if (percent < 0.05) return null; // Don't render label if slice is too small
+
   return (
-    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-semibold">
       {`${payload.value} (${(percent * 100).toFixed(0)}%)`}
     </text>
   );
 };
 
 
-export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboardProps) {
+export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +58,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   
   const availableYears = useMemo(() => {
     if (events.length === 0) return [getYear(new Date())];
-    const yearSet = new Set(events.map(e => getYear(e.date.toDate())));
+    const yearSet = new Set(events.map(e => e.date ? getYear(e.date.toDate()) : getYear(new Date())).filter(Boolean));
     const sortedYears = Array.from(yearSet).sort((a,b) => b - a);
     if (!sortedYears.includes(new Date().getFullYear())) {
         sortedYears.unshift(new Date().getFullYear());
@@ -60,10 +69,10 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0]);
 
   useEffect(() => {
-    if(availableYears.length > 0) {
+    if(availableYears.length > 0 && !availableYears.includes(selectedYear)) {
       setSelectedYear(availableYears[0]);
     }
-  },[availableYears]);
+  },[availableYears, selectedYear]);
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -100,6 +109,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     campusUserData,
     roleData,
     campusEventData,
+    organizerEventData
   } = useMemo(() => {
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
@@ -151,6 +161,21 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         count: count,
     })).sort((a, b) => b.count - a.count);
 
+    const organizerEventCounts: { [key: string]: number } = {};
+     eventsInSelectedYear.forEach(event => {
+        if (event.organizerId) {
+            organizerEventCounts[event.organizerId] = (organizerEventCounts[event.organizerId] || 0) + 1;
+        }
+    });
+    const organizerEventData: OrganizerEventCount[] = Object.entries(organizerEventCounts).map(([id, count]) => {
+        const organizerProfile = users.find(u => u.uid === id);
+        return {
+            organizerId: id,
+            name: organizerProfile?.name || 'Unknown',
+            count,
+        }
+    }).sort((a,b) => b.count - a.count);
+
 
     return {
       totalEventsInYear: eventsInSelectedYear.length,
@@ -160,6 +185,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
       campusUserData,
       roleData,
       campusEventData,
+      organizerEventData
     };
   }, [events, users, selectedYear]);
 
@@ -180,16 +206,18 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     );
   }
 
-  const handleBarClick = (data: any, type: 'campus' | 'event') => {
+  const handleBarClick = (data: any, type: 'campus' | 'organizer') => {
     if (data && data.activePayload && data.activePayload[0]) {
+      const payload = data.activePayload[0].payload;
       if (type === 'campus') {
-        const campusName = data.activePayload[0].payload.name;
-        onCampusClick(campusName);
+        onCampusClick(payload.name);
+      } else if (type === 'organizer') {
+        onOrganizerClick({ id: payload.organizerId, name: payload.name });
       }
     }
   };
   
-  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 
   return (
@@ -327,6 +355,38 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                   }}
                 />
                 <Bar dataKey="count" name="Events" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+         <Card>
+           <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center">
+                  <UserCheck className="mr-2 h-5 w-5" />
+                  Events per Organizer ({selectedYear})
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Click a bar to filter the event list below.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+               <BarChart data={organizerEventData} onClick={(data) => handleBarClick(data, 'organizer')}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" name="Organizer" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                 <Tooltip 
+                  contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                  }}
+                />
+                <Bar dataKey="count" name="Events" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

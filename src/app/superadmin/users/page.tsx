@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,12 +13,25 @@ import { Button } from '@/components/ui/button';
 export default function ManageUsersPage() {
   const { user, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [campusFilter, setCampusFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !isSuperAdmin) {
       router.push('/');
     }
   }, [isSuperAdmin, loading, router]);
+  
+  useEffect(() => {
+    setCampusFilter(searchParams.get('campus'));
+  }, [searchParams]);
+  
+  const handleClearCampusFilter = () => {
+    setCampusFilter(null);
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.delete('campus');
+    router.push(`/superadmin/users?${newParams.toString()}`);
+  }
 
   if (loading) {
     return (
@@ -62,7 +75,7 @@ export default function ManageUsersPage() {
         <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">View users, change roles, and manage accounts.</p>
       </div>
       <div className="mt-8">
-        <UserManagementTable campusFilter={null} onClearCampusFilter={() => {}} />
+        <UserManagementTable campusFilter={campusFilter} onClearCampusFilter={handleClearCampusFilter} />
       </div>
     </div>
   );

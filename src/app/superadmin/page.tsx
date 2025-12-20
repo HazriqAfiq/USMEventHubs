@@ -23,6 +23,14 @@ export default function SuperAdminPage() {
       router.push('/');
     }
   }, [isSuperAdmin, loading, router]);
+  
+  const handleCampusClick = (campus: string | null) => {
+    if (campus) {
+      router.push(`/superadmin/users?campus=${encodeURIComponent(campus)}`);
+    } else {
+      router.push('/superadmin/users');
+    }
+  };
 
   if (loading) {
     return (
@@ -63,7 +71,7 @@ export default function SuperAdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Site-wide analytics and management tools.
           </p>
-           <SuperAdminDashboard />
+           <SuperAdminDashboard onCampusClick={handleCampusClick} />
         </div>
         <Separator />
          <div>
@@ -71,7 +79,7 @@ export default function SuperAdminPage() {
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Review, edit, or delete any event on the platform.
           </p>
-          <SuperAdminEventList />
+          <SuperAdminEventList organizerFilter={null} onClearOrganizerFilter={() => {}}/>
         </div>
         <Separator />
         <div>

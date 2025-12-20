@@ -52,6 +52,11 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
   const { user: currentUser, isSuperAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'superadmin'>('all');
+  const [localCampusFilter, setLocalCampusFilter] = useState<'all' | string>(campusFilter || 'all');
+
+  useEffect(() => {
+    setLocalCampusFilter(campusFilter || 'all');
+  }, [campusFilter]);
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -88,11 +93,11 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         roleFilter === 'all' ||
         user.role === roleFilter;
 
-      const campusMatch = !campusFilter || user.campus === campusFilter;
+      const campusMatch = localCampusFilter === 'all' || user.campus === localCampusFilter;
 
       return searchMatch && roleMatch && campusMatch;
     });
-  }, [users, searchQuery, roleFilter, campusFilter]);
+  }, [users, searchQuery, roleFilter, localCampusFilter]);
 
   const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student') => {
     if (!isSuperAdmin) {
@@ -167,6 +172,16 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     }
   };
 
+  const handleLocalCampusFilterChange = (value: string) => {
+    setLocalCampusFilter(value);
+    // If the main campus filter exists, clearing it from the URL
+    // should be done via the onClearCampusFilter prop.
+    // This just handles local changes within the page.
+    if (campusFilter && value === 'all') {
+      onClearCampusFilter();
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="mt-6 space-y-4">
@@ -191,7 +206,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
             />
             <div className="flex gap-2 w-full sm:w-auto">
               <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[130px]">
                       <SelectValue placeholder="Filter by role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -201,10 +216,21 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                       <SelectItem value="superadmin">Super Admin</SelectItem>
                   </SelectContent>
               </Select>
+               <Select value={localCampusFilter} onValueChange={handleLocalCampusFilterChange}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filter by campus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Campuses</SelectItem>
+                      {campuses.map(campus => (
+                          <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
               {campusFilter && (
                 <Button variant="ghost" onClick={onClearCampusFilter} className="flex-shrink-0">
                   <XCircle className="mr-2 h-4 w-4" />
-                  Clear Campus Filter
+                  Clear
                 </Button>
               )}
             </div>

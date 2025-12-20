@@ -32,6 +32,10 @@ type OrganizerEventCount = {
     count: number;
 }
 
+interface SuperAdminDashboardProps {
+  onCampusClick: (campus: string | null) => void;
+}
+
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
@@ -49,7 +53,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-export default function SuperAdminDashboard() {
+export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +67,7 @@ export default function SuperAdminDashboard() {
     events.forEach(e => {
       if(e.date) yearSet.add(getYear(e.date.toDate()));
     });
-    users.forEach(u => {
-      if (u.role === 'student' || u.role === 'organizer') {
-        // Assuming users have a join date or similar, for now, just add current year if not present
-      }
-    });
-
+    
     if (yearSet.size === 0) {
       yearSet.add(getYear(new Date()));
     }
@@ -77,7 +76,7 @@ export default function SuperAdminDashboard() {
         sortedYears.unshift(new Date().getFullYear());
     }
     return sortedYears;
-  }, [events, users]);
+  }, [events]);
 
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0]);
 
@@ -234,6 +233,13 @@ export default function SuperAdminDashboard() {
     }
   };
   
+  const handleCampusBarClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+        const campusName = data.activePayload[0].payload.name;
+        onCampusClick(campusName);
+    }
+  };
+  
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 
@@ -283,7 +289,7 @@ export default function SuperAdminDashboard() {
                   User Distribution by Campus
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  User counts for each campus.
+                  Click a bar to filter users by campus.
                 </p>
               </div>
               <ToggleGroup
@@ -304,7 +310,7 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
-               <BarChart data={campusUserData}>
+               <BarChart data={campusUserData} onClick={handleCampusBarClick}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" name="Campus" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>

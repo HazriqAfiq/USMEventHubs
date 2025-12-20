@@ -83,42 +83,44 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-  // 1. A base list of events that are currently active (registration not closed).
-  const activeEvents = useMemo(() => {
-    return events.filter(event => {
+  // A base list of events that the current user is eligible to see and are not over.
+  const eligibleEvents = useMemo(() => {
+    // First, filter out past events
+    const activeEvents = events.filter(event => {
       if (event.date && event.startTime && event.endTime) {
         const eventDate = event.date.toDate();
-        
-        const [startHours, startMinutes] = event.startTime.split(':');
-        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(startHours), parseInt(startMinutes));
-        const registrationDeadline = addMinutes(startDateTime, 15);
         
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
 
-        return now < registrationDeadline && now < endDateTime;
+        return now < endDateTime;
       }
       return false;
     }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
-  }, [events, now]);
-  
-  // 2. A stricter list of events that the current user is eligible to see.
-  const eligibleEvents = useMemo(() => {
+    
+    // Then, filter by eligibility
     if (isAdmin) {
       return activeEvents; // Admins can see all active events.
     }
-    // Students can only see events they are eligible for.
-    return activeEvents.filter(event => 
-      event.eligibleCampuses?.includes(userProfile?.campus || '')
-    );
-  }, [activeEvents, isAdmin, userProfile]);
+    
+    // Students only see events they are eligible for.
+    return activeEvents.filter(event => {
+      // If eligibleCampuses is not set or is empty, assume it's open to all.
+      if (!event.eligibleCampuses || event.eligibleCampuses.length === 0) {
+        return true;
+      }
+      // Otherwise, check if the user's campus is in the list.
+      return event.eligibleCampuses.includes(userProfile?.campus || '');
+    });
+  }, [events, now, isAdmin, userProfile]);
+  
 
-  // 3. Featured events are derived from the eligible list.
+  // Featured events are derived from the eligible list.
   const featuredEvents = useMemo(() => {
     return eligibleEvents.slice(0, 5);
   }, [eligibleEvents]);
 
-  // 4. The final grid of events is filtered from the eligible list.
+  // The final grid of events is filtered from the pre-vetted eligible list.
   const filteredEvents = useMemo(() => {
     return eligibleEvents.filter(event => {
       const priceMatch =
@@ -130,6 +132,8 @@ export default function Home() {
         typeFilter === 'all' ||
         typeFilter === event.eventType;
       
+      // If a campus is selected, filter by the event's conducting campus.
+      // If no campus is selected, show all eligible events.
       const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
       
       return priceMatch && typeMatch && campusMatch;

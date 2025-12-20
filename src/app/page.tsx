@@ -106,9 +106,9 @@ export default function Home() {
     }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime()); // Ensure they are sorted by date
   }, [events, now]);
   
-  // A separate list for the carousel, showing the 3 nearest upcoming events from the active list.
+  // A separate list for the carousel, showing the 5 nearest upcoming events from the active list.
   const featuredEvents = useMemo(() => {
-    return activeEvents.slice(0, 3);
+    return activeEvents.slice(0, 5);
   }, [activeEvents]);
 
 
@@ -169,9 +169,12 @@ export default function Home() {
       <div className="container mx-auto px-4 pt-24 pb-8">
         {/* Featured Events Carousel */}
         <ScrollAnimation delay={200}>
-          <h1 className="text-4xl font-bold font-headline text-center text-white mb-8 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+          <h1 className="text-4xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
             Featured Events
           </h1>
+          <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            Here are some of the most popular and up-and-coming events. Don&apos;t miss out!
+          </p>
           <FeaturedEventsCarousel events={featuredEvents} />
         </ScrollAnimation>
 

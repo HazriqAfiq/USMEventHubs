@@ -130,8 +130,6 @@ export default function Home() {
         typeFilter === 'all' ||
         typeFilter === event.eventType;
       
-      // Campus filter now only filters by conducting campus,
-      // as eligibility is already handled.
       const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
       
       return priceMatch && typeMatch && campusMatch;

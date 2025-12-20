@@ -20,7 +20,7 @@ type MonthlyCount = {
 
 type CampusCount = {
   name: string;
-  users: number;
+  count: number;
 };
 
 interface SuperAdminDashboardProps {
@@ -50,10 +50,14 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   const availableYears = useMemo(() => {
     if (events.length === 0) return [getYear(new Date())];
     const yearSet = new Set(events.map(e => getYear(e.date.toDate())));
-    return Array.from(yearSet).sort((a,b) => b - a);
+    const sortedYears = Array.from(yearSet).sort((a,b) => b - a);
+    if (!sortedYears.includes(new Date().getFullYear())) {
+        sortedYears.unshift(new Date().getFullYear());
+    }
+    return sortedYears;
   }, [events]);
 
-  const [selectedYear, setSelectedYear] = useState<number>(() => availableYears[0] || getYear(new Date()));
+  const [selectedYear, setSelectedYear] = useState<number>(availableYears[0]);
 
   useEffect(() => {
     if(availableYears.length > 0) {
@@ -95,6 +99,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     monthlyEventData,
     campusUserData,
     roleData,
+    campusEventData,
   } = useMemo(() => {
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
@@ -120,18 +125,32 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         { name: 'Organizers', value: organizerCount },
     ];
 
-    const campusCounts: { [key: string]: number } = {};
+    const userCampusCounts: { [key: string]: number } = {};
     users.forEach(u => {
         if (u.campus) {
-            campusCounts[u.campus] = (campusCounts[u.campus] || 0) + 1;
+            userCampusCounts[u.campus] = (userCampusCounts[u.campus] || 0) + 1;
         } else {
-            campusCounts['N/A'] = (campusCounts['N/A'] || 0) + 1;
+            userCampusCounts['N/A'] = (userCampusCounts['N/A'] || 0) + 1;
         }
     });
-    const campusUserData: CampusCount[] = Object.entries(campusCounts).map(([name, count]) => ({
+    const campusUserData: CampusCount[] = Object.entries(userCampusCounts).map(([name, count]) => ({
         name,
-        users: count,
-    })).sort((a,b) => b.users - a.users);
+        count: count,
+    })).sort((a,b) => b.count - a.count);
+    
+    const eventCampusCounts: { [key: string]: number } = {};
+    eventsInSelectedYear.forEach(event => {
+        if (event.conductingCampus) {
+            eventCampusCounts[event.conductingCampus] = (eventCampusCounts[event.conductingCampus] || 0) + 1;
+        } else {
+            eventCampusCounts['N/A'] = (eventCampusCounts['N/A'] || 0) + 1;
+        }
+    });
+    const campusEventData: CampusCount[] = Object.entries(eventCampusCounts).map(([name, count]) => ({
+        name,
+        count: count,
+    })).sort((a, b) => b.count - a.count);
+
 
     return {
       totalEventsInYear: eventsInSelectedYear.length,
@@ -140,6 +159,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
       monthlyEventData,
       campusUserData,
       roleData,
+      campusEventData,
     };
   }, [events, users, selectedYear]);
 
@@ -226,7 +246,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
             <ResponsiveContainer width="100%" height={350}>
                <BarChart data={campusUserData} onClick={(data) => handleBarClick(data, 'campus')}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                <XAxis dataKey="name" name="Campus" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
                  <Tooltip 
                   contentStyle={{
@@ -235,7 +255,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                     borderRadius: "var(--radius)",
                   }}
                 />
-                <Bar dataKey="users" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+                <Bar dataKey="count" name="Users" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -279,6 +299,38 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                 </ResponsiveContainer>
             </CardContent>
          </Card>
+        <Card>
+           <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center">
+                  <Building className="mr-2 h-5 w-5" />
+                  Event Distribution by Campus ({selectedYear})
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Events conducted by each campus.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+               <BarChart data={campusEventData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" name="Campus" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                 <Tooltip 
+                  contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                  }}
+                />
+                <Bar dataKey="count" name="Events" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
       <div className="mt-8">
         <Card>

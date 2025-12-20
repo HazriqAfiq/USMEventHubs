@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,8 @@ import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
+  const [campusFilter, setCampusFilter] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!loading && !isSuperAdmin) {
@@ -61,7 +63,7 @@ export default function SuperAdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Site-wide analytics and management tools.
           </p>
-           <SuperAdminDashboard />
+           <SuperAdminDashboard onCampusClick={setCampusFilter}/>
         </div>
         <Separator />
          <div>
@@ -77,7 +79,7 @@ export default function SuperAdminPage() {
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             View users, change roles, and manage accounts.
           </p>
-          <UserManagementTable />
+          <UserManagementTable campusFilter={campusFilter} onClearCampusFilter={() => setCampusFilter(null)} />
         </div>
       </div>
     </div>

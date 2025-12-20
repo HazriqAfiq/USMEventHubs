@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getMonth, getYear, format, isSameYear } from 'date-fns';
-import { Users, Calendar, BarChart2, ShieldCheck } from 'lucide-react';
+import { Users, Calendar, BarChart2, ShieldCheck, Building } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,7 +18,16 @@ type MonthlyCount = {
   events: number;
 };
 
-export default function SuperAdminDashboard() {
+type CampusCount = {
+  name: string;
+  users: number;
+};
+
+interface SuperAdminDashboardProps {
+  onCampusClick: (campus: string | null) => void;
+}
+
+export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +35,9 @@ export default function SuperAdminDashboard() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const availableYears = useMemo(() => {
+    if (events.length === 0) {
+      return [new Date().getFullYear()];
+    }
     const yearSet = new Set<number>();
     events.forEach(event => {
       if (event.date) {
@@ -33,12 +45,7 @@ export default function SuperAdminDashboard() {
       }
     });
     
-    const years = Array.from(yearSet).sort((a, b) => b - a);
-
-    if (years.length === 0) {
-      return [new Date().getFullYear()];
-    }
-    return years;
+    return Array.from(yearSet).sort((a, b) => b - a);
   }, [events]);
 
   useEffect(() => {
@@ -79,6 +86,7 @@ export default function SuperAdminDashboard() {
     totalUsers,
     totalOrganizers,
     monthlyEventData,
+    campusUserData,
   } = useMemo(() => {
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
@@ -98,11 +106,25 @@ export default function SuperAdminDashboard() {
     
     const organizerCount = users.filter(u => u.role === 'organizer').length;
 
+    const campusCounts: { [key: string]: number } = {};
+    users.forEach(u => {
+        if (u.campus) {
+            campusCounts[u.campus] = (campusCounts[u.campus] || 0) + 1;
+        } else {
+            campusCounts['N/A'] = (campusCounts['N/A'] || 0) + 1;
+        }
+    });
+    const campusUserData: CampusCount[] = Object.entries(campusCounts).map(([name, count]) => ({
+        name,
+        users: count,
+    })).sort((a,b) => b.users - a.users);
+
     return {
       totalEventsInYear: eventsInSelectedYear.length,
       totalUsers: users.length,
       totalOrganizers: organizerCount,
       monthlyEventData,
+      campusUserData,
     };
   }, [events, users, selectedYear]);
 
@@ -115,9 +137,22 @@ export default function SuperAdminDashboard() {
         <div className="mt-8">
           <Skeleton className="h-[350px] w-full" />
         </div>
+         <div className="mt-8">
+          <Skeleton className="h-[350px] w-full" />
+        </div>
       </div>
     );
   }
+
+  const handleBarClick = (data: any, type: 'campus' | 'event') => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      if (type === 'campus') {
+        const campusName = data.activePayload[0].payload.name;
+        onCampusClick(campusName);
+      }
+    }
+  };
+
 
   return (
     <div className="mt-6">
@@ -154,7 +189,39 @@ export default function SuperAdminDashboard() {
         </Card>
       </div>
 
-      <div className="mt-8">
+       <div className="grid md:grid-cols-2 gap-8 mt-8">
+        <Card>
+           <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center">
+                  <Building className="mr-2 h-5 w-5" />
+                  User Distribution by Campus
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Click a bar to filter the user table below.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+               <BarChart data={campusUserData} onClick={(data) => handleBarClick(data, 'campus')}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                 <Tooltip 
+                  contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                  }}
+                />
+                <Bar dataKey="users" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -164,7 +231,7 @@ export default function SuperAdminDashboard() {
                   Platform-Wide Event Creation
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Total events created per month across the entire platform.
+                  Total events created per month.
                 </p>
               </div>
               {availableYears.length > 0 && (
@@ -194,7 +261,7 @@ export default function SuperAdminDashboard() {
                     borderRadius: "var(--radius)",
                   }}
                 />
-                <Bar dataKey="events" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="events" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

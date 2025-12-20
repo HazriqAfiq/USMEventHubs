@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
-import { Trash2, UserX } from 'lucide-react';
+import { Trash2, UserX, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,13 +39,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
-export default function UserManagementTable() {
+interface UserManagementTableProps {
+  campusFilter: string | null;
+  onClearCampusFilter: () => void;
+}
+
+
+export default function UserManagementTable({ campusFilter, onClearCampusFilter }: UserManagementTableProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user: currentUser, isSuperAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'superadmin'>('all');
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -82,9 +88,11 @@ export default function UserManagementTable() {
         roleFilter === 'all' ||
         user.role === roleFilter;
 
-      return searchMatch && roleMatch;
+      const campusMatch = !campusFilter || user.campus === campusFilter;
+
+      return searchMatch && roleMatch && campusMatch;
     });
-  }, [users, searchQuery, roleFilter]);
+  }, [users, searchQuery, roleFilter, campusFilter]);
 
   const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student') => {
     if (!isSuperAdmin) {
@@ -181,16 +189,25 @@ export default function UserManagementTable() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-sm"
             />
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="organizer">Organizer</SelectItem>
-                </SelectContent>
-            </Select>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="organizer">Organizer</SelectItem>
+                      <SelectItem value="superadmin">Super Admin</SelectItem>
+                  </SelectContent>
+              </Select>
+              {campusFilter && (
+                <Button variant="ghost" onClick={onClearCampusFilter} className="flex-shrink-0">
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Clear Campus Filter
+                </Button>
+              )}
+            </div>
         </div>
 
         <Table>

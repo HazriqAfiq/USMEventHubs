@@ -25,6 +25,28 @@ export default function SuperAdminDashboard() {
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>();
+    events.forEach(event => {
+      if (event.date) {
+        yearSet.add(getYear(event.date.toDate()));
+      }
+    });
+    
+    const years = Array.from(yearSet).sort((a, b) => b - a);
+
+    if (years.length === 0) {
+      return [new Date().getFullYear()];
+    }
+    return years;
+  }, [events]);
+
+  useEffect(() => {
+    if (availableYears.length > 0) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears]);
+
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
       if (!authLoading) setLoading(false);
@@ -57,19 +79,10 @@ export default function SuperAdminDashboard() {
     totalUsers,
     totalOrganizers,
     monthlyEventData,
-    availableYears,
   } = useMemo(() => {
     const eventsInSelectedYear = events.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
     );
-
-    const yearSet = new Set<number>();
-    events.forEach(event => {
-      if (event.date) yearSet.add(getYear(event.date.toDate()));
-    });
-    users.forEach(u => yearSet.add(getYear(new Date()))); // Ensure current year is available
-    
-    const availableYears = Array.from(yearSet).sort((a, b) => b - a);
 
     const monthCounts = Array(12).fill(0);
     eventsInSelectedYear.forEach(event => {
@@ -90,7 +103,6 @@ export default function SuperAdminDashboard() {
       totalUsers: users.length,
       totalOrganizers: organizerCount,
       monthlyEventData,
-      availableYears
     };
   }, [events, users, selectedYear]);
 

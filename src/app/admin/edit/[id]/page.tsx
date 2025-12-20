@@ -60,7 +60,7 @@ export default function EditEventPage() {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
           // Admins can only edit their own events. Superadmins can edit any.
-          if (isSuperAdmin || eventData.organizerId === user.uid) {
+          if (isSuperAdmin || (isAdmin && eventData.organizerId === user.uid)) {
             setEvent(eventData);
 
             const eventEndTime = getEventEndTime(eventData);

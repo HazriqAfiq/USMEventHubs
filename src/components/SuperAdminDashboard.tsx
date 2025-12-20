@@ -367,6 +367,18 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
                   Events conducted by each campus.
                 </p>
               </div>
+               {availableYears.length > 0 && (
+                <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                    <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableYears.map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -481,5 +493,6 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
     </div>
   );
 }
+
 
 

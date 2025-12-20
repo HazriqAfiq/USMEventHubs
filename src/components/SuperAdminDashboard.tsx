@@ -83,7 +83,7 @@ export default function SuperAdminDashboard() {
       events: count,
     }));
     
-    const organizerCount = users.filter(u => u.role === 'organizer' || u.role === 'superadmin').length;
+    const organizerCount = users.filter(u => u.role === 'organizer').length;
 
     return {
       totalEventsInYear: eventsInSelectedYear.length,

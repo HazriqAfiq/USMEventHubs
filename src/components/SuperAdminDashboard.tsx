@@ -13,6 +13,8 @@ import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import OrganizerEventsDialog from './OrganizerEventsDialog';
+
 
 type MonthlyCount = {
   name: string;
@@ -30,10 +32,6 @@ type OrganizerEventCount = {
     count: number;
 }
 
-interface SuperAdminDashboardProps {
-  onCampusClick: (campus: string | null) => void;
-  onOrganizerClick: (organizer: {id: string, name: string} | null) => void;
-}
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
@@ -51,27 +49,35 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }: SuperAdminDashboardProps) {
+export default function SuperAdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const [userDistributionFilter, setUserDistributionFilter] = useState<'all' | 'student' | 'organizer'>('all');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedOrganizer, setSelectedOrganizer] = useState<{ id: string, name: string } | null>(null);
   
   const availableYears = useMemo(() => {
-    if (events.length === 0) {
-      return [getYear(new Date())];
-    }
-    const yearSet = new Set(events.map(e => e.date ? getYear(e.date.toDate()) : null).filter(Boolean));
+    const yearSet = new Set<number>();
+    events.forEach(e => {
+      if(e.date) yearSet.add(getYear(e.date.toDate()));
+    });
+    users.forEach(u => {
+      if (u.role === 'student' || u.role === 'organizer') {
+        // Assuming users have a join date or similar, for now, just add current year if not present
+      }
+    });
+
     if (yearSet.size === 0) {
-      return [getYear(new Date())];
+      yearSet.add(getYear(new Date()));
     }
     const sortedYears = Array.from(yearSet).sort((a,b) => b - a);
     if (!sortedYears.includes(new Date().getFullYear())) {
         sortedYears.unshift(new Date().getFullYear());
     }
     return sortedYears;
-  }, [events]);
+  }, [events, users]);
 
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0]);
 
@@ -134,7 +140,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
       events: count,
     }));
     
-    const communityUsers = users.filter(u => u.role !== 'superadmin');
+    const communityUsers = users.filter(u => u.role === 'student' || u.role === 'organizer');
     const organizerCount = communityUsers.filter(u => u.role === 'organizer').length;
     const studentCount = communityUsers.filter(u => u.role === 'student').length;
 
@@ -220,14 +226,11 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
     );
   }
 
-  const handleBarClick = (data: any, type: 'campus' | 'organizer') => {
+  const handleOrganizerBarClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
-      const payload = data.activePayload[0].payload;
-      if (type === 'campus') {
-        onCampusClick(payload.name);
-      } else if (type === 'organizer') {
-        onOrganizerClick({ id: payload.organizerId, name: payload.name });
-      }
+        const payload = data.activePayload[0].payload;
+        setSelectedOrganizer({ id: payload.organizerId, name: payload.name });
+        setDialogOpen(true);
     }
   };
   
@@ -235,6 +238,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
 
 
   return (
+    <>
     <div className="mt-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -279,7 +283,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
                   User Distribution by Campus
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Click a bar to filter the user table below.
+                  User counts for each campus.
                 </p>
               </div>
               <ToggleGroup
@@ -300,7 +304,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
-               <BarChart data={campusUserData} onClick={(data) => handleBarClick(data, 'campus')}>
+               <BarChart data={campusUserData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" name="Campus" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
@@ -408,7 +412,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
                   Events per Organizer ({selectedYear})
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Click a bar to filter the event list below.
+                  Click a bar to view that organizer's events.
                 </p>
               </div>
               {availableYears.length > 0 && (
@@ -427,7 +431,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
-               <BarChart data={organizerEventData} onClick={(data) => handleBarClick(data, 'organizer')}>
+               <BarChart data={organizerEventData} onClick={handleOrganizerBarClick}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" name="Organizer" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
@@ -491,8 +495,18 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
         </Card>
       </div>
     </div>
+    {selectedOrganizer && (
+        <OrganizerEventsDialog 
+            isOpen={dialogOpen}
+            onClose={() => {
+                setDialogOpen(false);
+                setSelectedOrganizer(null);
+            }}
+            organizerId={selectedOrganizer.id}
+            organizerName={selectedOrganizer.name}
+            year={selectedYear}
+        />
+    )}
+    </>
   );
 }
-
-
-

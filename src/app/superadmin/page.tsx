@@ -17,9 +17,6 @@ import Link from 'next/link';
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
-  const [campusFilter, setCampusFilter] = useState<string | null>(null);
-  const [organizerFilter, setOrganizerFilter] = useState<{ id: string, name: string } | null>(null);
-
 
   useEffect(() => {
     if (!loading && !isSuperAdmin) {
@@ -66,7 +63,7 @@ export default function SuperAdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Site-wide analytics and management tools.
           </p>
-           <SuperAdminDashboard onCampusClick={setCampusFilter} onOrganizerClick={setOrganizerFilter}/>
+           <SuperAdminDashboard />
         </div>
         <Separator />
          <div>
@@ -74,7 +71,7 @@ export default function SuperAdminPage() {
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Review, edit, or delete any event on the platform.
           </p>
-          <SuperAdminEventList organizerFilter={organizerFilter} onClearOrganizerFilter={() => setOrganizerFilter(null)} />
+          <SuperAdminEventList />
         </div>
         <Separator />
         <div>

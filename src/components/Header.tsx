@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -73,10 +73,16 @@ export function Header() {
                       <span>My Profile</span>
                     </DropdownMenuItem>
                     {isSuperAdmin ? (
-                      <DropdownMenuItem onClick={() => router.push('/superadmin')}>
-                        <ShieldCheck className="mr-2 h-4 w-4" />
-                        <span>Super Admin</span>
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => router.push('/superadmin')}>
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          <span>Superadmin</span>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => router.push('/superadmin/users')}>
+                          <Users className="mr-2 h-4 w-4" />
+                          <span>Manage Users</span>
+                        </DropdownMenuItem>
+                      </>
                     ) : isOrganizer ? (
                       <DropdownMenuItem onClick={() => router.push('/organizer')}>
                         <UserCircle className="mr-2 h-4 w-4" />

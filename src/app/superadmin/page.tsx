@@ -7,10 +7,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Terminal, ShieldCheck } from 'lucide-react';
-import UserManagementTable from '@/components/SuperAdminUserTable';
+import { Terminal, ShieldCheck, Users, ArrowRight } from 'lucide-react';
 import SuperAdminEventList from '@/components/SuperAdminEventList';
 import SuperAdminDashboard from '@/components/SuperAdminDashboard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
@@ -76,11 +78,25 @@ export default function SuperAdminPage() {
         </div>
         <Separator />
         <div>
-          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage All Users</h2>
+          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">User Management</h2>
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             View users, change roles, and manage accounts.
           </p>
-          <UserManagementTable campusFilter={campusFilter} onClearCampusFilter={() => setCampusFilter(null)} />
+           <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5"/>Manage All Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Go to the user management page to view, edit, disable, or delete user accounts.
+              </p>
+              <Button asChild>
+                <Link href="/superadmin/users">
+                  Go to User Management <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+              </Button>
+            </CardContent>
+           </Card>
         </div>
       </div>
     </div>

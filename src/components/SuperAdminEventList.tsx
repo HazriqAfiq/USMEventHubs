@@ -8,7 +8,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, SortAsc, SortDesc } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+
+const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
 export default function SuperAdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -37,6 +40,8 @@ export default function SuperAdminEventList() {
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [campusFilter, setCampusFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('date-desc');
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
 
 
@@ -54,7 +59,8 @@ export default function SuperAdminEventList() {
       querySnapshot.forEach((doc) => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
-      eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
+      // Initial sort by date desc, can be removed if sort logic handles it
+      // eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);
     }, (error) => {
@@ -75,7 +81,7 @@ export default function SuperAdminEventList() {
           [event.id]: snapshot.size
         }));
       }, (error) => {
-        console.error(`Error fetching registrations for event ${event.id}:`, error);
+        // console.error(`Error fetching registrations for event ${event.id}:`, error);
       });
       unsubscribers.push(unsubscribe);
     });
@@ -96,20 +102,41 @@ export default function SuperAdminEventList() {
         return null;
     }
 
-    return events.filter(event => {
-      const timeFilter =
-        filter === 'all' ||
-        (filter === 'upcoming' && (getEventEndTime(event) ?? new Date(0)) >= now) ||
-        (filter === 'past' && (getEventEndTime(event) ?? new Date(0)) < now);
+    let sortedEvents = [...events]
+      .filter(event => {
+        const timeFilter =
+          filter === 'all' ||
+          (filter === 'upcoming' && (getEventEndTime(event) ?? new Date(0)) >= now) ||
+          (filter === 'past' && (getEventEndTime(event) ?? new Date(0)) < now);
 
-      const searchFilter =
-        !searchQuery ||
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.id.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return timeFilter && searchFilter;
+        const searchFilter =
+          !searchQuery ||
+          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          event.id.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const campusFilterMatch =
+          campusFilter === 'all' || event.conductingCampus === campusFilter;
+        
+        return timeFilter && searchFilter && campusFilterMatch;
+      });
+
+    // Sorting logic
+    sortedEvents.sort((a, b) => {
+      switch (sortOption) {
+        case 'date-asc':
+          return a.date.toDate().getTime() - b.date.toDate().getTime();
+        case 'participants-desc':
+          return (participantCounts[b.id] || 0) - (participantCounts[a.id] || 0);
+        case 'views-desc':
+            return (b.viewCount || 0) - (a.viewCount || 0);
+        case 'date-desc':
+        default:
+          return b.date.toDate().getTime() - a.date.toDate().getTime();
+      }
     });
-  }, [events, filter, searchQuery]);
+
+    return sortedEvents;
+  }, [events, filter, searchQuery, campusFilter, sortOption, participantCounts]);
 
   const handleDelete = async (eventToDelete: Event) => {
     if (!isSuperAdmin) {
@@ -158,7 +185,7 @@ export default function SuperAdminEventList() {
   if (loading || authLoading) {
     return (
       <div className="mt-6 space-y-4">
-        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-10 w-full" />
         {[...Array(3)].map((_, i) => (
           <Skeleton key={i} className="h-24 w-full" />
         ))}
@@ -168,24 +195,50 @@ export default function SuperAdminEventList() {
 
   return (
     <div className="mt-6 space-y-4">
-       <div className="flex flex-wrap gap-4 justify-between items-center">
-        <ToggleGroup
-            type="single"
-            variant="outline"
-            value={filter}
-            onValueChange={(value) => { if (value) setFilter(value as any); }}
-        >
-            <ToggleGroupItem value="all">All</ToggleGroupItem>
-            <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-            <ToggleGroupItem value="past">Past</ToggleGroupItem>
-        </ToggleGroup>
-
-        <Input
-          placeholder="Search by event title or ID..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
+       <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="flex-grow w-full md:w-auto">
+            <Input
+              placeholder="Search by event title or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <ToggleGroup
+                type="single"
+                variant="outline"
+                value={filter}
+                onValueChange={(value) => { if (value) setFilter(value as any); }}
+                className="w-full sm:w-auto"
+            >
+                <ToggleGroupItem value="all" className="w-full">All</ToggleGroupItem>
+                <ToggleGroupItem value="upcoming" className="w-full">Upcoming</ToggleGroupItem>
+                <ToggleGroupItem value="past" className="w-full">Past</ToggleGroupItem>
+            </ToggleGroup>
+             <Select value={campusFilter} onValueChange={setCampusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by campus" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Campuses</SelectItem>
+                    {campuses.map(campus => (
+                        <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="date-desc">Newest First</SelectItem>
+                    <SelectItem value="date-asc">Oldest First</SelectItem>
+                    <SelectItem value="participants-desc">Most Participants</SelectItem>
+                    <SelectItem value="views-desc">Most Views</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
       </div>
 
       {filteredEvents.length === 0 ? (

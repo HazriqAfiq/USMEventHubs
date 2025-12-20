@@ -28,6 +28,7 @@ export interface Event {
   qrCodeUrl?: string;
   conductingCampus: string;
   eligibleCampuses?: string[];
+  viewCount?: number;
 }
 
 export interface UserProfile {

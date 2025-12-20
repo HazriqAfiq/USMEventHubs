@@ -7,7 +7,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -270,6 +270,10 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
                 <span className='flex items-center'>
                     <Users className="mr-1.5 h-4 w-4" />
                     {participantCounts[event.id] ?? 0}
+                </span>
+                 <span className='flex items-center'>
+                    <Eye className="mr-1.5 h-4 w-4" />
+                    {event.viewCount ?? 0}
                 </span>
               </div>
             </div>

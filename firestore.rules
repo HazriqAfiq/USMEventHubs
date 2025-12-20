@@ -12,6 +12,11 @@ service cloud.firestore {
     function isAdmin(userId) {
       return getUserRole(userId) == 'admin';
     }
+    
+    // Helper function to check if a user is a student
+    function isStudent(userId) {
+      return getUserRole(userId) == 'student';
+    }
 
     // Default deny all
     match /{document=**} {
@@ -28,10 +33,23 @@ service cloud.firestore {
                     && request.resource.data.organizerId == request.auth.uid
                     && request.resource.data.imageUrl is string;
       
-      // Only the original organizer can update or delete their event
-      allow update: if request.auth != null && isAdmin(request.auth.uid) 
-                    && resource.data.organizerId == request.auth.uid
-                    && request.resource.data.imageUrl is string;
+      // Update rules:
+      // 1. Organizer admin can update their event.
+      // 2. Any student can update *only* the viewCount field.
+      allow update: if request.auth != null && (
+        ( // Rule for Admin updates
+          isAdmin(request.auth.uid) 
+          && resource.data.organizerId == request.auth.uid
+          && request.resource.data.imageUrl is string
+        ) ||
+        ( // Rule for student view count increment
+          isStudent(request.auth.uid)
+          // Ensure only viewCount is being changed
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          // Ensure it's an increment of 1
+          && request.resource.data.viewCount == resource.data.viewCount + 1
+        )
+      );
 
       allow delete: if request.auth != null && isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid;
       

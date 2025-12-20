@@ -53,7 +53,7 @@ const formSchema = z.object({
   groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   qrCodeUrl: z.string().optional(),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
-  conductingCampus: z.string().optional(), // Keep optional here, will be enforced in logic
+  conductingCampus: z.string(),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price >= 1;
@@ -205,7 +205,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   // Set conducting campus when user profile loads for a new form
   useEffect(() => {
     if (!isEditMode && userProfile?.campus) {
-      form.setValue('conductingCampus', userProfile.campus);
+      form.setValue('conductingCampus', userProfile.campus, { shouldValidate: true });
     }
   }, [userProfile, isEditMode, form]);
 
@@ -282,6 +282,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             }
             await addDoc(collection(db, 'events'), { 
               ...eventData, 
+              viewCount: 0, // Initialize view count
               conductingCampus: userProfile.campus,
               createdAt: serverTimestamp(), 
               organizerId: user.uid,

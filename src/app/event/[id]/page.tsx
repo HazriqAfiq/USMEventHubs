@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban, Building2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban, Building2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -99,30 +99,49 @@ export default function EventDetailPage() {
   useEffect(() => {
     if (!eventId) return;
 
-    const fetchEvent = async () => {
-      setLoading(true);
-      try {
-        const docRef = doc(db, 'events', eventId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
-          setEvent(eventData);
-          setEventExists(true);
-        } else {
-          setEventExists(false);
-        }
-      } catch (error) {
-        console.error("Error fetching event:", error);
-        setEventExists(false);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const docRef = doc(db, 'events', eventId);
     
-    fetchEvent();
+    // Use onSnapshot to listen for real-time updates (like view counts)
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
+        setEvent(eventData);
+        setEventExists(true);
+      } else {
+        setEventExists(false);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching event:", error);
+      setEventExists(false);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
 
   }, [eventId]);
+
+  useEffect(() => {
+    // Increment view count logic
+    if (eventId && user && !isAdmin) {
+      const viewKey = `viewed_${eventId}`;
+      if (!sessionStorage.getItem(viewKey)) {
+        const docRef = doc(db, 'events', eventId);
+        updateDoc(docRef, { viewCount: increment(1) })
+          .then(() => {
+            sessionStorage.setItem(viewKey, 'true');
+          })
+          .catch((serverError) => {
+             const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: { viewCount: 'increment' },
+            }, serverError);
+            errorEmitter.emit('permission-error', permissionError);
+          });
+      }
+    }
+  }, [eventId, user, isAdmin]);
 
    useEffect(() => {
     if (user && eventId) {
@@ -334,6 +353,10 @@ export default function EventDetailPage() {
                   <MapPin className="h-4 w-4 mr-2" />
                   <span>{event.location}</span>
                 </div>
+                <div className="flex items-center">
+                  <Eye className="h-4 w-4 mr-2" />
+                  <span>{event.viewCount || 0} views</span>
+                </div>
             </div>
           </div>
         </CardHeader>
@@ -493,5 +516,6 @@ export default function EventDetailPage() {
 
 
     
+
 
 

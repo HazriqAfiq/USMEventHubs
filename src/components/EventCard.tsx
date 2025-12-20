@@ -184,7 +184,7 @@ export default function EventCard({ event }: EventCardProps) {
                     (isHovering || isInView) && event.videoUrl ? 'opacity-0' : 'opacity-100'
                   )}
                 />
-                <div className="absolute top-2 right-2 flex flex-wrap justify-end gap-2">
+                <div className="absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2">
                    <Badge
                     variant="outline"
                     className="text-sm bg-background/80 backdrop-blur-sm"

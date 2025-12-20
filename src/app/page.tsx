@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -18,13 +16,15 @@ import { WelcomePage } from '@/components/WelcomePage';
 import { FeaturedEventsCarousel } from '@/components/FeaturedEventsCarousel';
 import { ScrollAnimation } from '@/components/ScrollAnimation';
 import { addMinutes } from 'date-fns';
+import { CampusFilter } from '@/components/CampusFilter';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [now, setNow] = useState(new Date());
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
+  const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
@@ -123,9 +123,15 @@ export default function Home() {
         typeFilter === 'all' ||
         typeFilter === event.eventType;
 
-      return priceMatch && typeMatch;
+      const campusMatch = !selectedCampus || (
+        isAdmin 
+          ? event.conductingCampus === selectedCampus
+          : event.eligibleCampuses?.includes(selectedCampus)
+      );
+
+      return priceMatch && typeMatch && campusMatch;
     });
-  }, [activeEvents, priceFilter, typeFilter]);
+  }, [activeEvents, priceFilter, typeFilter, selectedCampus, isAdmin]);
 
 
   const handleGetStarted = () => {
@@ -176,6 +182,19 @@ export default function Home() {
             Here are some of the most popular and up-and-coming events. Don&apos;t miss out!
           </p>
           <FeaturedEventsCarousel events={featuredEvents} />
+        </ScrollAnimation>
+
+        {/* Campus Filter */}
+        <ScrollAnimation delay={300}>
+          <div className="mb-12">
+             <h2 className="text-3xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+              Filter by Campus
+            </h2>
+            <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+              Select a campus to see events happening there.
+            </p>
+            <CampusFilter selectedCampus={selectedCampus} onSelectCampus={setSelectedCampus} />
+          </div>
         </ScrollAnimation>
 
 

@@ -52,17 +52,29 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const user = userCredential.user;
 
-      // Fetch user profile to check role
+      // Fetch user profile to check role and status
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      toast({
-        title: 'Login successful!',
-        description: 'Redirecting...',
-      });
-      
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
+
+        if (userData.disabled) {
+          await auth.signOut(); // Sign out the user immediately
+          toast({
+            variant: 'destructive',
+            title: 'Account Disabled',
+            description: 'Your account has been disabled. Please contact a superadmin for assistance.',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: 'Login successful!',
+          description: 'Redirecting...',
+        });
+        
         if (userData.role === 'superadmin') {
           router.push('/superadmin');
         } else if (userData.role === 'admin') {
@@ -125,6 +137,7 @@ export default function LoginPage() {
         name: registerName,
         photoURL: null,
         campus: registerCampus,
+        disabled: false,
       });
       
       toast({

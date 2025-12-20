@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -83,7 +84,7 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
 }
 
 export default function ProfileForm() {
-    const { user, userProfile, loading } = useAuth();
+    const { user, userProfile, isSuperAdmin, loading } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -147,16 +148,20 @@ export default function ProfileForm() {
         const userDocRef = doc(db, 'users', user.uid);
         
         try {
-            const updateData: { name: string, photoURL?: string | null } = { 
-                name: data.name,
-            };
+            const updateData: Partial<ProfileFormValues> = {};
             
-            // Only include photoURL in the update if it has actually changed.
+            if (data.name !== userProfile.name) {
+                updateData.name = data.name;
+            }
             if (data.photoURL !== userProfile.photoURL) {
                 updateData.photoURL = data.photoURL;
             }
+            if (isSuperAdmin && data.campus !== userProfile.campus) {
+                updateData.campus = data.campus;
+            }
 
-            if (data.name !== userProfile.name || data.photoURL !== userProfile.photoURL) {
+
+            if (Object.keys(updateData).length > 0) {
                  await updateDoc(userDocRef, updateData)
                     .catch((serverError) => {
                         const permissionError = new FirestorePermissionError({
@@ -234,10 +239,27 @@ export default function ProfileForm() {
                           render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-white">Campus</FormLabel>
-                                <FormControl>
-                                    <Input disabled {...field} value={field.value || ''} />
-                                </FormControl>
-                                <FormDescription>Your campus cannot be changed.</FormDescription>
+                                {isSuperAdmin ? (
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a campus" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {campuses.map(campus => (
+                                                <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <FormControl>
+                                        <Input disabled {...field} value={field.value || ''} />
+                                    </FormControl>
+                                )}
+                                <FormDescription>
+                                    {isSuperAdmin ? "You can change your campus." : "Your campus cannot be changed."}
+                                </FormDescription>
                                 <FormMessage />
                             </FormItem>
                           )}

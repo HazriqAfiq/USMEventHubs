@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserX } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,6 +97,25 @@ export default function UserManagementTable() {
       toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }
   };
+
+  const handleToggleDisable = async (userToUpdate: UserProfile) => {
+    if (!isSuperAdmin) {
+      toast({ variant: 'destructive', title: 'Permission Denied' });
+      return;
+    }
+    if (userToUpdate.uid === currentUser?.uid) {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'You cannot disable your own account.' });
+        return;
+    }
+    const userDocRef = doc(db, 'users', userToUpdate.uid);
+    const newDisabledStatus = !userToUpdate.disabled;
+    try {
+      await updateDoc(userDocRef, { disabled: newDisabledStatus });
+      toast({ title: `User ${newDisabledStatus ? 'Disabled' : 'Enabled'}`, description: `${userToUpdate.name || userToUpdate.email} has been ${newDisabledStatus ? 'disabled' : 'enabled'}.` });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    }
+  }
   
   const handleDelete = async (userToDelete: UserProfile) => {
     if (!isSuperAdmin) {
@@ -164,13 +183,14 @@ export default function UserManagementTable() {
               <TableHead>User</TableHead>
               <TableHead>Campus</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
-                <TableRow key={user.uid}>
+                <TableRow key={user.uid} className={user.disabled ? 'bg-muted/50' : ''}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
@@ -191,49 +211,66 @@ export default function UserManagementTable() {
                       {user.role}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <Badge variant={user.disabled ? 'destructive' : 'outline'} className={user.disabled ? '' : 'text-green-500 border-green-500'}>
+                        {user.disabled ? 'Disabled' : 'Active'}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
-                    {user.role !== 'superadmin' && user.uid !== currentUser?.uid ? (
+                    {user.uid !== currentUser?.uid ? (
                       <>
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">Change Role</Button>
+                              <Button variant="ghost" size="sm">Actions</Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                              <DropdownMenuLabel>Set Role</DropdownMenuLabel>
+                              <DropdownMenuLabel>Manage User</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'student')}>
-                                Student
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'admin')}>
-                                Admin
-                              </DropdownMenuItem>
+                              {user.role !== 'superadmin' && (
+                                <>
+                                    <DropdownMenuItem onClick={() => handleToggleDisable(user)}>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        <span>{user.disabled ? 'Enable' : 'Disable'} Account</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'student')}>
+                                        Set as Student
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'admin')}>
+                                        Set as Admin
+                                    </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                               <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete User</span>
+                                  </div>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete User?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the user "{user.name || user.email}". This action cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(user)} className="bg-destructive hover:bg-destructive/90">
+                                        Delete User
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                                </AlertDialog>
                           </DropdownMenuContent>
                       </DropdownMenu>
-                      <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                                Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete User?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete the user "{user.name || user.email}". This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(user)} className="bg-destructive hover:bg-destructive/90">
-                                Delete User
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </>
                     ) : (
                          <span className="text-sm text-muted-foreground">
-                           {user.uid === currentUser?.uid ? 'This is you' : 'No actions'}
+                           This is you
                          </span>
                     )}
                   </TableCell>
@@ -241,7 +278,7 @@ export default function UserManagementTable() {
               ))
             ) : (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                         No users found.
                     </TableCell>
                 </TableRow>

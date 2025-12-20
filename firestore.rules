@@ -138,34 +138,31 @@ service cloud.firestore {
                     && request.resource.data.name.size() > 0
                     && request.resource.data.photoURL == null
                     && request.resource.data.role == 'student'
-                    && request.resource.data.campus is string;
+                    && request.resource.data.campus is string
+                    && request.resource.data.disabled == false;
 
-      // Allow authenticated users to read profiles. Superadmins can list all users.
-      allow get: if request.auth != null;
+      // Allow authenticated users to read profiles if they are not disabled. Superadmins can list all users.
+      function isUserEnabled() {
+        return resource.data.disabled != true;
+      }
+
+      allow get: if request.auth != null && isUserEnabled();
       allow list: if request.auth != null && isSuperAdmin(request.auth.uid);
 
       // A user can update their own 'name' or 'photoURL'. 
-      // Admins can update any field except campus/email.
-      // Superadmins can change roles.
-      allow update: if (request.auth.uid == userId 
-                      // Ensure no other fields are being changed by the user.
-                      && request.resource.data.uid == resource.data.uid
-                      && request.resource.data.email == resource.data.email
-                      && request.resource.data.role == resource.data.role
-                      && request.resource.data.campus == resource.data.campus
-                      // Validate incoming data types for user updates
-                      && request.resource.data.name is string
-                      && request.resource.data.name.size() > 0
-                      && (
-                        // Allow photoURL to be a string or stay the same.
-                        request.resource.data.photoURL == resource.data.photoURL || 
-                        (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576) // Limit data URI to 1MB
-                        )
-                    ) 
-                    || (request.auth != null && isAdmin(request.auth.uid) 
-                        && request.resource.data.campus == resource.data.campus
-                        && request.resource.data.email == resource.data.email)
-                    || (request.auth != null && isSuperAdmin(request.auth.uid));
+      // Superadmins can change any field, including roles and disabled status.
+      allow update: if request.auth != null && (
+                      ( // User's own updates
+                        request.auth.uid == userId &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']) &&
+                        request.resource.data.name is string &&
+                        request.resource.data.name.size() > 0 &&
+                        (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576))
+                      ) ||
+                      ( // Superadmin updates
+                        isSuperAdmin(request.auth.uid)
+                      )
+                    );
 
       // Only superadmins can delete user documents. A user cannot delete their own document.
       allow delete: if request.auth != null && isSuperAdmin(request.auth.uid);

@@ -60,7 +60,6 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
   
   const availableYears = useMemo(() => {
     if (events.length === 0) {
-      // If there are no events, default to the current year
       return [getYear(new Date())];
     }
     const yearSet = new Set(events.map(e => e.date ? getYear(e.date.toDate()) : null).filter(Boolean));
@@ -400,6 +399,18 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
                   Click a bar to filter the event list below.
                 </p>
               </div>
+              {availableYears.length > 0 && (
+                <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                    <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableYears.map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -470,4 +481,5 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
     </div>
   );
 }
+
 

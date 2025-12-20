@@ -46,8 +46,9 @@ service cloud.firestore {
           isStudent(request.auth.uid)
           // Ensure only viewCount is being changed
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
-          // Ensure it's an increment of 1
-          && request.resource.data.viewCount == resource.data.viewCount + 1
+          // Ensure it's an increment of 1, or initialization to 1
+          && (request.resource.data.viewCount == resource.data.viewCount + 1 
+              || (resource.data.viewCount == null && request.resource.data.viewCount == 1))
         )
       );
 

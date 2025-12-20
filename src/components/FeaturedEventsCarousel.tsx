@@ -2,13 +2,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Laptop, Users } from 'lucide-react';
 import Link from 'next/link';
 import type { Event } from '@/types';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Calendar, Clock } from 'lucide-react';
+import { Badge } from './ui/badge';
 
 interface FeaturedEventsCarouselProps {
   events: Event[];
@@ -109,6 +110,35 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             alt={event.title}
             className="w-full h-full object-cover rounded-2xl"
           />
+           <div className="absolute top-2 right-2 flex flex-wrap justify-end gap-2">
+              <Badge
+                variant="outline"
+                className="text-sm bg-background/80 backdrop-blur-sm"
+              >
+                <Eye className="h-3 w-3 mr-1.5" />
+                {event.viewCount || 0}
+              </Badge>
+              {event.isFree ? (
+                <Badge variant="secondary" className="text-sm">
+                  Free
+                </Badge>
+              ) : event.price ? (
+                <Badge variant="secondary" className="text-sm">
+                  RM{event.price.toFixed(2)}
+                </Badge>
+              ) : null}
+              <Badge
+                variant="outline"
+                className="text-sm bg-background/80 backdrop-blur-sm capitalize"
+              >
+                {event.eventType === 'online' ? (
+                  <Laptop className="h-3 w-3 mr-1.5" />
+                ) : (
+                  <Users className="h-3 w-3 mr-1.5" />
+                )}
+                {event.eventType}
+              </Badge>
+            </div>
         </div>
         <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
             <h3 className="text-xl font-bold line-clamp-2 mt-4" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>

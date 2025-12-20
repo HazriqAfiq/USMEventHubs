@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Trash2, Upload, Loader2, Check, ChevronsUpDown, Video } from 'lucide-react';
+import { CalendarIcon, Trash2, Upload, Loader2, Check, ChevronsUpDown, Video, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
@@ -53,6 +53,7 @@ const formSchema = z.object({
   groupLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   qrCodeUrl: z.string().optional(),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
+  conductingCampus: z.string().optional(), // Keep optional here, will be enforced in logic
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price >= 1;
@@ -181,6 +182,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       videoUrl: event.videoUrl || '',
       price: event.price ?? 1,
       eligibleCampuses: event.eligibleCampuses || [],
+      conductingCampus: event.conductingCampus,
     } : {
       title: '',
       description: '',
@@ -196,8 +198,16 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       groupLink: '',
       qrCodeUrl: '',
       eligibleCampuses: [],
+      conductingCampus: userProfile?.campus || '',
     },
   });
+  
+  // Set conducting campus when user profile loads for a new form
+  useEffect(() => {
+    if (!isEditMode && userProfile?.campus) {
+      form.setValue('conductingCampus', userProfile.campus);
+    }
+  }, [userProfile, isEditMode, form]);
 
   const handleImageUpload = async (file: File, type: 'event' | 'qr'): Promise<string> => {
     if (!user) throw new Error("User not authenticated for upload.");
@@ -266,11 +276,15 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
             router.push('/admin');
         } else {
+             // Ensure conductingCampus is set from profile for new events
+            if (!userProfile.campus) {
+              throw new Error("Admin's campus is not set. Cannot create event.");
+            }
             await addDoc(collection(db, 'events'), { 
               ...eventData, 
+              conductingCampus: userProfile.campus,
               createdAt: serverTimestamp(), 
               organizerId: user.uid,
-              conductingCampus: userProfile.campus,
             });
             toast({ title: 'Event Created!', description: `"${data.title}" has been added.` });
             handleReset();
@@ -334,6 +348,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         groupLink: '',
         qrCodeUrl: '',
         eligibleCampuses: [],
+        conductingCampus: userProfile?.campus || '',
     });
   }
 
@@ -362,6 +377,25 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     </FormControl>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="conductingCampus"
+                render={({ field }) => (
+                   <FormItem>
+                      <FormLabel className="text-white">Conducting Campus</FormLabel>
+                      <FormControl>
+                          <div className="relative">
+                            <Input value={field.value} disabled />
+                            <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          </div>
+                      </FormControl>
+                      <FormDescription>
+                          This is automatically set to your profile's campus and cannot be changed.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
                 )}
               />
                <FormField
@@ -625,6 +659,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       </PopoverContent>
                     </Popover>
                     <FormDescription>
+                       Select which campuses are eligible to join this event.
                        {field.value?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {field.value.map(campus => (

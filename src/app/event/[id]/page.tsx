@@ -342,7 +342,7 @@ export default function EventDetailPage() {
             {event.description}
           </div>
           
-          {(event.conductingCampus || event.eligibleCampuses) && (
+          {(event.conductingCampus || (event.eligibleCampuses && event.eligibleCampuses.length > 0)) && (
             <div className='space-y-4 rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
                 <h3 className="font-semibold flex items-center"><Building2 className='mr-2 h-5 w-5'/>Campus Information</h3>
                 {event.conductingCampus && (
@@ -493,4 +493,5 @@ export default function EventDetailPage() {
 
 
     
+
 

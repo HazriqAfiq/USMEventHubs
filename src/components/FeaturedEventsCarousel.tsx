@@ -110,7 +110,13 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             alt={event.title}
             className="w-full h-full object-cover rounded-2xl"
           />
-           <div className="absolute top-2 right-2 flex flex-wrap justify-end gap-2">
+        </div>
+        <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
+            <h3 className="text-xl font-bold line-clamp-2 mt-4" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
+            {event.title}
+            </h3>
+
+            <div className="flex flex-wrap justify-center gap-2">
               <Badge
                 variant="outline"
                 className="text-sm bg-background/80 backdrop-blur-sm"
@@ -139,11 +145,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                 {event.eventType}
               </Badge>
             </div>
-        </div>
-        <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
-            <h3 className="text-xl font-bold line-clamp-2 mt-4" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
-            {event.title}
-            </h3>
+
             <div className="text-sm text-white/90 space-y-1">
               <div className="flex items-center justify-center gap-2">
                 <Calendar className="h-4 w-4" />

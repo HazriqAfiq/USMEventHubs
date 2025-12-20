@@ -18,6 +18,7 @@ import {
   Users,
   Clock,
   UserCheck,
+  Eye,
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { Badge } from './ui/badge';
@@ -251,6 +252,11 @@ export default function EventCard({ event }: EventCardProps) {
                 <CardDescription className="flex items-center pt-1 text-sm">
                   <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
                   <span className="line-clamp-1">{event.location}</span>
+                </CardDescription>
+
+                <CardDescription className="flex items-center pt-1 text-sm">
+                  <Eye className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{event.viewCount || 0} views</span>
                 </CardDescription>
               </CardHeader>
 

@@ -5,27 +5,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
-import AdminEventList from '@/components/AdminEventList';
+import OrganizerEventList from '@/components/OrganizerEventList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import AdminDashboard from '@/components/AdminDashboard';
+import OrganizerDashboard from '@/components/OrganizerDashboard';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
-export default function AdminPage() {
-  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
+export default function OrganizerPage() {
+  const { user, isOrganizer, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
   const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
+    if (!loading && !isOrganizer) {
       if(isSuperAdmin) {
         router.push('/superadmin');
       } else {
         router.push('/');
       }
     }
-  }, [isAdmin, isSuperAdmin, loading, router]);
+  }, [isOrganizer, isSuperAdmin, loading, router]);
 
   // Show skeleton loader while checking auth state
   if (loading) {
@@ -48,8 +48,8 @@ export default function AdminPage() {
     );
   }
   
-  // If the user is not an admin, show an access denied message while redirecting
-  if (!isAdmin) {
+  // If the user is not an organizer, show an access denied message while redirecting
+  if (!isOrganizer) {
       return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">
@@ -63,20 +63,20 @@ export default function AdminPage() {
     );
   }
 
-  // If we reach here, user is an admin
+  // If we reach here, user is an organizer
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Organizer Dashboard</h1>
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">An overview of your event metrics.</p>
-          <AdminDashboard onMonthClick={setMonthFilter} />
+          <OrganizerDashboard onMonthClick={setMonthFilter} />
         </div>
         <Separator />
         <div>
           <h2 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage Events</h2>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and delete existing events.</p>
-          <AdminEventList monthFilter={monthFilter} onClearMonthFilter={() => setMonthFilter(null)} />
+          <OrganizerEventList monthFilter={monthFilter} onClearMonthFilter={() => setMonthFilter(null)} />
         </div>
          <Separator />
         <div>

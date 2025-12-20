@@ -10,15 +10,15 @@ import { Terminal, User } from 'lucide-react';
 import UserEventList from '@/components/UserEventList';
 
 export default function DashboardPage() {
-  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If not loading and user is not logged in, or if user is an admin, redirect to homepage.
-    if (!loading && (!user || isAdmin || isSuperAdmin)) {
+    // If not loading and user is not logged in, or if user is an organizer, redirect to homepage.
+    if (!loading && (!user || isOrganizer || isSuperAdmin)) {
       router.push('/');
     }
-  }, [user, isAdmin, isSuperAdmin, loading, router]);
+  }, [user, isOrganizer, isSuperAdmin, loading, router]);
 
   if (loading) {
     return (
@@ -40,8 +40,8 @@ export default function DashboardPage() {
     );
   }
 
-  // If user is not logged in or is an admin, show a message while redirecting.
-  if (!user || isAdmin || isSuperAdmin) {
+  // If user is not logged in or is an organizer, show a message while redirecting.
+  if (!user || isOrganizer || isSuperAdmin) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">

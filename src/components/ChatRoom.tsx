@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -183,31 +184,39 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
   const togglePin = async (messageId: string, currentPinned: boolean | undefined) => {
     if (!user || !eventId) return;
+
     if (user.uid !== organizerId) {
-      toast({ title: 'Unauthorized', description: 'Only the event organizer can pin messages.', variant: 'destructive' });
-      return;
+        toast({ title: 'Unauthorized', description: 'Only the event organizer can pin messages.', variant: 'destructive' });
+        return;
+    }
+
+    const pinnedCount = messages.filter(m => m.pinned).length;
+
+    if (!currentPinned && pinnedCount >= 3) {
+        toast({ title: 'Pin Limit Reached', description: 'You can only pin up to 3 messages.', variant: 'destructive' });
+        return;
     }
 
     try {
-      const messageRef = doc(db, 'events', eventId, 'messages', messageId);
-      await updateDoc(messageRef, { pinned: !currentPinned })
-        .catch((serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: messageRef.path,
-            operation: 'update',
-            requestResourceData: { pinned: !currentPinned },
-          }, serverError);
-          errorEmitter.emit('permission-error', permissionError);
-          throw serverError; // re-throw to be caught by outer catch
-        });
+        const messageRef = doc(db, 'events', eventId, 'messages', messageId);
+        await updateDoc(messageRef, { pinned: !currentPinned })
+            .catch((serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: messageRef.path,
+                    operation: 'update',
+                    requestResourceData: { pinned: !currentPinned },
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
+                throw serverError; // re-throw to be caught by outer catch
+            });
 
-      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pinned: !currentPinned } : m)));
-      toast({ title: currentPinned ? 'Unpinned' : 'Pinned', description: currentPinned ? 'Message unpinned.' : 'Message pinned.' });
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pinned: !currentPinned } : m)));
+        toast({ title: currentPinned ? 'Unpinned' : 'Pinned', description: currentPinned ? 'Message unpinned.' : 'Message pinned.' });
     } catch (err) {
-      console.error('Failed to toggle pin', err);
-      toast({ title: 'Error', description: 'Could not update pin. Check console.', variant: 'destructive' });
+        console.error('Failed to toggle pin', err);
+        toast({ title: 'Error', description: 'Could not update pin. Check console.', variant: 'destructive' });
     }
-  };
+};
 
   const renderContent = () => {
     if (hasAccess === null) {
@@ -241,13 +250,13 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
                 return (
                   <>
                     {pinned.length > 0 && (
-                      <div className="sticky top-0 bg-neutral-900 z-10 space-y-3 mb-4 pb-3 border-b border-neutral-700">
+                      <div className="sticky top-0 z-10 space-y-3 mb-4 pb-3 border-b border-neutral-700 backdrop-blur-sm">
                         {pinned.map((m) => (
                           <ChatMessage
                             key={`pinned-${m.id}`}
                             message={m}
                             isOwn={user?.uid === m.senderId}
-                            isOrganizer={m.senderId === organizerId || m.isOrganizer}
+                            isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
                             profile={profiles[m.senderId]}
                             onTogglePin={togglePin}
                           />
@@ -262,7 +271,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
                             key={m.id}
                             message={m}
                             isOwn={user?.uid === m.senderId}
-                            isOrganizer={m.senderId === organizerId || m.isOrganizer}
+                            isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
                             profile={profiles[m.senderId]}
                             onTogglePin={togglePin}
                           />

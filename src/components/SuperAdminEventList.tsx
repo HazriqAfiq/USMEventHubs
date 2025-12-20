@@ -223,7 +223,7 @@ export default function SuperAdminEventList() {
                   <span className="sr-only">View Chat</span>
                 </Button>
               </Link>
-              <Link href={`/admin/edit/${event.id}`}>
+              <Link href={`/organizer/edit/${event.id}`}>
                 <Button variant="outline" size="icon">
                   <FilePenLine className="h-4 w-4" />
                   <span className="sr-only">Edit Event</span>

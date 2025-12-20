@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -7,12 +8,12 @@ import { Crown, Pin } from 'lucide-react';
 interface Props {
   message: any;
   isOwn?: boolean;
-  isOrganizer?: boolean;
+  isEventOrganizer?: boolean;
   profile?: any;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
 }
 
-export default function ChatMessage({ message, isOwn, isOrganizer, profile, onTogglePin }: Props) {
+export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin }: Props) {
   const timeAgo = message.createdAt?.toDate ? formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true }) : '';
 
   return (
@@ -28,12 +29,12 @@ export default function ChatMessage({ message, isOwn, isOrganizer, profile, onTo
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {isOrganizer && (
+          {isEventOrganizer && (
             <button onClick={() => onTogglePin?.(message.id, !!message.pinned)} className="ml-2 text-xs text-neutral-200 bg-transparent hover:opacity-80 px-2 py-1 rounded-md">
               {message.pinned ? 'Unpin' : 'Pin'}
             </button>
           )}
-          {isOrganizer && (
+          {isEventOrganizer && (
             <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-purple-700 text-white font-medium">
               <Crown className="h-3 w-3" /> Organizer
             </div>

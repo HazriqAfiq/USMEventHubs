@@ -24,7 +24,7 @@ export interface Event {
   price?: number;
   eventType: 'online' | 'physical';
   registrations?: Registration[]; // UID of registered users
-  organizerId?: string; // UID of the admin who created the event
+  organizerId?: string; // UID of the organizer who created the event
   groupLink?: string;
   qrCodeUrl?: string;
   conductingCampus: string;
@@ -35,7 +35,7 @@ export interface Event {
 export interface UserProfile {
   uid: string;
   email: string | null;
-  role: 'admin' | 'student' | 'superadmin';
+  role: 'organizer' | 'student' | 'superadmin';
   name?: string;
   photoURL?: string | null;
   campus?: string;

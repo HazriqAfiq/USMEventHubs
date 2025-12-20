@@ -11,7 +11,7 @@ import type { UserProfile } from '@/types';
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
-  isAdmin: boolean;
+  isOrganizer: boolean;
   isSuperAdmin: boolean;
   loading: boolean;
 }
@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
-  isAdmin: false,
+  isOrganizer: false,
   isSuperAdmin: false,
   loading: true,
 });
@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -42,18 +42,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            if (userDocSnap.exists()) {
               const profile = userDocSnap.data() as UserProfile;
               setUserProfile(profile);
-              setIsAdmin(profile.role === 'admin');
+              setIsOrganizer(profile.role === 'organizer');
               setIsSuperAdmin(profile.role === 'superadmin');
             } else {
               setUserProfile(null);
-              setIsAdmin(false);
+              setIsOrganizer(false);
               setIsSuperAdmin(false);
             }
             setLoading(false);
         }, () => {
           // Handle snapshot errors if needed, e.g., permission denied
           setUserProfile(null);
-          setIsAdmin(false);
+          setIsOrganizer(false);
           setIsSuperAdmin(false);
           setLoading(false);
         });
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setUser(null);
         setUserProfile(null);
-        setIsAdmin(false);
+        setIsOrganizer(false);
         setIsSuperAdmin(false);
         setLoading(false);
       }
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  const value = { user, userProfile, loading, isAdmin, isSuperAdmin };
+  const value = { user, userProfile, loading, isOrganizer, isSuperAdmin };
 
   return (
     <AuthContext.Provider value={value}>

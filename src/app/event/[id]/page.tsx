@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -57,7 +56,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isOrganizer, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -127,7 +126,7 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     // Increment view count logic
-    if (eventId && user && !isAdmin && !viewCountIncremented.current) {
+    if (eventId && user && !isOrganizer && !viewCountIncremented.current) {
       const docRef = doc(db, 'events', eventId);
       updateDoc(docRef, { viewCount: increment(1) })
         .catch((serverError) => {
@@ -142,7 +141,7 @@ export default function EventDetailPage() {
       // Set the ref to true to prevent further increments on this mount
       viewCountIncremented.current = true;
     }
-  }, [eventId, user, isAdmin]);
+  }, [eventId, user, isOrganizer]);
 
    useEffect(() => {
     if (user && eventId) {
@@ -212,8 +211,8 @@ export default function EventDetailPage() {
       return;
     }
     
-    if (isAdmin) {
-      toast({ title: 'Admin Action Not Allowed', description: 'Admins cannot register for events.' });
+    if (isOrganizer) {
+      toast({ title: 'Organizer Action Not Allowed', description: 'Organizers cannot register for events.' });
       return;
     }
 
@@ -232,13 +231,13 @@ export default function EventDetailPage() {
     setIsSuccessDialogOpen(open);
   }
   
-  const isOrganizer = user ? isAdmin && event?.organizerId === user.uid : false;
+  const isEventOrganizer = user ? isOrganizer && event?.organizerId === user.uid : false;
   
   const showChat = useMemo(() => {
     if (!user || !event) return false;
     
     // Organizer can always see the chat (past or present)
-    if (isOrganizer) {
+    if (isEventOrganizer) {
       return true;
     }
     
@@ -248,7 +247,7 @@ export default function EventDetailPage() {
     }
     
     return false;
-  }, [user, event, isOrganizer, isRegistered, isEventOver]);
+  }, [user, event, isEventOrganizer, isRegistered, isEventOver]);
 
   if (loading || authLoading) {
     return (
@@ -322,9 +321,9 @@ export default function EventDetailPage() {
               </>
             )}
           </Carousel>
-          {isOrganizer && (
+          {isEventOrganizer && (
             <Button asChild className="absolute top-4 right-4 z-10" variant="secondary">
-              <Link href={`/admin/edit/${event.id}`}>
+              <Link href={`/organizer/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
                 Edit Event
               </Link>
@@ -388,7 +387,7 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {!isAdmin && user && (
+          {!isOrganizer && user && (
             isRegistered ? (
               <Card className="bg-green-500/10 border-green-500/50">
                 <CardHeader>
@@ -511,15 +510,3 @@ export default function EventDetailPage() {
     </>
   );
 }
-
-    
-
-
-
-    
-
-
-
-
-
-

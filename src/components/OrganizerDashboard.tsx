@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -17,12 +18,12 @@ type MonthlyEventCount = {
   total: number;
 };
 
-interface AdminDashboardProps {
+interface OrganizerDashboardProps {
   onMonthClick: (date: Date | null) => void;
 }
 
 
-export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
+export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();

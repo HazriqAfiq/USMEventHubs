@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,23 +29,23 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface AdminEventListProps {
+interface OrganizerEventListProps {
   monthFilter: Date | null;
   onClearMonthFilter: () => void;
 }
 
-export default function AdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: AdminEventListProps) {
+export default function OrganizerEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: OrganizerEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [monthFilter, setMonthFilter] = useState<string>('all');
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isOrganizer, loading: authLoading } = useAuth();
 
 
   useEffect(() => {
-    if (authLoading || !isAdmin || !user) {
+    if (authLoading || !isOrganizer || !user) {
         if (!authLoading) setLoading(false);
         return;
     }
@@ -69,7 +70,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
     });
 
     return () => unsubscribe();
-  }, [authLoading, isAdmin, user]);
+  }, [authLoading, isOrganizer, user]);
   
   useEffect(() => {
     // Set up listeners for participant counts for each event
@@ -284,7 +285,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
                   <span className="sr-only">View Chat</span>
                 </Button>
               </Link>
-              <Link href={`/admin/edit/${event.id}`}>
+              <Link href={`/organizer/edit/${event.id}`}>
                 <Button variant="outline" size="icon">
                   <FilePenLine className="h-4 w-4" />
                   <span className="sr-only">Edit Event</span>

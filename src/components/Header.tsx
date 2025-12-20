@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 export function Header() {
-  const { user, userProfile, isAdmin, isSuperAdmin, loading } = useAuth();
+  const { user, userProfile, isOrganizer, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -77,10 +77,10 @@ export function Header() {
                         <ShieldCheck className="mr-2 h-4 w-4" />
                         <span>Super Admin</span>
                       </DropdownMenuItem>
-                    ) : isAdmin ? (
-                      <DropdownMenuItem onClick={() => router.push('/admin')}>
+                    ) : isOrganizer ? (
+                      <DropdownMenuItem onClick={() => router.push('/organizer')}>
                         <UserCircle className="mr-2 h-4 w-4" />
-                        <span>Admin Dashboard</span>
+                        <span>Organizer Dashboard</span>
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onClick={() => router.push('/dashboard')}>

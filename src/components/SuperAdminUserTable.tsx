@@ -45,7 +45,7 @@ export default function UserManagementTable() {
   const { toast } = useToast();
   const { user: currentUser, isSuperAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'student'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student'>('all');
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -86,7 +86,7 @@ export default function UserManagementTable() {
     });
   }, [users, searchQuery, roleFilter]);
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'student') => {
+  const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student') => {
     if (!isSuperAdmin) {
       toast({ variant: 'destructive', title: 'Permission Denied' });
       return;
@@ -188,7 +188,7 @@ export default function UserManagementTable() {
                 <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
                     <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="organizer">Organizer</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -239,7 +239,7 @@ export default function UserManagementTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>
+                    <Badge variant={user.role === 'organizer' || user.role === 'superadmin' ? 'default' : 'secondary'}>
                       {user.role}
                     </Badge>
                   </TableCell>
@@ -269,8 +269,8 @@ export default function UserManagementTable() {
                                     <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'student')}>
                                         Set as Student
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'admin')}>
-                                        Set as Admin
+                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'organizer')}>
+                                        Set as Organizer
                                     </DropdownMenuItem>
                                 </>
                               )}

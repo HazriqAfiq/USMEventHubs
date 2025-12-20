@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -274,11 +273,11 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         if (isEditMode && event) {
             await updateDoc(doc(db, 'events', event.id), eventData);
             toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
-            router.push('/admin');
+            router.push('/organizer');
         } else {
              // Ensure conductingCampus is set from profile for new events
             if (!userProfile.campus) {
-              throw new Error("Admin's campus is not set. Cannot create event.");
+              throw new Error("Organizer's campus is not set. Cannot create event.");
             }
             await addDoc(collection(db, 'events'), { 
               ...eventData, 

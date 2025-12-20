@@ -9,9 +9,9 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
     
-    // Helper function to check if user is an admin
-    function isAdmin(userId) {
-      return getUserRole(userId) == 'admin';
+    // Helper function to check if user is an organizer
+    function isOrganizer(userId) {
+      return getUserRole(userId) == 'organizer';
     }
 
     // Helper function to check if user is a superadmin
@@ -34,18 +34,18 @@ service cloud.firestore {
       // Anyone can read event details
       allow read: if true;
       
-      // Admins and Superadmins can create events, but must set themselves as the organizer
-      allow create: if request.auth != null && (isAdmin(request.auth.uid) || isSuperAdmin(request.auth.uid))
+      // Organizers and Superadmins can create events, but must set themselves as the organizer
+      allow create: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid))
                     && request.resource.data.organizerId == request.auth.uid
                     && request.resource.data.imageUrl is string;
       
       // Update rules:
-      // 1. Organizer admin can update their event.
+      // 1. Organizer can update their event.
       // 2. Any student can update *only* the viewCount field.
       // 3. Superadmins can update any event.
       allow update: if request.auth != null && (
-        ( // Rule for Admin updates
-          isAdmin(request.auth.uid) 
+        ( // Rule for Organizer updates
+          isOrganizer(request.auth.uid) 
           && resource.data.organizerId == request.auth.uid
           && request.resource.data.imageUrl is string
         ) ||
@@ -59,16 +59,16 @@ service cloud.firestore {
         )
       );
       
-      // Admins can delete their own events, Superadmins can delete any event.
+      // Organizers can delete their own events, Superadmins can delete any event.
       allow delete: if request.auth != null && (
-          (isAdmin(request.auth.uid) && resource.data.organizerId == request.auth.uid) ||
+          (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid) ||
           isSuperAdmin(request.auth.uid)
       );
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
-        // Admins and Superadmins can list all registrations for any event.
-        allow list: if request.auth != null && (isAdmin(request.auth.uid) || isSuperAdmin(request.auth.uid));
+        // Organizers and Superadmins can list all registrations for any event.
+        allow list: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid));
       }
 
       // Rules for individual 'registrations' documents
@@ -85,27 +85,27 @@ service cloud.firestore {
       
       // Rules for event chat messages
       match /messages/{messageId} {
-        // Only authenticated admins, superadmins or registered participants can read messages
+        // Only authenticated organizers, superadmins or registered participants can read messages
         allow read: if request.auth != null && (
-          isAdmin(request.auth.uid) ||
+          isOrganizer(request.auth.uid) ||
           isSuperAdmin(request.auth.uid) ||
           exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
         );
 
-        // Allow creating a message if the senderId matches auth and user is admin, superadmin or registered
+        // Allow creating a message if the senderId matches auth and user is organizer, superadmin or registered
         allow create: if request.auth != null
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && (
-            isAdmin(request.auth.uid) ||
+            isOrganizer(request.auth.uid) ||
             isSuperAdmin(request.auth.uid) ||
             exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
           );
 
-        // Allow the event organizer, admins or superadmins to toggle the `pinned` flag only.
+        // Allow the event organizer, organizers or superadmins to toggle the `pinned` flag only.
         allow update: if request.auth != null && (
-          isAdmin(request.auth.uid) ||
+          isOrganizer(request.auth.uid) ||
           isSuperAdmin(request.auth.uid) ||
           // organizer of the parent event can pin/unpin
           get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
@@ -119,9 +119,9 @@ service cloud.firestore {
         && request.resource.data.isOrganizer == resource.data.isOrganizer
         && request.resource.data.createdAt == resource.data.createdAt;
 
-        // Allow delete by admin, superadmin or the original sender
+        // Allow delete by organizer, superadmin or the original sender
         allow delete: if request.auth != null && (
-          isAdmin(request.auth.uid) || 
+          isOrganizer(request.auth.uid) || 
           isSuperAdmin(request.auth.uid) || 
           resource.data.senderId == request.auth.uid
         );

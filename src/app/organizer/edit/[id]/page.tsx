@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 
 export default function EditEventPage() {
-  const { user, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -45,7 +45,7 @@ export default function EditEventPage() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!isAdmin && !isSuperAdmin) {
+    if (!isOrganizer && !isSuperAdmin) {
       setHasPermission(false);
       return;
     }
@@ -59,8 +59,8 @@ export default function EditEventPage() {
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-          // Admins can only edit their own events. Superadmins can edit any.
-          if (isSuperAdmin || (isAdmin && eventData.organizerId === user.uid)) {
+          // Organizers can only edit their own events. Superadmins can edit any.
+          if (isSuperAdmin || (isOrganizer && eventData.organizerId === user.uid)) {
             setEvent(eventData);
 
             const eventEndTime = getEventEndTime(eventData);
@@ -93,7 +93,7 @@ export default function EditEventPage() {
             setLoading(false);
           }
         } else {
-          router.push('/admin');
+          router.push('/organizer');
         }
       } catch (serverError: any) {
         if (serverError.code === 'permission-denied') {
@@ -110,20 +110,20 @@ export default function EditEventPage() {
 
     fetchEvent();
 
-  }, [eventId, router, authLoading, isAdmin, isSuperAdmin, user]);
+  }, [eventId, router, authLoading, isOrganizer, isSuperAdmin, user]);
 
   useEffect(() => {
     if (!authLoading && !user && !loading) {
       router.push('/login');
-    } else if (!authLoading && !isAdmin && !isSuperAdmin && !loading) {
+    } else if (!authLoading && !isOrganizer && !isSuperAdmin && !loading) {
        router.push('/');
     } else if (!loading && !hasPermission) {
       const timer = setTimeout(() => {
-        router.push(isSuperAdmin ? '/superadmin' : '/admin');
+        router.push(isSuperAdmin ? '/superadmin' : '/organizer');
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [authLoading, user, isAdmin, isSuperAdmin, hasPermission, loading, router]);
+  }, [authLoading, user, isOrganizer, isSuperAdmin, hasPermission, loading, router]);
 
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;

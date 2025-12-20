@@ -59,7 +59,7 @@ export default function LoginPage() {
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
 
-        if (userData.disabled) {
+        if (userData.disabled === true) {
           await auth.signOut(); // Sign out the user immediately
           toast({
             variant: 'destructive',
@@ -77,8 +77,8 @@ export default function LoginPage() {
         
         if (userData.role === 'superadmin') {
           router.push('/superadmin');
-        } else if (userData.role === 'admin') {
-          router.push('/admin');
+        } else if (userData.role === 'organizer') {
+          router.push('/organizer');
         } else {
           router.push('/');
         }

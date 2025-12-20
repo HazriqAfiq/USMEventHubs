@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -20,7 +21,7 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 
 export default function EditEventPage() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -44,7 +45,7 @@ export default function EditEventPage() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!isAdmin) {
+    if (!isAdmin && !isSuperAdmin) {
       setHasPermission(false);
       return;
     }
@@ -58,8 +59,8 @@ export default function EditEventPage() {
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-          // Only allow the organizer to view this page.
-          if (eventData.organizerId === user.uid) {
+          // Admins can only edit their own events. Superadmins can edit any.
+          if (isSuperAdmin || eventData.organizerId === user.uid) {
             setEvent(eventData);
 
             const eventEndTime = getEventEndTime(eventData);
@@ -109,20 +110,20 @@ export default function EditEventPage() {
 
     fetchEvent();
 
-  }, [eventId, router, authLoading, isAdmin, user]);
+  }, [eventId, router, authLoading, isAdmin, isSuperAdmin, user]);
 
   useEffect(() => {
     if (!authLoading && !user && !loading) {
       router.push('/login');
-    } else if (!authLoading && !isAdmin && !loading) {
+    } else if (!authLoading && !isAdmin && !isSuperAdmin && !loading) {
        router.push('/');
     } else if (!loading && !hasPermission) {
       const timer = setTimeout(() => {
-        router.push('/admin');
+        router.push(isSuperAdmin ? '/superadmin' : '/admin');
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [authLoading, user, isAdmin, hasPermission, loading, router]);
+  }, [authLoading, user, isAdmin, isSuperAdmin, hasPermission, loading, router]);
 
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;
@@ -185,7 +186,7 @@ export default function EditEventPage() {
         <div>
            <Button variant="ghost" onClick={() => router.back()} className="mb-4 text-white hover:text-white/80">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Admin
+            Back to Dashboard
           </Button>
           <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Event Details</h1>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">{isPastEvent ? "Viewing details for the past event" : "Modify the details for the event"} "{event?.title}".</p>

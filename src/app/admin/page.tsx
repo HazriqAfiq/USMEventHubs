@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,17 +13,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
 export default function AdminPage() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
   const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
-      // If not loading and not an admin, redirect to homepage.
-      // This also handles the case where the user is not logged in.
-      router.push('/');
+      if(isSuperAdmin) {
+        router.push('/superadmin');
+      } else {
+        router.push('/');
+      }
     }
-  }, [isAdmin, loading, router]);
+  }, [isAdmin, isSuperAdmin, loading, router]);
 
   // Show skeleton loader while checking auth state
   if (loading) {

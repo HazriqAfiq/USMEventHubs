@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Registration {
@@ -34,7 +35,7 @@ export interface Event {
 export interface UserProfile {
   uid: string;
   email: string | null;
-  role: 'admin' | 'student';
+  role: 'admin' | 'student' | 'superadmin';
   name?: string;
   photoURL?: string | null;
   campus?: string;

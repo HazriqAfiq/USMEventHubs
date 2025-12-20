@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -11,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   loading: boolean;
 }
 
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   isAdmin: false,
+  isSuperAdmin: false,
   loading: true,
 });
 
@@ -25,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,15 +43,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const profile = userDocSnap.data() as UserProfile;
               setUserProfile(profile);
               setIsAdmin(profile.role === 'admin');
+              setIsSuperAdmin(profile.role === 'superadmin');
             } else {
               setUserProfile(null);
               setIsAdmin(false);
+              setIsSuperAdmin(false);
             }
             setLoading(false);
         }, () => {
           // Handle snapshot errors if needed, e.g., permission denied
           setUserProfile(null);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
           setLoading(false);
         });
 
@@ -57,6 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setIsAdmin(false);
+        setIsSuperAdmin(false);
         setLoading(false);
       }
     });
@@ -64,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  const value = { user, userProfile, loading, isAdmin };
+  const value = { user, userProfile, loading, isAdmin, isSuperAdmin };
 
   return (
     <AuthContext.Provider value={value}>

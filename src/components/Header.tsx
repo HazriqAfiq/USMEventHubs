@@ -1,9 +1,10 @@
+
 'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard, User } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -19,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 export function Header() {
-  const { user, userProfile, isAdmin, loading } = useAuth();
+  const { user, userProfile, isAdmin, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -71,7 +72,12 @@ export function Header() {
                       <User className="mr-2 h-4 w-4" />
                       <span>My Profile</span>
                     </DropdownMenuItem>
-                    {isAdmin ? (
+                    {isSuperAdmin ? (
+                      <DropdownMenuItem onClick={() => router.push('/superadmin')}>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Super Admin</span>
+                      </DropdownMenuItem>
+                    ) : isAdmin ? (
                       <DropdownMenuItem onClick={() => router.push('/admin')}>
                         <UserCircle className="mr-2 h-4 w-4" />
                         <span>Admin Dashboard</span>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -60,10 +61,17 @@ export default function LoginPage() {
         description: 'Redirecting...',
       });
       
-      if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
-        router.push('/admin');
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        if (userData.role === 'superadmin') {
+          router.push('/superadmin');
+        } else if (userData.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/');
+        }
       } else {
-        router.push('/');
+         router.push('/');
       }
      
     } catch (error: any) {

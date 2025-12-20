@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -23,7 +24,7 @@ export default function Home() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [now, setNow] = useState(new Date());
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
-  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
@@ -99,8 +100,8 @@ export default function Home() {
     }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
     
     // Then, filter by eligibility
-    if (isAdmin) {
-      return activeEvents; // Admins can see all active events.
+    if (isAdmin || isSuperAdmin) {
+      return activeEvents; // Admins and Superadmins can see all active events.
     }
     
     // Students only see events they are eligible for.
@@ -112,7 +113,7 @@ export default function Home() {
       // Otherwise, check if the user's campus is in the list.
       return event.eligibleCampuses.includes(userProfile?.campus || '');
     });
-  }, [events, now, isAdmin, userProfile]);
+  }, [events, now, isAdmin, isSuperAdmin, userProfile]);
   
 
   // Featured events are derived from the eligible list.

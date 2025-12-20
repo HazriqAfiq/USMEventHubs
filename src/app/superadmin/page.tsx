@@ -6,42 +6,33 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, User } from 'lucide-react';
-import UserEventList from '@/components/UserEventList';
+import { Terminal, ShieldCheck } from 'lucide-react';
 
-export default function DashboardPage() {
-  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
+export default function SuperAdminPage() {
+  const { user, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If not loading and user is not logged in, or if user is an admin, redirect to homepage.
-    if (!loading && (!user || isAdmin || isSuperAdmin)) {
+    if (!loading && !isSuperAdmin) {
       router.push('/');
     }
-  }, [user, isAdmin, isSuperAdmin, loading, router]);
+  }, [isSuperAdmin, loading, router]);
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-8">
           <div className="space-y-2">
-            <Skeleton className="h-10 w-1/4" />
+            <Skeleton className="h-10 w-1/3" />
             <Skeleton className="h-6 w-1/2" />
           </div>
-           <div className="grid gap-4 md:grid-cols-2">
-              <Skeleton className="h-32"/>
-              <Skeleton className="h-32"/>
-            </div>
-          <div className="space-y-2 mt-8">
-            <Skeleton className="h-96 w-full" />
-          </div>
+          <Skeleton className="h-96 w-full" />
         </div>
       </div>
     );
   }
 
-  // If user is not logged in or is an admin, show a message while redirecting.
-  if (!user || isAdmin || isSuperAdmin) {
+  if (!isSuperAdmin) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">
@@ -55,19 +46,20 @@ export default function DashboardPage() {
     );
   }
 
-  // If we reach here, user is a logged-in student
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold font-headline flex items-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-             <User className="mr-3 h-8 w-8 text-white"/>
-            My Dashboard
+            <ShieldCheck className="mr-3 h-8 w-8 text-primary"/>
+            Super Admin Dashboard
           </h1>
-          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">An overview of your registered events.</p>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            Manage users and site-wide settings.
+          </p>
         </div>
-        <div>
-          <UserEventList userId={user.uid} />
+        <div className="bg-card p-8 rounded-lg text-center">
+            <p className="text-muted-foreground">Super admin features coming soon.</p>
         </div>
       </div>
     </div>

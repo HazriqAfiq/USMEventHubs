@@ -12,6 +12,7 @@ import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
 type MonthlyCount = {
   name: string;
@@ -55,6 +56,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
+  const [userDistributionFilter, setUserDistributionFilter] = useState<'all' | 'student' | 'organizer'>('all');
   
   const availableYears = useMemo(() => {
     if (events.length === 0) {
@@ -142,14 +144,20 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
         { name: 'Organizers', value: organizerCount },
     ];
 
+    const filteredUsersForCampusChart = communityUsers.filter(u => {
+        if (userDistributionFilter === 'all') return true;
+        return u.role === userDistributionFilter;
+    });
+
     const userCampusCounts: { [key: string]: number } = {};
-    users.forEach(u => {
+    filteredUsersForCampusChart.forEach(u => {
         if (u.campus) {
             userCampusCounts[u.campus] = (userCampusCounts[u.campus] || 0) + 1;
         } else {
             userCampusCounts['N/A'] = (userCampusCounts['N/A'] || 0) + 1;
         }
     });
+
     const campusUserData: CampusCount[] = Object.entries(userCampusCounts).map(([name, count]) => ({
         name,
         count: count,
@@ -194,7 +202,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
       campusEventData,
       organizerEventData
     };
-  }, [events, users, selectedYear]);
+  }, [events, users, selectedYear, userDistributionFilter]);
 
   if (loading || authLoading) {
     return (
@@ -265,7 +273,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
        <div className="grid md:grid-cols-2 gap-8 mt-8">
         <Card>
            <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
               <div>
                 <CardTitle className="flex items-center">
                   <Building className="mr-2 h-5 w-5" />
@@ -275,6 +283,20 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
                   Click a bar to filter the user table below.
                 </p>
               </div>
+              <ToggleGroup
+                  type="single"
+                  size="sm"
+                  variant="outline"
+                  value={userDistributionFilter}
+                  onValueChange={(value) => {
+                      if (value) setUserDistributionFilter(value as any);
+                  }}
+                  aria-label="Filter user distribution"
+                >
+                  <ToggleGroupItem value="all" aria-label="All users">All</ToggleGroupItem>
+                  <ToggleGroupItem value="student" aria-label="Students">Students</ToggleGroupItem>
+                  <ToggleGroupItem value="organizer" aria-label="Organizers">Organizers</ToggleGroupItem>
+                </ToggleGroup>
             </div>
           </CardHeader>
           <CardContent>
@@ -448,3 +470,4 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
     </div>
   );
 }
+

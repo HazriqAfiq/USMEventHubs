@@ -114,6 +114,7 @@ export default function Home() {
 
   const filteredEvents = useMemo(() => {
     return activeEvents.filter(event => {
+      // Standard price and type filters
       const priceMatch =
         priceFilter === 'all' ||
         (priceFilter === 'free' && event.isFree) ||
@@ -123,15 +124,31 @@ export default function Home() {
         typeFilter === 'all' ||
         typeFilter === event.eventType;
 
-      const campusMatch = !selectedCampus || (
-        isAdmin 
-          ? event.conductingCampus === selectedCampus
-          : event.eligibleCampuses?.includes(selectedCampus)
-      );
+      // Campus filter logic
+      const campusMatch = (() => {
+        // If no campus is selected, all events pass this filter.
+        if (!selectedCampus) {
+          return true;
+        }
 
+        // The event must be conducted at the selected campus.
+        if (event.conductingCampus !== selectedCampus) {
+          return false;
+        }
+        
+        // If it is the right campus, check for user eligibility.
+        // Admins can see all events for the selected campus.
+        if (isAdmin) {
+          return true;
+        }
+
+        // Students can only see the event if their own campus is in the eligible list.
+        return event.eligibleCampuses?.includes(userProfile?.campus || '') || false;
+      })();
+      
       return priceMatch && typeMatch && campusMatch;
     });
-  }, [activeEvents, priceFilter, typeFilter, selectedCampus, isAdmin]);
+  }, [activeEvents, priceFilter, typeFilter, selectedCampus, isAdmin, userProfile]);
 
 
   const handleGetStarted = () => {

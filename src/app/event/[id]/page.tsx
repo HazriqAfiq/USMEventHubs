@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -124,22 +125,16 @@ export default function EventDetailPage() {
   useEffect(() => {
     // Increment view count logic
     if (eventId && user && !isAdmin) {
-      const viewKey = `viewed_${eventId}`;
-      if (!sessionStorage.getItem(viewKey)) {
-        const docRef = doc(db, 'events', eventId);
-        updateDoc(docRef, { viewCount: increment(1) })
-          .then(() => {
-            sessionStorage.setItem(viewKey, 'true');
-          })
-          .catch((serverError) => {
-             const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'update',
-                requestResourceData: { viewCount: 'increment' },
-            }, serverError);
-            errorEmitter.emit('permission-error', permissionError);
-          });
-      }
+      const docRef = doc(db, 'events', eventId);
+      updateDoc(docRef, { viewCount: increment(1) })
+        .catch((serverError) => {
+           const permissionError = new FirestorePermissionError({
+              path: docRef.path,
+              operation: 'update',
+              requestResourceData: { viewCount: 'increment' },
+          }, serverError);
+          errorEmitter.emit('permission-error', permissionError);
+        });
     }
   }, [eventId, user, isAdmin]);
 
@@ -516,6 +511,7 @@ export default function EventDetailPage() {
 
 
     
+
 
 
 

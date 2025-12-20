@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { Terminal, ShieldCheck } from 'lucide-react';
+import UserManagementTable from '@/components/SuperAdminUserTable';
+import SuperAdminEventList from '@/components/SuperAdminEventList';
+import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
@@ -55,11 +59,25 @@ export default function SuperAdminPage() {
             Super Admin Dashboard
           </h1>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-            Manage users and site-wide settings.
+            Site-wide analytics and management tools.
           </p>
+           <SuperAdminDashboard />
         </div>
-        <div className="bg-card p-8 rounded-lg text-center">
-            <p className="text-muted-foreground">Super admin features coming soon.</p>
+        <Separator />
+         <div>
+          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage All Events</h2>
+           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            Review, edit, or delete any event on the platform.
+          </p>
+          <SuperAdminEventList />
+        </div>
+        <Separator />
+        <div>
+          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage All Users</h2>
+           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            View users, change roles, and manage accounts.
+          </p>
+          <UserManagementTable />
         </div>
       </div>
     </div>

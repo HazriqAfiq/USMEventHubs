@@ -1,3 +1,4 @@
+
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -17,13 +18,13 @@ interface CampusFilterProps {
 
 export function CampusFilter({ selectedCampus, onSelectCampus }: CampusFilterProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+    <div className="flex justify-center flex-wrap gap-4 md:gap-6">
       {campuses.map(({ name, icon: Icon }) => (
         <div
           key={name}
           onClick={() => onSelectCampus(selectedCampus === name ? null : name)}
           className={cn(
-            'relative p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer group overflow-hidden',
+            'relative w-[270px] h-[270px] flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-300 cursor-pointer group overflow-hidden',
             selectedCampus === name
               ? 'bg-primary/20 border-primary shadow-[0_0_30px_rgba(168,85,247,0.5)] scale-105'
               : 'bg-card/60 border-border hover:border-primary/50 hover:bg-card/90'
@@ -34,9 +35,9 @@ export function CampusFilter({ selectedCampus, onSelectCampus }: CampusFilterPro
               "mb-4 rounded-full p-4 transition-colors duration-300",
               selectedCampus === name ? 'bg-primary/80' : 'bg-primary/20 group-hover:bg-primary/30'
             )}>
-              <Icon className="h-8 w-8 text-white" />
+              <Icon className="h-10 w-10 text-white" />
             </div>
-            <h3 className="font-bold text-white text-base md:text-lg">{name}</h3>
+            <h3 className="font-bold text-white text-lg md:text-xl">{name}</h3>
           </div>
           {/* Background Glow Effect */}
           <div className={cn(

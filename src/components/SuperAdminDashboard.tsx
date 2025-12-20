@@ -57,8 +57,14 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   
   const availableYears = useMemo(() => {
-    if (events.length === 0) return [getYear(new Date())];
-    const yearSet = new Set(events.map(e => e.date ? getYear(e.date.toDate()) : getYear(new Date())).filter(Boolean));
+    if (events.length === 0) {
+      // If there are no events, default to the current year
+      return [getYear(new Date())];
+    }
+    const yearSet = new Set(events.map(e => e.date ? getYear(e.date.toDate()) : null).filter(Boolean));
+    if (yearSet.size === 0) {
+      return [getYear(new Date())];
+    }
     const sortedYears = Array.from(yearSet).sort((a,b) => b - a);
     if (!sortedYears.includes(new Date().getFullYear())) {
         sortedYears.unshift(new Date().getFullYear());
@@ -127,8 +133,9 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
       events: count,
     }));
     
-    const organizerCount = users.filter(u => u.role === 'organizer').length;
-    const studentCount = users.filter(u => u.role === 'student').length;
+    const communityUsers = users.filter(u => u.role !== 'superadmin');
+    const organizerCount = communityUsers.filter(u => u.role === 'organizer').length;
+    const studentCount = communityUsers.filter(u => u.role === 'student').length;
 
     const roleData = [
         { name: 'Students', value: studentCount },
@@ -179,7 +186,7 @@ export default function SuperAdminDashboard({ onCampusClick, onOrganizerClick }:
 
     return {
       totalEventsInYear: eventsInSelectedYear.length,
-      totalUsers: users.length,
+      totalUsers: communityUsers.length,
       totalOrganizers: organizerCount,
       monthlyEventData,
       campusUserData,

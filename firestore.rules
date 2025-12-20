@@ -141,12 +141,10 @@ service cloud.firestore {
                     && request.resource.data.campus is string
                     && request.resource.data.disabled == false;
 
-      // Allow authenticated users to read profiles if they are not disabled. Superadmins can list all users.
-      function isUserEnabled() {
-        return resource.data.disabled != true;
-      }
-
-      allow get: if request.auth != null && isUserEnabled();
+      // Allow any authenticated user to read profiles.
+      // Profile data is not sensitive and is required for chat display etc.
+      // Superadmins can list all users.
+      allow get: if request.auth != null;
       allow list: if request.auth != null && isSuperAdmin(request.auth.uid);
 
       // A user can update their own 'name' or 'photoURL'. 

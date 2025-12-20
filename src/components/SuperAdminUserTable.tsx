@@ -37,6 +37,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
+
 export default function UserManagementTable() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,20 @@ export default function UserManagementTable() {
       toast({ title: 'Role Updated', description: `User role has been changed to ${newRole}.` });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    }
+  };
+
+  const handleCampusChange = async (userId: string, newCampus: string) => {
+    if (!isSuperAdmin) {
+        toast({ variant: 'destructive', title: 'Permission Denied' });
+        return;
+    }
+    const userDocRef = doc(db, 'users', userId);
+    try {
+        await updateDoc(userDocRef, { campus: newCampus });
+        toast({ title: 'Campus Updated', description: `User's campus has been changed to ${newCampus}.` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }
   };
 
@@ -204,7 +220,23 @@ export default function UserManagementTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{user.campus || 'N/A'}</Badge>
+                     {user.uid !== currentUser?.uid ? (
+                      <Select
+                        value={user.campus}
+                        onValueChange={(newCampus) => handleCampusChange(user.uid, newCampus)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select campus" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {campuses.map(campus => (
+                            <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="outline">{user.campus || 'N/A'}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>

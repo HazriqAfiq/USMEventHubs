@@ -5,10 +5,10 @@ import { cn } from '@/lib/utils';
 import { Building, HeartPulse, Microscope, School } from 'lucide-react';
 
 const campuses = [
-  { name: 'Main Campus', icon: School },
-  { name: 'Engineering Campus', icon: Building },
-  { name: 'Health Campus', icon: HeartPulse },
-  { name: 'AMDI / IPPT', icon: Microscope },
+  { name: 'Main Campus', icon: School, videoSrc: '/videos/maincampus.mp4' },
+  { name: 'Engineering Campus', icon: Building, videoSrc: '/videos/engineeringcampus.mp4' },
+  { name: 'Health Campus', icon: HeartPulse, videoSrc: '/videos/healthcampus.mp4' },
+  { name: 'AMDI / IPPT', icon: Microscope, videoSrc: '/videos/ippt.mp4' },
 ];
 
 interface CampusFilterProps {
@@ -19,7 +19,7 @@ interface CampusFilterProps {
 export function CampusFilter({ selectedCampus, onSelectCampus }: CampusFilterProps) {
   return (
     <div className="flex justify-center flex-wrap gap-4 md:gap-6">
-      {campuses.map(({ name, icon: Icon }) => (
+      {campuses.map(({ name, icon: Icon, videoSrc }) => (
         <div
           key={name}
           onClick={() => onSelectCampus(selectedCampus === name ? null : name)}
@@ -30,18 +30,28 @@ export function CampusFilter({ selectedCampus, onSelectCampus }: CampusFilterPro
               : 'bg-card/60 border-border hover:border-primary/50 hover:bg-card/90'
           )}
         >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+            src={videoSrc}
+          />
+          <div className="absolute inset-0 bg-black/50 z-0" />
+          
           <div className="relative z-10 flex flex-col items-center justify-center text-center h-full">
             <div className={cn(
-              "mb-4 rounded-full p-4 transition-colors duration-300",
+              "mb-4 rounded-full p-4 transition-colors duration-300 backdrop-blur-sm",
               selectedCampus === name ? 'bg-primary/80' : 'bg-primary/20 group-hover:bg-primary/30'
             )}>
               <Icon className="h-10 w-10 text-white" />
             </div>
-            <h3 className="font-bold text-white text-lg md:text-xl">{name}</h3>
+            <h3 className="font-bold text-white text-lg md:text-xl" style={{textShadow: '0 2px 4px rgba(0,0,0,0.7)'}}>{name}</h3>
           </div>
           {/* Background Glow Effect */}
           <div className={cn(
-            "absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl blur transition-all duration-500",
+            "absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl blur transition-all duration-500 z-0",
             selectedCampus === name ? 'opacity-50' : 'opacity-0 group-hover:opacity-20'
           )} />
         </div>

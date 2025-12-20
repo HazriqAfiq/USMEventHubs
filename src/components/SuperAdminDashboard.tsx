@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getMonth, getYear, format, isSameYear } from 'date-fns';
-import { Users, Calendar, BarChart2 } from 'lucide-react';
+import { Users, Calendar, BarChart2, ShieldCheck } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';

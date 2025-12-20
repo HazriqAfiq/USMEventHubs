@@ -81,15 +81,15 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
                   <div className="relative h-16 w-24 rounded-md overflow-hidden flex-shrink-0 bg-muted">
                     <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
                   </div>
-                  <div className="flex-grow">
-                    <h4 className="font-semibold truncate">{event.title}</h4>
+                  <div className="flex-grow min-w-0">
+                    <h4 className="font-semibold">{event.title}</h4>
                     <p className="text-sm text-muted-foreground">{format(event.date.toDate(), 'PPP')}</p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <span className='flex items-center'><Users className="mr-1.5 h-4 w-4" /> {event.registrations?.length ?? 0}</span>
                         <span className='flex items-center'><Eye className="mr-1.5 h-4 w-4" /> {event.viewCount ?? 0}</span>
                     </div>
                   </div>
-                   <Button asChild variant="outline" size="sm">
+                   <Button asChild variant="outline" size="sm" className="flex-shrink-0">
                        <Link href={`/organizer/edit/${event.id}`}>
                            View
                        </Link>

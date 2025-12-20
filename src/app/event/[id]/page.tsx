@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
@@ -67,6 +68,8 @@ export default function EventDetailPage() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [communityLink, setCommunityLink] = useState<string | undefined>(undefined);
   const [now, setNow] = useState(new Date());
+  
+  const viewCountIncremented = useRef(false);
 
   // Set up an interval to update the current time every second for real-time checks
   useEffect(() => {
@@ -124,7 +127,7 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     // Increment view count logic
-    if (eventId && user && !isAdmin) {
+    if (eventId && user && !isAdmin && !viewCountIncremented.current) {
       const docRef = doc(db, 'events', eventId);
       updateDoc(docRef, { viewCount: increment(1) })
         .catch((serverError) => {
@@ -135,6 +138,9 @@ export default function EventDetailPage() {
           }, serverError);
           errorEmitter.emit('permission-error', permissionError);
         });
+      
+      // Set the ref to true to prevent further increments on this mount
+      viewCountIncremented.current = true;
     }
   }, [eventId, user, isAdmin]);
 
@@ -511,6 +517,7 @@ export default function EventDetailPage() {
 
 
     
+
 
 
 

@@ -83,38 +83,44 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-  // This is the base list of events that are currently active for registration.
+  // 1. A base list of events that are currently active (registration not closed).
   const activeEvents = useMemo(() => {
     return events.filter(event => {
       if (event.date && event.startTime && event.endTime) {
         const eventDate = event.date.toDate();
         
-        // Registration closes 15 minutes after the event starts.
         const [startHours, startMinutes] = event.startTime.split(':');
         const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(startHours), parseInt(startMinutes));
         const registrationDeadline = addMinutes(startDateTime, 15);
         
-        // Event is over when the end time is passed
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
 
-        // An event is active if registration is still open and the event is not over.
         return now < registrationDeadline && now < endDateTime;
       }
-      // If date/time is missing, don't show it in the active list.
       return false;
-    }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime()); // Ensure they are sorted by date
+    }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
   }, [events, now]);
   
-  // A separate list for the carousel, showing the 5 nearest upcoming events from the active list.
+  // 2. A stricter list of events that the current user is eligible to see.
+  const eligibleEvents = useMemo(() => {
+    if (isAdmin) {
+      return activeEvents; // Admins can see all active events.
+    }
+    // Students can only see events they are eligible for.
+    return activeEvents.filter(event => 
+      event.eligibleCampuses?.includes(userProfile?.campus || '')
+    );
+  }, [activeEvents, isAdmin, userProfile]);
+
+  // 3. Featured events are derived from the eligible list.
   const featuredEvents = useMemo(() => {
-    return activeEvents.slice(0, 5);
-  }, [activeEvents]);
+    return eligibleEvents.slice(0, 5);
+  }, [eligibleEvents]);
 
-
+  // 4. The final grid of events is filtered from the eligible list.
   const filteredEvents = useMemo(() => {
-    return activeEvents.filter(event => {
-      // Standard price and type filters
+    return eligibleEvents.filter(event => {
       const priceMatch =
         priceFilter === 'all' ||
         (priceFilter === 'free' && event.isFree) ||
@@ -123,32 +129,14 @@ export default function Home() {
       const typeMatch =
         typeFilter === 'all' ||
         typeFilter === event.eventType;
-
-      // Campus filter logic
-      const campusMatch = (() => {
-        // If no campus is selected, all events pass this filter.
-        if (!selectedCampus) {
-          return true;
-        }
-
-        // The event must be conducted at the selected campus.
-        if (event.conductingCampus !== selectedCampus) {
-          return false;
-        }
-        
-        // If it is the right campus, check for user eligibility.
-        // Admins can see all events for the selected campus.
-        if (isAdmin) {
-          return true;
-        }
-
-        // Students can only see the event if their own campus is in the eligible list.
-        return event.eligibleCampuses?.includes(userProfile?.campus || '') || false;
-      })();
+      
+      // Campus filter now only filters by conducting campus,
+      // as eligibility is already handled.
+      const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
       
       return priceMatch && typeMatch && campusMatch;
     });
-  }, [activeEvents, priceFilter, typeFilter, selectedCampus, isAdmin, userProfile]);
+  }, [eligibleEvents, priceFilter, typeFilter, selectedCampus]);
 
 
   const handleGetStarted = () => {
@@ -191,15 +179,17 @@ export default function Home() {
     <>
       <div className="container mx-auto px-4 pt-24 pb-8">
         {/* Featured Events Carousel */}
-        <ScrollAnimation delay={200}>
-          <h1 className="text-4xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
-            Featured Events
-          </h1>
-          <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-            Here are some of the most popular and up-and-coming events. Don&apos;t miss out!
-          </p>
-          <FeaturedEventsCarousel events={featuredEvents} />
-        </ScrollAnimation>
+        {featuredEvents.length > 0 && (
+          <ScrollAnimation delay={200}>
+            <h1 className="text-4xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+              Featured Events
+            </h1>
+            <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+              Here are some of the most popular and up-and-coming events. Don&apos;t miss out!
+            </p>
+            <FeaturedEventsCarousel events={featuredEvents} />
+          </ScrollAnimation>
+        )}
 
         {/* Campus Filter */}
         <ScrollAnimation delay={300}>

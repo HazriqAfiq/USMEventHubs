@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import EventForm from '@/components/EventForm';
@@ -29,8 +29,7 @@ export default function EditEventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasPermission, setHasPermission] = useState(true);
-  const [isPastEvent, setIsPastEvent] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
 
   const getEventEndTime = (eventData: Event): Date | null => {
     if (eventData.date && eventData.endTime) {
@@ -41,62 +40,67 @@ export default function EditEventPage() {
     }
     return null;
   }
+  
+  const isPastEvent = useMemo(() => {
+    if (!event) return false;
+    const eventEndTime = getEventEndTime(event);
+    return eventEndTime ? eventEndTime < new Date() : false;
+  }, [event]);
 
   useEffect(() => {
     if (authLoading) return;
 
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
     if (!isOrganizer && !isSuperAdmin) {
       setHasPermission(false);
+      setLoading(false);
       return;
     }
     
-    if (!eventId || !user) return;
+    if (!eventId) return;
 
-    const fetchEvent = async () => {
-      const docRef = doc(db, 'events', eventId);
-      try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
+    const docRef = doc(db, 'events', eventId);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-          // Organizers can only edit their own events. Superadmins can edit any.
-          if (isSuperAdmin || (isOrganizer && eventData.organizerId === user.uid)) {
-            setEvent(eventData);
-
-            const eventEndTime = getEventEndTime(eventData);
-            if (eventEndTime && eventEndTime < new Date()) {
-                setIsPastEvent(true);
-            }
-
-            setHasPermission(true);
-            
-            const registrationsRef = collection(db, 'events', eventId, 'registrations');
-            const unsubscribe = onSnapshot(registrationsRef, (snapshot) => {
-              const regs: Registration[] = [];
-              snapshot.forEach(doc => {
-                  regs.push({ id: doc.id, ...doc.data() } as Registration);
-              });
-              setRegistrations(regs);
-            }, (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                  path: registrationsRef.path,
-                  operation: 'list',
-                }, serverError);
-                errorEmitter.emit('permission-error', permissionError);
+        // Superadmins can see any event. Organizers can only see their own.
+        if (isSuperAdmin || (isOrganizer && eventData.organizerId === user.uid)) {
+          setEvent(eventData);
+          setHasPermission(true);
+          
+          const registrationsRef = collection(db, 'events', eventId, 'registrations');
+          const unsubscribeRegs = onSnapshot(registrationsRef, (snapshot) => {
+            const regs: Registration[] = [];
+            snapshot.forEach(doc => {
+                regs.push({ id: doc.id, ...doc.data() } as Registration);
             });
-            
-            setLoading(false);
-            return () => unsubscribe();
-
-          } else {
-            setHasPermission(false);
-            setLoading(false);
-          }
+            setRegistrations(regs);
+          }, (serverError) => {
+              const permissionError = new FirestorePermissionError({
+                path: registrationsRef.path,
+                operation: 'list',
+              }, serverError);
+              errorEmitter.emit('permission-error', permissionError);
+          });
+          
+          setLoading(false);
+          return () => unsubscribeRegs();
         } else {
-          router.push('/organizer');
+          setHasPermission(false);
+          setLoading(false);
         }
-      } catch (serverError: any) {
-        if (serverError.code === 'permission-denied') {
+      } else {
+        // Event not found
+        setHasPermission(false);
+        setLoading(false);
+      }
+    }, (serverError: any) => {
+       if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'get',
@@ -105,25 +109,25 @@ export default function EditEventPage() {
         }
         setHasPermission(false);
         setLoading(false);
-      }
-    };
+    });
 
-    fetchEvent();
+    return () => unsubscribe();
 
-  }, [eventId, router, authLoading, isOrganizer, isSuperAdmin, user]);
+  }, [eventId, authLoading, isOrganizer, isSuperAdmin, user, router]);
 
   useEffect(() => {
-    if (!authLoading && !user && !loading) {
-      router.push('/login');
-    } else if (!authLoading && !isOrganizer && !isSuperAdmin && !loading) {
-       router.push('/');
-    } else if (!loading && !hasPermission) {
+    if (!loading && !hasPermission) {
+      toast({
+          variant: 'destructive',
+          title: 'Access Denied',
+          description: 'You do not have permission to view this event. Redirecting...',
+      });
       const timer = setTimeout(() => {
         router.push(isSuperAdmin ? '/superadmin' : '/organizer');
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [authLoading, user, isOrganizer, isSuperAdmin, hasPermission, loading, router]);
+  }, [hasPermission, loading, router, isSuperAdmin]);
 
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;
@@ -179,6 +183,13 @@ export default function EditEventPage() {
     );
   }
   
+  if (!event) {
+    return null; // Should be covered by the permission check
+  }
+  
+  // The isEditable prop for EventForm is determined by whether the event is in the past.
+  const isFormEditable = !isPastEvent;
+
   return (
     <>
     <div className="container mx-auto px-4 py-8">
@@ -186,10 +197,11 @@ export default function EditEventPage() {
         <div>
            <Button variant="ghost" onClick={() => router.back()} className="mb-4 text-white hover:text-white/80">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back
           </Button>
           <h1 className="text-3xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Event Details</h1>
-          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">{isPastEvent ? "Viewing details for the past event" : "Modify the details for the event"} "{event?.title}".</p>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">{isFormEditable ? "Modify the details for the event" : "Viewing details for the past event"} "{event?.title}".</p>
+          
           {isPastEvent && (
             <Alert className="mt-4">
               <Info className="h-4 w-4" />
@@ -199,7 +211,8 @@ export default function EditEventPage() {
               </AlertDescription>
             </Alert>
           )}
-          <EventForm event={event!} isEditable={!isPastEvent} />
+
+          <EventForm event={event} isEditable={isFormEditable} />
         </div>
          <Card>
           <CardHeader>

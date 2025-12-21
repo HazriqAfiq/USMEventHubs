@@ -37,6 +37,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Info } from 'lucide-react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
@@ -166,7 +168,7 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
 export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile, isSuperAdmin } = useAuth();
+  const { user, userProfile, isOrganizer, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -174,8 +176,19 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const videoInputRef = useRef<HTMLInputElement>(null);
   
   const isEditMode = !!event;
-  // An organizer can only edit if the event is NOT approved. Superadmins can always edit.
-  const canEdit = isSuperAdmin || (isEditable && event?.status !== 'approved');
+  
+  // Determine if the form should be editable
+  const canEdit = useMemo(() => {
+    if (!isEditable) return false;
+    if (isSuperAdmin) return true; // Superadmins can always edit
+    if (isOrganizer && event) {
+      // Organizers can edit if the event is pending or rejected
+      return event.status === 'pending' || event.status === 'rejected';
+    }
+    if (isOrganizer && !isEditMode) return true; // Organizers can always fill a new form
+    return false;
+  }, [isEditable, isSuperAdmin, isOrganizer, event, isEditMode]);
+
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(formSchema),
@@ -281,26 +294,49 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         };
 
         if (isEditMode && event) {
-             if (event.status === 'rejected') {
-                eventData.status = 'pending'; // Re-submit for approval
+             const docRef = doc(db, 'events', event.id);
+             // When an organizer re-submits a rejected event, set its status back to pending.
+             if (event.status === 'rejected' && isOrganizer) {
+                eventData.status = 'pending'; 
                 eventData.rejectionReason = ''; // Clear rejection reason
             }
-            await updateDoc(doc(db, 'events', event.id), eventData);
+            
+            await updateDoc(docRef, eventData)
+              .catch((serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: docRef.path,
+                    operation: 'update',
+                    requestResourceData: eventData,
+                }, serverError);
+                errorEmitter.emit('permission-error', permissionError);
+                throw serverError;
+              });
+
             toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
-            router.push('/organizer');
+            router.push(isSuperAdmin ? '/superadmin' : '/organizer');
         } else {
             if (!userProfile.campus) {
               throw new Error("Organizer's campus is not set. Cannot create event.");
             }
-            await addDoc(collection(db, 'events'), { 
+            const collectionRef = collection(db, 'events');
+            await addDoc(collectionRef, { 
               ...eventData, 
               viewCount: 0,
               conductingCampus: userProfile.campus,
               createdAt: serverTimestamp(), 
               organizerId: user.uid,
               status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve for superadmins
+            }).catch((serverError) => {
+               const permissionError = new FirestorePermissionError({
+                  path: collectionRef.path,
+                  operation: 'create',
+                  requestResourceData: eventData,
+              }, serverError);
+              errorEmitter.emit('permission-error', permissionError);
+              throw serverError;
             });
-            toast({ title: 'Event Submitted!', description: `"${data.title}" has been submitted for approval.` });
+
+            toast({ title: isSuperAdmin ? 'Event Created!' : 'Event Submitted!', description: isSuperAdmin ? `"${data.title}" is now live.` : `"${data.title}" has been submitted for approval.` });
             handleReset();
         }
     } catch (error: any) {
@@ -378,13 +414,13 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
-         {event?.status === 'rejected' && (
+         {event?.status === 'rejected' && isOrganizer && (
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Event Rejected</AlertTitle>
             <AlertDescription>
               Reason: {event.rejectionReason || 'No reason provided.'}
-              <p className="mt-2 text-xs">You can edit the details and re-submit the event for approval.</p>
+              <p className="mt-2 text-xs">You can edit the details below and re-submit the event for approval.</p>
             </AlertDescription>
           </Alert>
         )}
@@ -713,4 +749,5 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
+
 

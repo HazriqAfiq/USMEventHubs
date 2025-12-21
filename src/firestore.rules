@@ -41,7 +41,10 @@ service cloud.firestore {
     // Define rules for the 'events' collection
     match /events/{eventId} {
       // Anyone can read event details IF the event is approved
-      allow get: if resource.data.status == 'approved';
+      // Organizers and Superadmins can read any event, regardless of status (for editing/previewing)
+      allow get: if (resource.data.status == 'approved') || 
+                   (request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid)));
+
       // Allow listing approved events for all users.
       // Organizers and superadmins can list all events regardless of status.
       allow list: if request.auth == null && resource.data.status == 'approved' || 
@@ -64,11 +67,7 @@ service cloud.firestore {
         ( // Rule for Organizer updates - can only edit their own PENDING or REJECTED events
           isOrganizer(request.auth.uid) 
           && resource.data.organizerId == request.auth.uid
-          && resource.data.status != 'approved' // Can't edit once approved
-          && request.resource.data.imageUrl is string
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'date', 'startTime', 'endTime', 'description', 'imageUrl', 'videoUrl', 'location', 'price', 'isFree', 'eventType', 'groupLink', 'qrCodeUrl', 'eligibleCampuses', 'conductingCampus', 'status'])
-          // Organizer can re-submit a rejected event by setting status to pending
-          && (request.resource.data.status == resource.data.status || (resource.data.status == 'rejected' && request.resource.data.status == 'pending'))
+          && (resource.data.status == 'pending' || resource.data.status == 'rejected')
         ) ||
         ( // Rule for student view count increment
           isStudent(request.auth.uid)
@@ -89,7 +88,10 @@ service cloud.firestore {
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
         // Organizers and Superadmins can list all registrations for any event.
-        allow list: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid));
+        allow list: if request.auth != null && (
+            (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) || 
+            isSuperAdmin(request.auth.uid)
+        );
       }
 
       // Rules for individual 'registrations' documents

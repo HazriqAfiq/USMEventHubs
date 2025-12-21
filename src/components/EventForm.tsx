@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +35,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { v4 as uuidv4 } from 'uuid';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
 import { Badge } from './ui/badge';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Info } from 'lucide-react';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
@@ -53,6 +56,8 @@ const formSchema = z.object({
   qrCodeUrl: z.string().optional(),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
   conductingCampus: z.string(),
+  status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  rejectionReason: z.string().optional(),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price >= 1;
@@ -161,7 +166,7 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
 export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +174,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const videoInputRef = useRef<HTMLInputElement>(null);
   
   const isEditMode = !!event;
+  // An organizer can only edit if the event is NOT approved. Superadmins can always edit.
+  const canEdit = isSuperAdmin || (isEditable && event?.status !== 'approved');
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(formSchema),
@@ -182,6 +189,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       price: event.price ?? 1,
       eligibleCampuses: event.eligibleCampuses || [],
       conductingCampus: event.conductingCampus,
+      status: event.status,
+      rejectionReason: event.rejectionReason,
     } : {
       title: '',
       description: '',
@@ -198,6 +207,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       qrCodeUrl: '',
       eligibleCampuses: [],
       conductingCampus: userProfile?.campus || '',
+      status: 'pending',
     },
   });
   
@@ -271,22 +281,26 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         };
 
         if (isEditMode && event) {
+             if (event.status === 'rejected') {
+                eventData.status = 'pending'; // Re-submit for approval
+                eventData.rejectionReason = ''; // Clear rejection reason
+            }
             await updateDoc(doc(db, 'events', event.id), eventData);
             toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
             router.push('/organizer');
         } else {
-             // Ensure conductingCampus is set from profile for new events
             if (!userProfile.campus) {
               throw new Error("Organizer's campus is not set. Cannot create event.");
             }
             await addDoc(collection(db, 'events'), { 
               ...eventData, 
-              viewCount: 0, // Initialize view count
+              viewCount: 0,
               conductingCampus: userProfile.campus,
               createdAt: serverTimestamp(), 
               organizerId: user.uid,
+              status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve for superadmins
             });
-            toast({ title: 'Event Created!', description: `"${data.title}" has been added.` });
+            toast({ title: 'Event Submitted!', description: `"${data.title}" has been submitted for approval.` });
             handleReset();
         }
     } catch (error: any) {
@@ -349,6 +363,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         qrCodeUrl: '',
         eligibleCampuses: [],
         conductingCampus: userProfile?.campus || '',
+        status: 'pending',
     });
   }
 
@@ -363,7 +378,17 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
-        <fieldset disabled={!isEditable || isSubmitting} className="group">
+         {event?.status === 'rejected' && (
+          <Alert variant="destructive">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Event Rejected</AlertTitle>
+            <AlertDescription>
+              Reason: {event.rejectionReason || 'No reason provided.'}
+              <p className="mt-2 text-xs">You can edit the details and re-submit the event for approval.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+        <fieldset disabled={!canEdit || isSubmitting} className="group">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <FormField
@@ -523,10 +548,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   <FormItem>
                     <FormLabel className="text-white">Payment QR Code ( Square Format )</FormLabel>
                     <FormControl>
-                       <div onClick={() => qrInputRef.current?.click()} className={cn("aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
-                        <input type="file" ref={qrInputRef} onChange={(e) => handleFileChange(e, 'qr')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || (isUploading && uploadProgress.type === 'qr')}/>
+                       <div onClick={() => qrInputRef.current?.click()} className={cn("aspect-square w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", canEdit && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
+                        <input type="file" ref={qrInputRef} onChange={(e) => handleFileChange(e, 'qr')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!canEdit || (isUploading && uploadProgress.type === 'qr')}/>
                         {previewQr ? (<Image src={previewQr} alt="QR code preview" fill style={{objectFit: 'contain'}} />) : (<span>Click to upload QR</span>)}
-                        {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        {canEdit && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                             {(isUploading && uploadProgress.type === 'qr') ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload QR</p></div>)}
                         </div>)}
                       </div>
@@ -566,10 +591,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               <FormItem>
                 <FormLabel className="text-white">Event Image</FormLabel>
                 <FormControl>
-                  <div onClick={() => imageInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
-                    <input type="file" ref={imageInputRef} onChange={(e) => handleFileChange(e, 'event')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!isEditable || (isUploading && uploadProgress.type === 'event')}/>
+                  <div onClick={() => imageInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", canEdit && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
+                    <input type="file" ref={imageInputRef} onChange={(e) => handleFileChange(e, 'event')} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={!canEdit || (isUploading && uploadProgress.type === 'event')}/>
                     {previewImage ? (<Image src={previewImage} alt="Event image preview" fill style={{objectFit: 'cover'}} />) : (<span>Click to upload image</span>)}
-                    {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    {canEdit && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                         {(isUploading && uploadProgress.type === 'event') ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload Image</p></div>)}
                     </div>)}
                   </div>
@@ -579,10 +604,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               <FormItem>
                 <FormLabel className="text-white">Event Video (Optional)</FormLabel>
                 <FormControl>
-                    <div onClick={() => videoInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", isEditable && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
-                        <input type="file" ref={videoInputRef} onChange={(e) => handleFileChange(e, 'video')} className="hidden" accept="video/mp4" disabled={!isEditable || (isUploading && uploadProgress.type === 'video')}/>
+                    <div onClick={() => videoInputRef.current?.click()} className={cn("aspect-video w-full relative rounded-md overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-center", canEdit && "cursor-pointer group-disabled:cursor-not-allowed group-disabled:opacity-50")}>
+                        <input type="file" ref={videoInputRef} onChange={(e) => handleFileChange(e, 'video')} className="hidden" accept="video/mp4" disabled={!canEdit || (isUploading && uploadProgress.type === 'video')}/>
                         {previewVideo ? (<video src={previewVideo} className="w-full h-full object-cover" controls />) : (<div className='text-center'><Video className="h-8 w-8 mx-auto" /><p>Click to upload video</p></div>)}
-                        {isEditable && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        {canEdit && (<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                             {(isUploading && uploadProgress.type === 'video') ? (<Loader2 className="h-8 w-8 text-white animate-spin" />) : (<div className='text-center text-white'><Upload className="h-8 w-8 mx-auto" /><p>Upload Video</p></div>)}
                         </div>)}
                     </div>
@@ -677,12 +702,15 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
           <div className="flex justify-end gap-2 mt-8">
               {!isEditMode && (<Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}><Trash2 className="mr-2 h-4 w-4"/>Clear Form</Button>)}
               {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
-              <Button type="submit" disabled={isSubmitting || !isEditable || isUploading}>
-                {isSubmitting ? (isEditMode ? 'Updating Event...' : 'Creating Event...') : (isEditMode ? 'Update Event' : 'Create Event')}
-              </Button>
+               {canEdit && (
+                <Button type="submit" disabled={isSubmitting || isUploading}>
+                  {isSubmitting ? 'Submitting...' : (isEditMode ? (event.status === 'rejected' ? 'Re-submit for Approval' : 'Update Event') : 'Submit for Approval')}
+                </Button>
+               )}
           </div>
         </fieldset>
       </form>
     </Form>
   );
 }
+

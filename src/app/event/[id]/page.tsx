@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -6,7 +7,7 @@ import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
-import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban, Building2, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, UserCheck, UserPlus, FilePenLine, Clock, Link as LinkIcon, PartyPopper, QrCode, Ban, Building2, Eye, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +57,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
-  const { user, isOrganizer, loading: authLoading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -104,12 +105,18 @@ export default function EventDetailPage() {
 
     const docRef = doc(db, 'events', eventId);
     
-    // Use onSnapshot to listen for real-time updates (like view counts)
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
-        setEvent(eventData);
-        setEventExists(true);
+
+        // If user is not an admin and the event is not approved, treat as non-existent
+        if (eventData.status !== 'approved' && !isOrganizer && !isSuperAdmin) {
+            setEventExists(false);
+            setEvent(null);
+        } else {
+            setEvent(eventData);
+            setEventExists(true);
+        }
       } else {
         setEventExists(false);
       }
@@ -122,7 +129,7 @@ export default function EventDetailPage() {
 
     return () => unsubscribe();
 
-  }, [eventId]);
+  }, [eventId, isOrganizer, isSuperAdmin]);
 
   useEffect(() => {
     // Increment view count logic
@@ -172,6 +179,12 @@ export default function EventDetailPage() {
       toast({ variant: 'destructive', title: 'Registration Closed', description: 'The registration window for this event has passed.' });
       setIsFormOpen(false);
       return;
+    }
+    
+    if (event.status !== 'approved') {
+        toast({ variant: 'destructive', title: 'Not Available', description: 'This event is not currently open for registration.' });
+        setIsFormOpen(false);
+        return;
     }
 
     setIsSubmitting(true);
@@ -231,13 +244,15 @@ export default function EventDetailPage() {
     setIsSuccessDialogOpen(open);
   }
   
-  const isEventOrganizer = user ? isOrganizer && event?.organizerId === user.uid : false;
+  const isEventOrganizer = user ? (isOrganizer || isSuperAdmin) && event?.organizerId === user.uid : false;
   
   const showChat = useMemo(() => {
     if (!user || !event) return false;
     
+    if (event.status !== 'approved') return false;
+
     // Organizer can always see the chat (past or present)
-    if (isEventOrganizer) {
+    if (isEventOrganizer || isSuperAdmin) {
       return true;
     }
     
@@ -247,7 +262,7 @@ export default function EventDetailPage() {
     }
     
     return false;
-  }, [user, event, isEventOrganizer, isRegistered, isEventOver]);
+  }, [user, event, isEventOrganizer, isRegistered, isEventOver, isSuperAdmin]);
 
   if (loading || authLoading) {
     return (
@@ -273,7 +288,7 @@ export default function EventDetailPage() {
         <Alert variant="destructive" className="max-w-md mx-auto">
           <Terminal className="h-4 w-4" />
           <AlertTitle>404 - Event Not Found</AlertTitle>
-          <AlertDescription>The event you are looking for does not exist or may have been moved.</AlertDescription>
+          <AlertDescription>The event you are looking for does not exist, has not been approved, or may have been moved.</AlertDescription>
         </Alert>
         <Button onClick={() => router.push('/')} className="mt-6">Go to Homepage</Button>
       </div>
@@ -291,6 +306,18 @@ export default function EventDetailPage() {
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Events
       </Button>
+       {event.status !== 'approved' && (isOrganizer || isSuperAdmin) && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Admin Preview</AlertTitle>
+            <AlertDescription>
+              This event is currently <strong>{event.status}</strong> and is not visible to the public.
+              {event.status === 'rejected' && event.rejectionReason && (
+                <p className="mt-2 text-xs">Reason: {event.rejectionReason}</p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
       <Card className="overflow-hidden mt-4">
         <div className="relative">
           <Carousel className="w-full">
@@ -321,7 +348,7 @@ export default function EventDetailPage() {
               </>
             )}
           </Carousel>
-          {isEventOrganizer && (
+          {(isEventOrganizer || isSuperAdmin) && (
             <Button asChild className="absolute top-4 right-4 z-10" variant="secondary">
               <Link href={`/organizer/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
@@ -387,7 +414,7 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {!isOrganizer && user && (
+          {!isOrganizer && user && event.status === 'approved' && (
             isRegistered ? (
               <Card className="bg-green-500/10 border-green-500/50">
                 <CardHeader>
@@ -437,7 +464,7 @@ export default function EventDetailPage() {
             )
           )}
 
-          {!user && !authLoading && (
+          {!user && !authLoading && event.status === 'approved' && (
             <div>
               <Button onClick={openRegistration} size="lg" className="w-full sm:w-auto" disabled={isRegistrationClosed}>
                 {isRegistrationClosed ? (
@@ -510,3 +537,4 @@ export default function EventDetailPage() {
     </>
   );
 }
+

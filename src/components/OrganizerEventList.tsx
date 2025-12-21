@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,9 @@ import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -154,13 +158,21 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
 
   const handleDelete = async (eventToDelete: Event) => {
     try {
-      // Delete associated images from Firebase Storage first
+      // An organizer can only delete events that are not approved
+      if (eventToDelete.status === 'approved') {
+        toast({
+          variant: 'destructive',
+          title: 'Action Not Allowed',
+          description: 'Cannot delete an event that has been approved. Contact a superadmin for assistance.',
+        });
+        return;
+      }
+
       if (eventToDelete.imageUrl) {
         try {
           const imageRef = ref(storage, eventToDelete.imageUrl);
           await deleteObject(imageRef);
         } catch (storageError: any) {
-          // Log error but don't block deletion of Firestore doc if image not found
           if (storageError.code !== 'storage/object-not-found') {
              console.error("Error deleting event image: ", storageError);
           }
@@ -177,7 +189,6 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
         }
       }
 
-      // After attempting to delete images, delete the Firestore document
       await deleteDoc(doc(db, 'events', eventToDelete.id));
 
       toast({
@@ -199,6 +210,48 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     // Reset month filter when main filter changes
     setMonthFilter('all');
   }, [filter]);
+  
+  const StatusBadge = ({ event }: { event: Event }) => {
+    const statusConfig = {
+      approved: {
+        label: 'Approved',
+        icon: CheckCircle2,
+        className: 'bg-green-500/20 text-green-400 border-green-500/30',
+        tooltip: 'This event is live and visible to students.'
+      },
+      pending: {
+        label: 'Pending',
+        icon: Clock,
+        className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+        tooltip: 'This event is awaiting approval from a superadmin.'
+      },
+      rejected: {
+        label: 'Rejected',
+        icon: X,
+        className: 'bg-red-500/20 text-red-400 border-red-500/30',
+        tooltip: event.rejectionReason ? `Reason: ${event.rejectionReason}` : 'This event has been rejected.'
+      }
+    };
+
+    const config = statusConfig[event.status];
+    if (!config) return null;
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger>
+             <Badge className={cn('capitalize', config.className)}>
+                <config.icon className="mr-1.5 h-3 w-3" />
+                {config.label}
+              </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{config.tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
 
   if (loading || authLoading) {
     return (
@@ -277,10 +330,13 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                     {event.viewCount ?? 0}
                 </span>
               </div>
+               <div className="mt-2">
+                <StatusBadge event={event} />
+              </div>
             </div>
             <div className='flex gap-2 flex-shrink-0'>
                <Link href={`/event/${event.id}`}>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" disabled={event.status !== 'approved'}>
                   <MessageSquare className="h-4 w-4" />
                   <span className="sr-only">View Chat</span>
                 </Button>
@@ -293,7 +349,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
               </Link>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon">
+                  <Button variant="destructive" size="icon" disabled={event.status === 'approved'}>
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Delete Event</span>
                   </Button>
@@ -320,3 +376,4 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     </div>
   );
 }
+

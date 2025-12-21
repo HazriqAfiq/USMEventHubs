@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import EventCard from '@/components/EventCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,7 +64,12 @@ export default function Home() {
   useEffect(() => {
     if (authLoading || !user || isSuperAdmin) return;
 
-    const q = query(collection(db, 'events'), orderBy('date', 'asc'));
+    // Only fetch events that are 'approved'
+    const q = query(
+      collection(db, 'events'), 
+      where('status', '==', 'approved'),
+      orderBy('date', 'asc')
+    );
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
 

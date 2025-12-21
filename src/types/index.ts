@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Registration {
@@ -30,6 +31,8 @@ export interface Event {
   conductingCampus: string;
   eligibleCampuses?: string[];
   viewCount?: number;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
 }
 
 export interface UserProfile {
@@ -41,3 +44,4 @@ export interface UserProfile {
   campus?: string;
   disabled?: boolean;
 }
+

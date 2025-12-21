@@ -1,0 +1,204 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal, ArrowLeft, CheckSquare, Check, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Event } from '@/types';
+import { Card } from '@/components/ui/card';
+import Image from 'next/image';
+import { format } from 'date-fns';
+import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+
+export default function EventApprovalsPage() {
+  const { isSuperAdmin, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !isSuperAdmin) {
+      router.push('/');
+    }
+  }, [isSuperAdmin, authLoading, router]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+
+    const eventsRef = collection(db, 'events');
+    const q = query(eventsRef, where('status', '==', 'pending'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eventsData: Event[] = [];
+      snapshot.forEach(doc => {
+        eventsData.push({ id: doc.id, ...doc.data() } as Event);
+      });
+      eventsData.sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
+      setPendingEvents(eventsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching pending events: ", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isSuperAdmin]);
+
+  const handleApprove = async (eventId: string) => {
+    try {
+      const eventRef = doc(db, 'events', eventId);
+      await updateDoc(eventRef, { status: 'approved' });
+      toast({ title: 'Event Approved', description: 'The event is now live.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
+    }
+  };
+
+  const openRejectDialog = (event: Event) => {
+    setSelectedEvent(event);
+    setIsRejectDialogOpen(true);
+    setRejectionReason('');
+  };
+
+  const handleReject = async () => {
+    if (!selectedEvent || !rejectionReason.trim()) {
+      toast({ variant: 'destructive', title: 'Reason Required', description: 'Please provide a reason for rejection.' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const eventRef = doc(db, 'events', selectedEvent.id);
+      await updateDoc(eventRef, { 
+        status: 'rejected',
+        rejectionReason: rejectionReason.trim(),
+      });
+      toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
+      setIsRejectDialogOpen(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Rejection Failed', description: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="h-10 w-1/3 mb-2" />
+        <Skeleton className="h-6 w-1/2 mb-8" />
+        <div className="space-y-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>You do not have permission to view this page. Redirecting...</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="container mx-auto px-4 py-8">
+        <Button variant="ghost" onClick={() => router.push('/superadmin')} className="mb-4 text-white hover:text-white/80">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold font-headline flex items-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            <CheckSquare className="mr-3 h-8 w-8 text-primary"/>
+            Event Approvals
+          </h1>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and approve or reject events submitted by organizers.</p>
+        </div>
+        <div className="mt-8 space-y-4">
+          {pendingEvents.length === 0 ? (
+            <Card className="p-12 text-center text-muted-foreground">
+              <Check className="mx-auto h-12 w-12 text-green-500" />
+              <p className="mt-4">No pending events. All clear!</p>
+            </Card>
+          ) : (
+            pendingEvents.map((event) => (
+              <Card key={event.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md">
+                <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                  <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
+                </div>
+                <div className="flex-grow">
+                  <h3 className="font-bold">{event.title}</h3>
+                  <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+                   <Link href={`/event/${event.id}`} className="text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                    View Full Details
+                  </Link>
+                </div>
+                <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
+                  <Button variant="outline" size="sm" onClick={() => handleApprove(event.id)}>
+                    <Check className="mr-2 h-4 w-4 text-green-500" /> Approve
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => openRejectDialog(event)}>
+                    <X className="mr-2 h-4 w-4" /> Reject
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Event: {selectedEvent?.title}</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this event. This will be shown to the organizer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="e.g., The event description is incomplete."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              disabled={isSubmitting}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsRejectDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={isSubmitting || !rejectionReason.trim()}>
+              {isSubmitting ? 'Rejecting...' : 'Reject Event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

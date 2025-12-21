@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users, CheckSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -82,6 +83,10 @@ export function Header() {
                           <Users className="mr-2 h-4 w-4" />
                           <span>Manage Users</span>
                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => router.push('/superadmin/approvals')}>
+                          <CheckSquare className="mr-2 h-4 w-4" />
+                          <span>Event Approvals</span>
+                        </DropdownMenuItem>
                       </>
                     ) : isOrganizer ? (
                       <DropdownMenuItem onClick={() => router.push('/organizer')}>
@@ -113,3 +118,4 @@ export function Header() {
     </header>
   );
 }
+

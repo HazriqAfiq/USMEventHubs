@@ -31,7 +31,7 @@ export interface Event {
   conductingCampus: string;
   eligibleCampuses?: string[];
   viewCount?: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'pending-update';
   rejectionReason?: string;
 }
 
@@ -44,4 +44,3 @@ export interface UserProfile {
   campus?: string;
   disabled?: boolean;
 }
-

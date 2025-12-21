@@ -57,7 +57,7 @@ const formSchema = z.object({
   qrCodeUrl: z.string().optional(),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
   conductingCampus: z.string(),
-  status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  status: z.enum(['pending', 'approved', 'rejected', 'pending-update']).optional(),
   rejectionReason: z.string().optional(),
 }).refine(data => {
     if (data.isFree === 'paid') {
@@ -210,15 +210,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     },
   });
 
-  // Determine if the form should be editable
   const canEdit = useMemo(() => {
     if (!isEditable) return false;
-    if (isSuperAdmin) return true; // Superadmins can always edit
+    if (isSuperAdmin) return true;
     if (isOrganizer && event) {
-      // Organizers can edit if the event is pending or rejected, but not approved
-      return event.status === 'pending' || event.status === 'rejected';
+      // Organizers can edit their own events, regardless of status (except past events)
+      return true;
     }
-    if (isOrganizer && !isEditMode) return true; // Organizers can always fill a new form
+    if (isOrganizer && !isEditMode) return true;
     return false;
   }, [isEditable, isSuperAdmin, isOrganizer, event, isEditMode]);
   
@@ -293,11 +292,15 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
 
         if (isEditMode && event) {
              const docRef = doc(db, 'events', event.id);
-             // When an organizer re-submits a rejected event, set its status back to pending.
-             if (event.status === 'rejected' && isOrganizer) {
-                eventData.status = 'pending'; 
-                eventData.rejectionReason = ''; // Clear rejection reason
-            }
+             
+             if (isOrganizer) {
+                if (event.status === 'approved') {
+                    eventData.status = 'pending-update';
+                } else {
+                    eventData.status = 'pending';
+                }
+                eventData.rejectionReason = ''; // Clear rejection reason on any resubmit
+             }
             
             await updateDoc(docRef, eventData)
               .catch((serverError) => {
@@ -310,7 +313,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 throw serverError;
               });
 
-            toast({ title: 'Event Updated!', description: `"${data.title}" has been updated.` });
+            toast({ title: 'Event Updated!', description: `"${data.title}" has been submitted for re-approval.` });
             router.push(isSuperAdmin ? '/superadmin' : '/organizer');
         } else {
             if (!userProfile.campus) {
@@ -412,15 +415,24 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4">
-         {event?.status === 'rejected' && isOrganizer && (
-          <Alert variant="destructive">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Event Rejected</AlertTitle>
-            <AlertDescription>
-              Reason: {event.rejectionReason || 'No reason provided.'}
-              <p className="mt-2 text-xs">You can edit the details below and re-submit the event for approval.</p>
-            </AlertDescription>
-          </Alert>
+        {event?.status === 'rejected' && isOrganizer && (
+            <Alert variant="destructive">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Event Rejected</AlertTitle>
+                <AlertDescription>
+                Reason: {event.rejectionReason || 'No reason provided.'}
+                <p className="mt-2 text-xs">You can edit the details below and re-submit the event for approval.</p>
+                </AlertDescription>
+            </Alert>
+        )}
+        {event?.status === 'approved' && isOrganizer && (
+             <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 text-blue-300">
+                <Info className="h-4 w-4 text-blue-400" />
+                <AlertTitle>Approved Event</AlertTitle>
+                <AlertDescription>
+                    This event is live. Any edits will send it back for re-approval by a superadmin.
+                </AlertDescription>
+            </Alert>
         )}
         <fieldset disabled={!canEdit || isSubmitting} className="group">
           <div className="grid md:grid-cols-2 gap-8">
@@ -738,7 +750,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
                {canEdit && (
                 <Button type="submit" disabled={isSubmitting || isUploading}>
-                  {isSubmitting ? 'Submitting...' : (isEditMode ? (event.status === 'rejected' ? 'Re-submit for Approval' : 'Update Event') : 'Submit for Approval')}
+                  {isSubmitting ? 'Submitting...' : (isEditMode ? 'Submit for Approval' : 'Submit for Approval')}
                 </Button>
                )}
           </div>
@@ -747,4 +759,3 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
-

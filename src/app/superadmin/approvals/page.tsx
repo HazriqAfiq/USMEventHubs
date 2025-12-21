@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, ArrowLeft, CheckSquare, Check, X } from 'lucide-react';
+import { Terminal, ArrowLeft, CheckSquare, Check, X, Info, FileClock, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -25,11 +25,17 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
+
+type EventStatusFilter = 'pending' | 'pending-update' | 'rejected' | 'all';
 
 export default function EventApprovalsPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -37,6 +43,8 @@ export default function EventApprovalsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('pending');
+
 
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
@@ -48,7 +56,7 @@ export default function EventApprovalsPage() {
     if (!isSuperAdmin) return;
 
     const eventsRef = collection(db, 'events');
-    const q = query(eventsRef, where('status', '==', 'pending'));
+    const q = query(eventsRef, where('status', '!=', 'approved'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const eventsData: Event[] = [];
@@ -56,20 +64,25 @@ export default function EventApprovalsPage() {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
       eventsData.sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
-      setPendingEvents(eventsData);
+      setEvents(eventsData);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching pending events: ", error);
+      console.error("Error fetching events for approval: ", error);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [isSuperAdmin]);
+  
+  const filteredEvents = useMemo(() => {
+    if (statusFilter === 'all') return events;
+    return events.filter(event => event.status === statusFilter);
+  }, [events, statusFilter]);
 
   const handleApprove = async (eventId: string) => {
     try {
       const eventRef = doc(db, 'events', eventId);
-      await updateDoc(eventRef, { status: 'approved' });
+      await updateDoc(eventRef, { status: 'approved', rejectionReason: '' });
       toast({ title: 'Event Approved', description: 'The event is now live.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
@@ -102,6 +115,16 @@ export default function EventApprovalsPage() {
       setIsSubmitting(false);
     }
   };
+  
+  const getStatusBadge = (status: Event['status']) => {
+    switch (status) {
+        case 'pending': return <Badge variant="outline" className="text-yellow-400 border-yellow-400/50"><FileClock className="mr-1 h-3 w-3" />New</Badge>
+        case 'pending-update': return <Badge variant="outline" className="text-blue-400 border-blue-400/50"><History className="mr-1 h-3 w-3" />Updated</Badge>
+        case 'rejected': return <Badge variant="destructive"><X className="mr-1 h-3 w-3" />Rejected</Badge>
+        default: return null;
+    }
+  }
+
 
   if (authLoading || loading) {
     return (
@@ -143,21 +166,36 @@ export default function EventApprovalsPage() {
           </h1>
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and approve or reject events submitted by organizers.</p>
         </div>
+        
+        <div className="my-8 flex justify-center">
+          <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-md">
+            <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">Pending (New)</ToggleGroupItem>
+            <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Pending (Updates)</ToggleGroupItem>
+            <ToggleGroupItem value="rejected" className="w-full data-[state=on]:bg-red-500/20 data-[state=on]:border-red-500/50 data-[state=on]:text-red-300">Rejected</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
         <div className="mt-8 space-y-4">
-          {pendingEvents.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <Card className="p-12 text-center text-muted-foreground">
               <Check className="mx-auto h-12 w-12 text-green-500" />
-              <p className="mt-4">No pending events. All clear!</p>
+              <p className="mt-4">No events found for this category.</p>
             </Card>
           ) : (
-            pendingEvents.map((event) => (
+            filteredEvents.map((event) => (
               <Card key={event.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md">
                 <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
                   <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className="flex-grow">
-                  <h3 className="font-bold">{event.title}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                     {getStatusBadge(event.status)}
+                     <h3 className="font-bold">{event.title}</h3>
+                  </div>
                   <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+                   {event.status === 'rejected' && event.rejectionReason && (
+                     <p className="text-xs text-red-400 mt-1">Reason: {event.rejectionReason}</p>
+                   )}
                    <Link href={`/event/${event.id}`} className="text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                     View Full Details
                   </Link>

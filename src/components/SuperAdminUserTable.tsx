@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
 import { Trash2, UserX, XCircle } from 'lucide-react';
@@ -28,7 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent } from './ui/card';
-import type { UserProfile } from '@/types';
+import type { UserProfile, Event } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getInitials } from '@/lib/utils';
@@ -118,10 +118,42 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         toast({ variant: 'destructive', title: 'Permission Denied' });
         return;
     }
+    const userToUpdate = users.find(u => u.uid === userId);
+    if (!userToUpdate) return;
+    
+    const batch = writeBatch(db);
     const userDocRef = doc(db, 'users', userId);
+    
     try {
-        await updateDoc(userDocRef, { campus: newCampus });
-        toast({ title: 'Campus Updated', description: `User's campus has been changed to ${newCampus}.` });
+        // 1. Update the user's campus
+        batch.update(userDocRef, { campus: newCampus });
+
+        // 2. If the user is an organizer, update all their events
+        if (userToUpdate.role === 'organizer') {
+            const eventsRef = collection(db, 'events');
+            const q = query(eventsRef, where('organizerId', '==', userId));
+            const eventsSnapshot = await getDocs(q);
+
+            eventsSnapshot.forEach((eventDoc) => {
+                const eventRef = doc(db, 'events', eventDoc.id);
+                batch.update(eventRef, { conductingCampus: newCampus });
+            });
+             
+            // 3. Commit the batch
+            await batch.commit();
+            
+            if (eventsSnapshot.size > 0) {
+              toast({ title: 'Campus Updated', description: `User's campus changed to ${newCampus}. Updated ${eventsSnapshot.size} associated event(s).` });
+            } else {
+              toast({ title: 'Campus Updated', description: `User's campus has been changed to ${newCampus}.` });
+            }
+
+        } else {
+           // If not an organizer, just commit the user update
+           await batch.commit();
+           toast({ title: 'Campus Updated', description: `User's campus has been changed to ${newCampus}.` });
+        }
+
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }

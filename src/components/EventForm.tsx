@@ -26,7 +26,7 @@ import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, uploadString } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Event } from '@/types';
@@ -177,19 +177,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   
   const isEditMode = !!event;
   
-  // Determine if the form should be editable
-  const canEdit = useMemo(() => {
-    if (!isEditable) return false;
-    if (isSuperAdmin) return true; // Superadmins can always edit
-    if (isOrganizer && event) {
-      // Organizers can edit if the event is pending or rejected
-      return event.status === 'pending' || event.status === 'rejected';
-    }
-    if (isOrganizer && !isEditMode) return true; // Organizers can always fill a new form
-    return false;
-  }, [isEditable, isSuperAdmin, isOrganizer, event, isEditMode]);
-
-
   const form = useForm<EventFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode && event ? {
@@ -223,6 +210,18 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       status: 'pending',
     },
   });
+
+  // Determine if the form should be editable
+  const canEdit = useMemo(() => {
+    if (!isEditable) return false;
+    if (isSuperAdmin) return true; // Superadmins can always edit
+    if (isOrganizer && event) {
+      // Organizers can edit if the event is pending or rejected, but not approved
+      return event.status === 'pending' || event.status === 'rejected';
+    }
+    if (isOrganizer && !isEditMode) return true; // Organizers can always fill a new form
+    return false;
+  }, [isEditable, isSuperAdmin, isOrganizer, event, isEditMode]);
   
   // Set conducting campus when user profile loads for a new form
   useEffect(() => {
@@ -749,5 +748,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
+
 
 

@@ -69,7 +69,7 @@ service cloud.firestore {
           && resource.data.organizerId == request.auth.uid
           && (
             (resource.data.status == 'pending' || resource.data.status == 'rejected') || // Can edit pending/rejected events and resubmit.
-            (resource.data.status == 'approved' && request.resource.data.status == 'pending-update') // Can edit approved event, but must move to pending-update
+            (resource.data.status == 'approved' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string) // Can edit approved event, but must move to pending-update and provide reason
           )
         ) ||
         ( // Rule for student view count increment

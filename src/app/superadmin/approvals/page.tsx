@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -82,7 +83,7 @@ export default function EventApprovalsPage() {
   const handleApprove = async (eventId: string) => {
     try {
       const eventRef = doc(db, 'events', eventId);
-      await updateDoc(eventRef, { status: 'approved', rejectionReason: '' });
+      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '' });
       toast({ title: 'Event Approved', description: 'The event is now live.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
@@ -106,6 +107,7 @@ export default function EventApprovalsPage() {
       await updateDoc(eventRef, { 
         status: 'rejected',
         rejectionReason: rejectionReason.trim(),
+        updateReason: '', // Clear update reason on rejection
       });
       toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
       setIsRejectDialogOpen(false);
@@ -194,7 +196,10 @@ export default function EventApprovalsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
                    {event.status === 'rejected' && event.rejectionReason && (
-                     <p className="text-xs text-red-400 mt-1">Reason: {event.rejectionReason}</p>
+                     <p className="text-xs text-red-400 mt-1">Rejection Reason: {event.rejectionReason}</p>
+                   )}
+                   {event.status === 'pending-update' && event.updateReason && (
+                     <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>
                    )}
                    <Link href={`/event/${event.id}`} className="text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                     View Full Details

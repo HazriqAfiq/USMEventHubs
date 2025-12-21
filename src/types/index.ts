@@ -33,6 +33,7 @@ export interface Event {
   viewCount?: number;
   status: 'pending' | 'approved' | 'rejected' | 'pending-update';
   rejectionReason?: string;
+  updateReason?: string;
 }
 
 export interface UserProfile {

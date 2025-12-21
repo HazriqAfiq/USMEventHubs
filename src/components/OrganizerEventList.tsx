@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -223,7 +223,13 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
         label: 'Pending',
         icon: Clock,
         className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-        tooltip: 'This event is awaiting approval from a superadmin.'
+        tooltip: 'This new event is awaiting approval from a superadmin.'
+      },
+      'pending-update': {
+        label: 'Updated',
+        icon: History,
+        className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        tooltip: 'This event has been updated and is awaiting re-approval.'
       },
       rejected: {
         label: 'Rejected',
@@ -376,4 +382,3 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     </div>
   );
 }
-

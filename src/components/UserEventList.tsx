@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -57,7 +58,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
           return null;
         });
 
-        const registeredEvents = (await Promise.all(registeredEventsPromises)).filter(event => event !== null) as Event[];
+        const registeredEvents = (await Promise.all(registeredEventsPromises)).filter(event => event !== null && event.status === 'approved') as Event[];
         
         registeredEvents.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
         setEvents(registeredEvents);

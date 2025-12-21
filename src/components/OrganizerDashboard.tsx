@@ -74,8 +74,11 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
   } = useMemo(() => {
     const now = new Date();
     
+    // Base list of approved events by the organizer
+    const approvedEvents = events.filter(e => e.status === 'approved');
+    
     // Filter events by selected year
-    const eventsInSelectedYear = events.filter(event => 
+    const eventsInSelectedYear = approvedEvents.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
     );
 
@@ -95,7 +98,7 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
     });
     
     const yearSet = new Set<number>();
-    events.forEach(event => {
+    approvedEvents.forEach(event => {
         if (event.date) {
             yearSet.add(getYear(event.date.toDate()));
         }
@@ -129,7 +132,7 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
         eventsInYearCount,
         upcomingInYearCount,
         pastInYearCount,
-        totalEventsCount: events.length,
+        totalEventsCount: approvedEvents.length,
         monthlyData, 
         availableYears 
     };
@@ -161,12 +164,12 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Events in {selectedYear}</CardTitle>
+            <CardTitle className="text-sm font-medium">Approved Events in {selectedYear}</CardTitle>
             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{eventsInYearCount}</div>
-            <p className="text-xs text-muted-foreground">Total events scheduled for {selectedYear}.</p>
+            <p className="text-xs text-muted-foreground">Approved events scheduled for {selectedYear}.</p>
           </CardContent>
         </Card>
         <Card>
@@ -176,7 +179,7 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{upcomingInYearCount}</div>
-            <p className="text-xs text-muted-foreground">Upcoming events in {selectedYear}.</p>
+            <p className="text-xs text-muted-foreground">Upcoming approved events in {selectedYear}.</p>
           </CardContent>
         </Card>
         <Card>
@@ -186,17 +189,17 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pastInYearCount}</div>
-             <p className="text-xs text-muted-foreground">Past events in {selectedYear}.</p>
+             <p className="text-xs text-muted-foreground">Past approved events in {selectedYear}.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Approved Events</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalEventsCount}</div>
-            <p className="text-xs text-muted-foreground">All events you have ever created.</p>
+            <p className="text-xs text-muted-foreground">All approved events you have ever created.</p>
           </CardContent>
         </Card>
       </div>
@@ -206,9 +209,9 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Events Overview</CardTitle>
+                        <CardTitle>Approved Events Overview</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                            Number of events you've scheduled per month for the year {selectedYear}.
+                            Number of approved events scheduled per month for {selectedYear}.
                         </p>
                     </div>
                     {availableYears.length > 0 && (

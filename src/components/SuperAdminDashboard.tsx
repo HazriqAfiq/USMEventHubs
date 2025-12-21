@@ -63,8 +63,9 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   const [selectedOrganizer, setSelectedOrganizer] = useState<{ id: string, name: string } | null>(null);
   
   const availableYears = useMemo(() => {
+    const approvedEvents = events.filter(e => e.status === 'approved');
     const yearSet = new Set<number>();
-    events.forEach(e => {
+    approvedEvents.forEach(e => {
       if(e.date) yearSet.add(getYear(e.date.toDate()));
     });
     
@@ -123,7 +124,9 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     campusEventData,
     organizerEventData
   } = useMemo(() => {
-    const eventsInSelectedYear = events.filter(event => 
+    const approvedEvents = events.filter(e => e.status === 'approved');
+
+    const eventsInSelectedYear = approvedEvents.filter(event => 
         event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
     );
 
@@ -269,12 +272,12 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Events in {selectedYear}</CardTitle>
+            <CardTitle className="text-sm font-medium">Approved Events in {selectedYear}</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalEventsInYear}</div>
-            <p className="text-xs text-muted-foreground">Total events created this year.</p>
+            <p className="text-xs text-muted-foreground">Total approved events created this year.</p>
           </CardContent>
         </Card>
       </div>
@@ -371,10 +374,10 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
               <div>
                 <CardTitle className="flex items-center">
                   <Building className="mr-2 h-5 w-5" />
-                  Event Distribution by Campus ({selectedYear})
+                  Approved Event Distribution by Campus ({selectedYear})
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Events conducted by each campus.
+                  Approved events conducted by each campus.
                 </p>
               </div>
                {availableYears.length > 0 && (
@@ -415,7 +418,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
               <div>
                 <CardTitle className="flex items-center">
                   <UserCheck className="mr-2 h-5 w-5" />
-                  Events per Organizer ({selectedYear})
+                  Approved Events per Organizer ({selectedYear})
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Click a bar to view that organizer's events.
@@ -461,10 +464,10 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                 <div>
                     <CardTitle className="flex items-center">
                     <BarChart2 className="mr-2 h-5 w-5" />
-                    Platform-Wide Event Creation
+                    Platform-Wide Approved Event Creation
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                    Total events created per month.
+                    Total approved events created per month.
                     </p>
                 </div>
                 {availableYears.length > 0 && (

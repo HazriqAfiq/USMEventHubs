@@ -64,11 +64,11 @@ service cloud.firestore {
       
       // Update rules:
       allow update: if request.auth != null && (
-        ( // Rule for Organizer updates - can edit their own PENDING, REJECTED, or APPROVED events
+        ( // Rule for Organizer updates
           isOrganizer(request.auth.uid) 
           && resource.data.organizerId == request.auth.uid
           && (
-            (resource.data.status == 'pending' || resource.data.status == 'rejected') || // Can edit pending/rejected events
+            (resource.data.status == 'pending' || resource.data.status == 'rejected') || // Can edit pending/rejected events and resubmit.
             (resource.data.status == 'approved' && request.resource.data.status == 'pending-update') // Can edit approved event, but must move to pending-update
           )
         ) ||
@@ -76,7 +76,7 @@ service cloud.firestore {
           isStudent(request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']) // Ensure only viewCount is being changed
         ) ||
-        ( // Rule for Superadmin updates - can update anything
+        ( // Rule for Superadmin updates - can update anything, including status changes.
             isSuperAdmin(request.auth.uid)
         )
       );

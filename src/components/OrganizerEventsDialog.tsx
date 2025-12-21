@@ -9,7 +9,7 @@ import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format, isSameYear, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isSameYear, isWithinInterval, startOfMonth, endOfMonth, getMonth } from 'date-fns';
 import type { Event } from '@/types';
 import { Button } from './ui/button';
 import { Eye, Users } from 'lucide-react';
@@ -70,49 +70,49 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
   }
 
   const { filteredEvents, availableMonths } = useMemo(() => {
-      const now = new Date();
-      
-      let baseFiltered = events;
+    const now = new Date();
 
-      if (timeFilter === 'upcoming') {
-          baseFiltered = events.filter(event => {
-              const eventEndDate = getEventEndTime(event);
-              return eventEndDate ? eventEndDate >= now : false;
-          });
-      } else if (timeFilter === 'past') {
-          baseFiltered = events.filter(event => {
-              const eventEndDate = getEventEndTime(event);
-              return eventEndDate ? eventEndDate < now : true;
-          });
-      }
+    let baseFiltered = events;
 
-      const pastEvents = events.filter(event => {
-          const eventEndDate = getEventEndTime(event);
-          return eventEndDate ? eventEndDate < now : true;
-      });
+    // First, filter by time (upcoming/past) if not 'all'
+    if (timeFilter === 'upcoming') {
+        baseFiltered = events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate >= now : false;
+        });
+    } else if (timeFilter === 'past') {
+        baseFiltered = events.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate < now : true;
+        });
+    }
 
-      const monthSet = new Set<string>();
-      pastEvents.forEach(event => {
-          monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
-      });
-      const availableMonths = Array.from(monthSet);
-      
-      if (timeFilter === 'past' && monthFilter !== 'all') {
+    // Then, filter by month if a specific month is selected
+    if (monthFilter !== 'all') {
         const selectedMonthDate = new Date(monthFilter);
         const interval = {
             start: startOfMonth(selectedMonthDate),
             end: endOfMonth(selectedMonthDate)
         };
         baseFiltered = baseFiltered.filter(event => isWithinInterval(event.date.toDate(), interval));
+    }
+
+    // Generate available months from all events in the current year for this organizer
+    const monthSet = new Set<string>();
+    events.forEach(event => {
+      if(event.date) {
+        monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
       }
+    });
+    const availableMonths = Array.from(monthSet).sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
+      
+    baseFiltered.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
 
-      baseFiltered.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
-
-      return { filteredEvents: baseFiltered, availableMonths };
+    return { filteredEvents: baseFiltered, availableMonths };
   }, [events, timeFilter, monthFilter]);
   
   useEffect(() => {
-    // Reset month filter when time filter changes
+    // Reset month filter when time filter changes to keep things simple
     setMonthFilter('all');
   }, [timeFilter]);
 
@@ -138,7 +138,7 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
               <ToggleGroupItem value="past">Past</ToggleGroupItem>
             </ToggleGroup>
 
-            {timeFilter === 'past' && availableMonths.length > 0 && (
+            {availableMonths.length > 0 && (
                 <Select value={monthFilter} onValueChange={setMonthFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Filter by month" />

@@ -32,12 +32,18 @@ export default function Home() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
+    // Redirect superadmin to their dashboard
+    if (!authLoading && isSuperAdmin) {
+      router.replace('/superadmin');
+      return;
+    }
+    
     // Check session storage to see if welcome screen should be skipped
     const welcomeDismissed = sessionStorage.getItem('welcomeDismissed');
     if (welcomeDismissed === 'true') {
       setShowWelcome(false);
     }
-  }, []);
+  }, [authLoading, isSuperAdmin, router]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,7 +61,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || isSuperAdmin) return;
 
     const q = query(collection(db, 'events'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -73,7 +79,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading]);
+  }, [user, authLoading, isSuperAdmin]);
 
   // Hide splash screen after a delay
   useEffect(() => {
@@ -149,8 +155,8 @@ export default function Home() {
   };
 
 
-  if (authLoading || !user) {
-    // Show a skeleton loader while checking for auth or redirecting
+  if (authLoading || !user || isSuperAdmin) {
+    // Show a skeleton loader while checking for auth, redirecting, or if superadmin.
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
@@ -279,3 +285,5 @@ export default function Home() {
     </>
   );
 }
+
+    

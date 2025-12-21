@@ -64,11 +64,11 @@ export default function Home() {
   useEffect(() => {
     if (authLoading || !user || isSuperAdmin) return;
 
-    // Only fetch events that are 'approved'
+    // Only fetch events that are 'approved'. The orderBy clause was removed to prevent an index error.
+    // Sorting will now be handled on the client side.
     const q = query(
       collection(db, 'events'), 
-      where('status', '==', 'approved'),
-      orderBy('date', 'asc')
+      where('status', '==', 'approved')
     );
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
@@ -77,6 +77,8 @@ export default function Home() {
         const event = { id: doc.id, ...doc.data() } as Event;
         eventsData.push(event);
       });
+      // Sort events by date client-side
+      eventsData.sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
       setEvents(eventsData);
       setLoadingEvents(false);
     }, (error) => {
@@ -110,7 +112,7 @@ export default function Home() {
         return now < endDateTime;
       }
       return false;
-    }).sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
+    });
     
     // Then, filter by eligibility
     if (isOrganizer || isSuperAdmin) {

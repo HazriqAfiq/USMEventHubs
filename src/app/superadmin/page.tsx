@@ -13,6 +13,7 @@ import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import GlobalBannerForm from '@/components/GlobalBannerForm';
 
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
@@ -74,12 +75,20 @@ export default function SuperAdminPage() {
            <SuperAdminDashboard onCampusClick={handleCampusClick} />
         </div>
         <Separator />
+        <div>
+          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Global Broadcast Banner</h2>
+           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            Display a site-wide announcement banner on the homepage.
+          </p>
+          <GlobalBannerForm />
+        </div>
+        <Separator />
          <div>
           <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage All Events</h2>
            <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Review, edit, or delete any event on the platform.
           </p>
-          <SuperAdminEventList organizerFilter={null} onClearOrganizerFilter={() => {}}/>
+          <SuperAdminEventList />
         </div>
         <Separator />
         <div>

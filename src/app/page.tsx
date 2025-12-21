@@ -18,6 +18,7 @@ import { FeaturedEventsCarousel } from '@/components/FeaturedEventsCarousel';
 import { ScrollAnimation } from '@/components/ScrollAnimation';
 import { addMinutes } from 'date-fns';
 import { CampusFilter } from '@/components/CampusFilter';
+import { GlobalBanner } from '@/components/GlobalBanner';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -180,7 +181,8 @@ export default function Home() {
 
   return (
     <>
-      <div className="container mx-auto px-4 pt-24 pb-8">
+      <GlobalBanner />
+      <div className="container mx-auto px-4 pt-8 pb-8">
         {/* Featured Events Carousel */}
         {featuredEvents.length > 0 && (
           <ScrollAnimation delay={200}>

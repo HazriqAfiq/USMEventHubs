@@ -44,6 +44,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const { user, isOrganizer, loading: authLoading } = useAuth();
 
@@ -98,26 +99,44 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     };
   }, [events]);
 
+  const getEventEndTime = (event: Event): Date | null => {
+    if (event.date && event.endTime) {
+        const eventEndDate = event.date.toDate();
+        const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+        eventEndDate.setHours(endHours, endMinutes, 0, 0);
+        return eventEndDate;
+    }
+    return null;
+  }
 
   const { filteredEvents, availableMonths } = useMemo(() => {
-    
+    const now = new Date();
     let baseFilteredEvents: Event[] = events;
 
     // 1. Filter by Status
     if (statusFilter !== 'all') {
       if (statusFilter === 'pending') {
-        baseFilteredEvents = events.filter(e => e.status === 'pending' || e.status === 'pending-update');
+        baseFilteredEvents = baseFilteredEvents.filter(e => e.status === 'pending' || e.status === 'pending-update');
       } else {
-        baseFilteredEvents = events.filter(e => e.status === statusFilter);
+        baseFilteredEvents = baseFilteredEvents.filter(e => e.status === statusFilter);
       }
     }
     
-    // 2. Filter by Month (from chart click)
+    // 2. Filter by Time
+    if (timeFilter !== 'all') {
+      baseFilteredEvents = baseFilteredEvents.filter(event => {
+        const eventEndDate = getEventEndTime(event);
+        if (!eventEndDate) return false;
+        return timeFilter === 'upcoming' ? eventEndDate >= now : eventEndDate < now;
+      });
+    }
+
+    // 3. Filter by Month (from chart click)
     if (chartMonthFilter) {
       const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
       baseFilteredEvents = baseFilteredEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
     }
-    // 3. Filter by Month (from dropdown)
+    // 4. Filter by Month (from dropdown)
     else if (monthFilter !== 'all') {
       const selectedMonthDate = new Date(monthFilter);
       const interval = {
@@ -134,7 +153,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     const availableMonths = Array.from(monthSet);
 
     return { filteredEvents: baseFilteredEvents, availableMonths };
-  }, [events, statusFilter, monthFilter, chartMonthFilter]);
+  }, [events, statusFilter, timeFilter, monthFilter, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     try {
@@ -189,7 +208,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   useEffect(() => {
     // Reset month filter when main filter changes
     setMonthFilter('all');
-  }, [statusFilter]);
+  }, [statusFilter, timeFilter]);
   
   const StatusBadge = ({ event }: { event: Event }) => {
     const statusConfig = {
@@ -251,38 +270,53 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
 
   return (
     <div className="mt-6 space-y-4">
-       <div className="flex flex-wrap gap-4 justify-between items-center">
+       <div className="flex flex-col gap-4">
         {!chartMonthFilter ? (
           <>
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              value={statusFilter}
-              onValueChange={(value) => {
-                if (value) setStatusFilter(value as any);
-              }}
-            >
-              <ToggleGroupItem value="all">All</ToggleGroupItem>
-              <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
-              <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
-              <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
-            </ToggleGroup>
+            <div className='flex flex-col sm:flex-row gap-4 justify-between items-center'>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                value={statusFilter}
+                onValueChange={(value) => {
+                  if (value) setStatusFilter(value as any);
+                }}
+              >
+                <ToggleGroupItem value="all">All Statuses</ToggleGroupItem>
+                <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
+                <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
+                <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
+              </ToggleGroup>
+              
+               <ToggleGroup
+                type="single"
+                variant="outline"
+                value={timeFilter}
+                onValueChange={(value) => {
+                  if (value) setTimeFilter(value as any);
+                }}
+              >
+                <ToggleGroupItem value="all">All Time</ToggleGroupItem>
+                <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+                <ToggleGroupItem value="past">Past</ToggleGroupItem>
+              </ToggleGroup>
 
-            {availableMonths.length > 0 && (
-                <Select value={monthFilter} onValueChange={setMonthFilter}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Filter by month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Months</SelectItem>
-                        {availableMonths.map(monthStr => (
-                            <SelectItem key={monthStr} value={monthStr}>
-                                {format(new Date(monthStr), 'MMMM yyyy')}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            )}
+              {availableMonths.length > 0 && (
+                  <Select value={monthFilter} onValueChange={setMonthFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Filter by month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Months</SelectItem>
+                          {availableMonths.map(monthStr => (
+                              <SelectItem key={monthStr} value={monthStr}>
+                                  {format(new Date(monthStr), 'MMMM yyyy')}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              )}
+            </div>
           </>
         ) : (
           <div className="w-full">

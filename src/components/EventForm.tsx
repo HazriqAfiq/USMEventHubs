@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -748,6 +747,4 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </Form>
   );
 }
-
-
 

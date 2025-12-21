@@ -43,7 +43,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const { user, isOrganizer, loading: authLoading } = useAuth();
 
@@ -100,51 +100,25 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
 
 
   const { filteredEvents, availableMonths } = useMemo(() => {
-    const now = new Date();
-
-    const getEventEndTime = (event: Event): Date | null => {
-        if (event.date && event.endTime) {
-            const eventEndDate = event.date.toDate();
-            const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-            eventEndDate.setHours(endHours, endMinutes, 0, 0);
-            return eventEndDate;
-        }
-        return null;
-    }
-
-    let baseFilteredEvents: Event[];
     
-    if (chartMonthFilter) {
-      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
-      baseFilteredEvents = events.filter(event => isWithinInterval(event.date.toDate(), interval));
-    } else {
-      if (filter === 'upcoming') {
-        baseFilteredEvents = events.filter(event => {
-            const eventEndDate = getEventEndTime(event);
-            return eventEndDate ? eventEndDate >= now : false;
-        });
-      } else if (filter === 'past') {
-        baseFilteredEvents = events.filter(event => {
-            const eventEndDate = getEventEndTime(event);
-            return eventEndDate ? eventEndDate < now : true;
-        });
+    let baseFilteredEvents: Event[] = events;
+
+    // 1. Filter by Status
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'pending') {
+        baseFilteredEvents = events.filter(e => e.status === 'pending' || e.status === 'pending-update');
       } else {
-         baseFilteredEvents = events;
+        baseFilteredEvents = events.filter(e => e.status === statusFilter);
       }
     }
     
-    const pastEvents = events.filter(event => {
-      const eventEndDate = getEventEndTime(event);
-      return eventEndDate ? eventEndDate < now : true;
-    });
-
-    const monthSet = new Set<string>();
-    pastEvents.forEach(event => {
-        monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
-    });
-    const availableMonths = Array.from(monthSet);
-      
-    if (!chartMonthFilter && filter === 'past' && monthFilter !== 'all') {
+    // 2. Filter by Month (from chart click)
+    if (chartMonthFilter) {
+      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
+      baseFilteredEvents = baseFilteredEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
+    }
+    // 3. Filter by Month (from dropdown)
+    else if (monthFilter !== 'all') {
       const selectedMonthDate = new Date(monthFilter);
       const interval = {
           start: startOfMonth(selectedMonthDate),
@@ -152,9 +126,15 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
       };
       baseFilteredEvents = baseFilteredEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
     }
+    
+    const monthSet = new Set<string>();
+    events.forEach(event => {
+        monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
+    });
+    const availableMonths = Array.from(monthSet);
 
     return { filteredEvents: baseFilteredEvents, availableMonths };
-  }, [events, filter, monthFilter, chartMonthFilter]);
+  }, [events, statusFilter, monthFilter, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     try {
@@ -209,7 +189,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   useEffect(() => {
     // Reset month filter when main filter changes
     setMonthFilter('all');
-  }, [filter]);
+  }, [statusFilter]);
   
   const StatusBadge = ({ event }: { event: Event }) => {
     const statusConfig = {
@@ -277,17 +257,18 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
             <ToggleGroup
               type="single"
               variant="outline"
-              value={filter}
+              value={statusFilter}
               onValueChange={(value) => {
-                if (value) setFilter(value as any);
+                if (value) setStatusFilter(value as any);
               }}
             >
-              <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-              <ToggleGroupItem value="past">Past</ToggleGroupItem>
               <ToggleGroupItem value="all">All</ToggleGroupItem>
+              <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
+              <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
+              <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
             </ToggleGroup>
 
-            {filter === 'past' && availableMonths.length > 0 && (
+            {availableMonths.length > 0 && (
                 <Select value={monthFilter} onValueChange={setMonthFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Filter by month" />

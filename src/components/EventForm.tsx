@@ -305,11 +305,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              if (isOrganizer) {
                 // Logic for status transitions when an organizer edits an event
                 if (event.status === 'approved' || event.status === 'pending-update') {
-                    // Editing a live or already pending-update event always goes to pending-update
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
                 } else if (event.status === 'rejected') {
-                    // If resubmitting a rejected event, check if it was ever approved.
                     if (event.isApprovedOnce) {
                         eventData.status = 'pending-update';
                         eventData.updateReason = reason;
@@ -320,6 +318,9 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     eventData.status = 'pending';
                 }
                 eventData.rejectionReason = ''; // Always clear rejection reason on resubmit.
+             }
+             if (isSuperAdmin) {
+                eventData.status = 'approved';
              }
             
             await updateDoc(docRef, eventData)
@@ -332,8 +333,12 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 errorEmitter.emit('permission-error', permissionError);
                 throw serverError;
               });
-
-            toast({ title: 'Event Updated!', description: `"${data.title}" has been submitted for re-approval.` });
+            
+            if (isSuperAdmin) {
+                toast({ title: 'Event Updated!', description: `"${data.title}" has been saved.` });
+            } else {
+                toast({ title: 'Event Updated!', description: `"${data.title}" has been submitted for re-approval.` });
+            }
             router.push(isSuperAdmin ? '/superadmin' : '/organizer');
         } else {
             if (!userProfile.campus) {
@@ -358,7 +363,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               throw serverError;
             });
 
-            toast({ title: isSuperAdmin ? 'Event Created!' : 'Event Submitted!', description: isSuperAdmin ? `"${data.title}" is now live.` : `"${data.title}" has been submitted for approval.` });
+            toast({ title: isSuperAdmin ? 'Event Created & Published!' : 'Event Submitted!', description: isSuperAdmin ? `"${data.title}" is now live.` : `"${data.title}" has been submitted for approval.` });
             handleReset();
         }
     } catch (error: any) {
@@ -447,6 +452,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
         status: 'pending',
     });
   }
+
+  const getButtonText = () => {
+    if (isSubmitting) return 'Submitting...';
+    if (isSuperAdmin) {
+      return isEditMode ? 'Save Changes' : 'Create & Publish Event';
+    }
+    return 'Submit for Approval';
+  };
 
   const isPaid = form.watch('isFree') === 'paid';
   const selectedDate = form.watch('date');
@@ -795,7 +808,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
                 {canEdit && (
                   <Button type="submit" disabled={isSubmitting || isUploading}>
-                    {isSubmitting ? 'Submitting...' : (isEditMode ? 'Submit for Approval' : 'Submit for Approval')}
+                    {getButtonText()}
                   </Button>
                 )}
             </div>

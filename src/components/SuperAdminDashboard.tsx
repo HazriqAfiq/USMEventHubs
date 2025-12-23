@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import OrganizerEventsDialog from './OrganizerEventsDialog';
+import { useRouter } from 'next/navigation';
 
 
 type MonthlyCount = {
@@ -62,6 +63,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   const [userDistributionFilter, setUserDistributionFilter] = useState<'all' | 'student' | 'organizer'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedOrganizer, setSelectedOrganizer] = useState<{ id: string, name: string } | null>(null);
+  const router = useRouter();
   
   const availableYears = useMemo(() => {
     const approvedEvents = events.filter(e => e.status === 'approved');
@@ -259,6 +261,23 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     }
   };
   
+  const handleStatusPieClick = (data: any) => {
+    const status = data.name.toLowerCase().replace(/ /g, '-');
+    switch (status) {
+      case 'pending':
+      case 'pending-update':
+      case 'pending-deletion':
+        router.push(`/superadmin/approvals?status=${status}`);
+        break;
+      case 'approved':
+      case 'rejected':
+        router.push(`/superadmin/events?status=${status}`);
+        break;
+      default:
+        break;
+    }
+  };
+  
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 
@@ -298,12 +317,12 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Events</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
             <FileClock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingEventsCount}</div>
-            <p className="text-xs text-muted-foreground">New events and updates needing approval.</p>
+            <p className="text-xs text-muted-foreground">New events, updates, and deletions.</p>
           </CardContent>
         </Card>
       </div>
@@ -505,6 +524,8 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                             fill="#8884d8"
                             dataKey="value"
                             nameKey="name"
+                            onClick={handleStatusPieClick}
+                            className="cursor-pointer"
                         >
                             {eventStatusData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

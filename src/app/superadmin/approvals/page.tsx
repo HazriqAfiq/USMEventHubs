@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, ArrowLeft, CheckSquare, Check, X, Info, FileClock, History } from 'lucide-react';
+import { Terminal, ArrowLeft, CheckSquare, Check, X, FileClock, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -15,7 +15,6 @@ import type { Event } from '@/types';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -27,8 +26,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import ApprovalDialog from '@/components/ApprovalDialog';
 
 
 type EventStatusFilter = 'pending' | 'pending-update' | 'all';
@@ -41,10 +40,14 @@ export default function EventApprovalsPage() {
   const { toast } = useToast();
 
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEventForAction, setSelectedEventForAction] = useState<Event | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('all');
+  
+  // State for the new details dialog
+  const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
+  const [eventToView, setEventToView] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -80,31 +83,31 @@ export default function EventApprovalsPage() {
     return events.filter(event => event.status === statusFilter);
   }, [events, statusFilter]);
 
-  const handleApprove = async (eventId: string) => {
+  const handleApprove = async (event: Event) => {
     try {
-      const eventRef = doc(db, 'events', eventId);
-      // Set isApprovedOnce to true on the first approval. It will remain true thereafter.
+      const eventRef = doc(db, 'events', event.id);
       await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', isApprovedOnce: true });
-      toast({ title: 'Event Approved', description: 'The event is now live.' });
+      toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });
+      closeDetailView();
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
     }
   };
 
   const openRejectDialog = (event: Event) => {
-    setSelectedEvent(event);
+    setSelectedEventForAction(event);
     setIsRejectDialogOpen(true);
     setRejectionReason('');
   };
 
   const handleReject = async () => {
-    if (!selectedEvent || !rejectionReason.trim()) {
+    if (!selectedEventForAction || !rejectionReason.trim()) {
       toast({ variant: 'destructive', title: 'Reason Required', description: 'Please provide a reason for rejection.' });
       return;
     }
     setIsSubmitting(true);
     try {
-      const eventRef = doc(db, 'events', selectedEvent.id);
+      const eventRef = doc(db, 'events', selectedEventForAction.id);
       await updateDoc(eventRef, { 
         status: 'rejected',
         rejectionReason: rejectionReason.trim(),
@@ -112,6 +115,7 @@ export default function EventApprovalsPage() {
       });
       toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
       setIsRejectDialogOpen(false);
+      closeDetailView();
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Rejection Failed', description: error.message });
     } finally {
@@ -119,11 +123,20 @@ export default function EventApprovalsPage() {
     }
   };
   
+  const openDetailView = (event: Event) => {
+    setEventToView(event);
+    setIsDetailViewOpen(true);
+  };
+  
+  const closeDetailView = () => {
+    setEventToView(null);
+    setIsDetailViewOpen(false);
+  }
+  
   const getStatusBadge = (status: Event['status']) => {
     switch (status) {
         case 'pending': return <Badge variant="outline" className="text-yellow-400 border-yellow-400/50"><FileClock className="mr-1 h-3 w-3" />New</Badge>
         case 'pending-update': return <Badge variant="outline" className="text-blue-400 border-blue-400/50"><History className="mr-1 h-3 w-3" />Updated</Badge>
-        case 'rejected': return <Badge variant="destructive"><X className="mr-1 h-3 w-3" />Rejected</Badge>
         default: return null;
     }
   }
@@ -196,18 +209,15 @@ export default function EventApprovalsPage() {
                      <h3 className="font-bold">{event.title}</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
-                   {event.status === 'rejected' && event.rejectionReason && (
-                     <p className="text-xs text-red-400 mt-1">Rejection Reason: {event.rejectionReason}</p>
-                   )}
                    {event.status === 'pending-update' && event.updateReason && (
                      <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>
                    )}
-                   <Link href={`/event/${event.id}`} className="text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-                    View Full Details
-                  </Link>
+                   <Button variant="link" className="text-sm text-primary h-auto p-0" onClick={() => openDetailView(event)}>
+                    View Full Details & Edit
+                  </Button>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
-                  <Button variant="outline" size="sm" onClick={() => handleApprove(event.id)}>
+                  <Button variant="outline" size="sm" onClick={() => handleApprove(event)}>
                     <Check className="mr-2 h-4 w-4 text-green-500" /> Approve
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => openRejectDialog(event)}>
@@ -219,10 +229,12 @@ export default function EventApprovalsPage() {
           )}
         </div>
       </div>
+      
+      {/* Rejection Reason Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Event: {selectedEvent?.title}</DialogTitle>
+            <DialogTitle>Reject Event: {selectedEventForAction?.title}</DialogTitle>
             <DialogDescription>
               Please provide a reason for rejecting this event. This will be shown to the organizer.
             </DialogDescription>
@@ -243,6 +255,17 @@ export default function EventApprovalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Event Details and Edit Dialog */}
+      {eventToView && (
+        <ApprovalDialog 
+          event={eventToView}
+          isOpen={isDetailViewOpen}
+          onClose={closeDetailView}
+          onApprove={handleApprove}
+          onReject={openRejectDialog}
+        />
+      )}
     </>
   );
 }

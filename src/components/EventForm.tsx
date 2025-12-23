@@ -303,22 +303,19 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              const docRef = doc(db, 'events', event.id);
              
              if (isOrganizer) {
-                if (event.status === 'approved') {
+                // Logic for status transitions when an organizer edits an event
+                if (event.status === 'approved' || event.status === 'pending-update') {
+                    // Editing a live or already pending-update event always goes to pending-update
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
                 } else if (event.status === 'rejected') {
                     // If resubmitting a rejected event, check if it was ever approved.
-                    // If it was, it's an update. If not, it's a new submission.
                     if (event.isApprovedOnce) {
                         eventData.status = 'pending-update';
                         eventData.updateReason = reason;
                     } else {
                         eventData.status = 'pending';
-                        eventData.updateReason = ''; // Clear reason if it was a new event
                     }
-                } else if (event.status === 'pending-update') {
-                    eventData.status = 'pending-update';
-                    eventData.updateReason = reason;
                 } else { // status is 'pending'
                     eventData.status = 'pending';
                 }
@@ -375,7 +372,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   }
 
   function onSubmit(data: EventFormValues) {
-    if (isEditMode && isOrganizer && (event?.status === 'approved' || event?.status === 'rejected' || event?.status === 'pending-update')) {
+    if (isEditMode && isOrganizer && (event?.status === 'approved' || (event?.status === 'rejected' && event?.isApprovedOnce))) {
         setIsReasonDialogOpen(true);
     } else {
         processSubmit(data);

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { getMonth, getYear, format, isSameYear } from 'date-fns';
-import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon, UserCheck } from 'lucide-react';
+import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon, UserCheck, FileClock } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -118,11 +119,13 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     totalEventsInYear,
     totalUsers,
     totalOrganizers,
+    pendingEventsCount,
     monthlyEventData,
     campusUserData,
     roleData,
     campusEventData,
-    organizerEventData
+    organizerEventData,
+    eventStatusData,
   } = useMemo(() => {
     const approvedEvents = events.filter(e => e.status === 'approved');
 
@@ -198,24 +201,37 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
         }
     }).sort((a,b) => b.count - a.count);
 
+    const eventStatusCounts: { [key: string]: number } = {};
+    events.forEach(event => {
+      eventStatusCounts[event.status] = (eventStatusCounts[event.status] || 0) + 1;
+    });
+    const eventStatusData = Object.entries(eventStatusCounts).map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '),
+        value,
+    }));
+    
+    const pendingEventsCount = (eventStatusCounts['pending'] || 0) + (eventStatusCounts['pending-update'] || 0) + (eventStatusCounts['pending-deletion'] || 0);
+
 
     return {
       totalEventsInYear: eventsInSelectedYear.length,
       totalUsers: communityUsers.length,
       totalOrganizers: organizerCount,
+      pendingEventsCount,
       monthlyEventData,
       campusUserData,
       roleData,
       campusEventData,
-      organizerEventData
+      organizerEventData,
+      eventStatusData,
     };
   }, [events, users, selectedYear, userDistributionFilter]);
 
   if (loading || authLoading) {
     return (
       <div className="mt-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32"/>)}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32"/>)}
         </div>
         <div className="mt-8 grid md:grid-cols-2 gap-8">
           <Skeleton className="h-[350px] w-full" />
@@ -249,7 +265,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
   return (
     <>
     <div className="mt-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -278,6 +294,16 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
           <CardContent>
             <div className="text-2xl font-bold">{totalEventsInYear}</div>
             <p className="text-xs text-muted-foreground">Total approved events created this year.</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Events</CardTitle>
+            <FileClock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingEventsCount}</div>
+            <p className="text-xs text-muted-foreground">New events and updates needing approval.</p>
           </CardContent>
         </Card>
       </div>
@@ -456,6 +482,46 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <PieChartIcon className="mr-2 h-5 w-5" />
+                    Event Status Distribution
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Breakdown of all events by their current status.
+                </p>
+            </CardHeader>
+            <CardContent>
+                 <ResponsiveContainer width="100%" height={350}>
+                    <PieChart>
+                        <Pie
+                            data={eventStatusData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                            nameKey="name"
+                        >
+                            {eventStatusData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Legend />
+                        <Tooltip
+                             contentStyle={{
+                                background: "hsl(var(--background))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "var(--radius)",
+                            }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
+            </CardContent>
+         </Card>
       </div>
       <div className="mt-8">
         <Card>

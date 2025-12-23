@@ -58,7 +58,7 @@ export default function ApprovalDialog({ isOpen, onClose, event, onApprove, onRe
         <DialogHeader>
           <DialogTitle>Review Event: {event.title}</DialogTitle>
           <DialogDescription>
-            Review the details below. You can edit fields before approving or rejecting.
+            Review the details below and approve or reject the event.
           </DialogDescription>
              {(event.status === 'pending-update' && event.updateReason) && (
               <div className="mt-2 text-sm text-blue-400 bg-blue-500/10 p-2 rounded-md">

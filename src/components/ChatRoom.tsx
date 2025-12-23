@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ChatMessage from './ChatMessage';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
+import type { UserProfile } from '@/types';
 
 interface Props {
   eventId: string;
@@ -24,7 +25,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
-  const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
   const { toast } = useToast();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const profileUnsubs = useRef<Record<string, () => void>>({});
@@ -75,7 +76,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
         const userDoc = doc(db, 'users', id);
         const unsub = onSnapshot(userDoc, (snap) => {
           if (snap.exists()) {
-            setProfiles((p) => ({ ...p, [id]: snap.data() }));
+            setProfiles((p) => ({ ...p, [id]: snap.data() as UserProfile }));
           }
         }, () => {
           // ignore profile read errors
@@ -332,8 +333,10 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
             backgroundImage: "url('/images/WALL.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
+            opacity: 1, // Set to 100%
           }}
         />
+        {/* No overlay */}
 
         {/* Content */}
         <div className="relative z-10">

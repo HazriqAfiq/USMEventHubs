@@ -3,7 +3,7 @@
 
 import React from "react";
 import { formatDistanceToNow } from 'date-fns';
-import { Crown, Pin, Trash2 } from 'lucide-react';
+import { Crown, Pin, Trash2, ShieldCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,12 +16,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from "./ui/button";
+import { UserProfile } from "@/types";
 
 interface Props {
   message: any;
   isOwn?: boolean;
   isEventOrganizer?: boolean;
-  profile?: any;
+  profile?: UserProfile;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
   isSuperAdmin?: boolean;
   onDelete?: (id: string) => void;
@@ -29,6 +30,7 @@ interface Props {
 
 export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin, isSuperAdmin, onDelete }: Props) {
   const timeAgo = message.createdAt?.toDate ? formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true }) : '';
+  const senderIsSuperAdmin = profile?.role === 'superadmin';
 
   return (
     <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}> 
@@ -69,7 +71,11 @@ export default function ChatMessage({ message, isOwn, isEventOrganizer, profile,
                 </AlertDialogContent>
               </AlertDialog>
           )}
-          {message.isOrganizer && (
+           {senderIsSuperAdmin ? (
+             <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-pink-600 text-white font-medium">
+              <ShieldCheck className="h-3 w-3" /> Superadmin
+            </div>
+           ) : message.isOrganizer && (
             <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-purple-700 text-white font-medium">
               <Crown className="h-3 w-3" /> Organizer
             </div>

@@ -28,10 +28,10 @@ import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -64,7 +64,10 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
-        eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        // Defensive check for data integrity
+        if (doc.data() && doc.data().date) {
+            eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        }
       });
       eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
@@ -88,7 +91,8 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
           [event.id]: snapshot.size
         }));
       }, (error) => {
-        console.error(`Error fetching registrations for event ${event.id}:`, error);
+        // This can happen if an event is deleted. We just ignore the error.
+        // console.error(`Error fetching registrations for event ${event.id}:`, error);
       });
       unsubscribers.push(unsubscribe);
     });

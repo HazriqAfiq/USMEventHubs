@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -61,7 +62,10 @@ export default function SuperAdminEventList() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
-        eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        // Defensive check for data integrity
+        if (doc.data() && doc.data().date) {
+            eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        }
       });
       setEvents(eventsData);
       setLoading(false);
@@ -87,6 +91,7 @@ export default function SuperAdminEventList() {
           [event.id]: snapshot.size
         }));
       }, (error) => {
+        // This can happen if an event is deleted. We just ignore the error.
         // console.error(`Error fetching registrations for event ${event.id}:`, error);
       });
       unsubscribers.push(unsubscribe);

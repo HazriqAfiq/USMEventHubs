@@ -42,7 +42,10 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
-        eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        // Defensive check to ensure data is valid before pushing
+        if (doc.data() && doc.data().date) {
+            eventsData.push({ id: doc.id, ...doc.data() } as Event);
+        }
       });
       setEvents(eventsData);
       setLoading(false);
@@ -75,11 +78,11 @@ export default function OrganizerDashboard({ onMonthClick }: OrganizerDashboardP
     const now = new Date();
     
     // Base list of approved events by the organizer
-    const approvedEvents = events.filter(e => e.status === 'approved');
+    const approvedEvents = events.filter(e => e.status === 'approved' && e.date);
     
     // Filter events by selected year
     const eventsInSelectedYear = approvedEvents.filter(event => 
-        event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
+        isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
     );
 
     const eventsInYearCount = eventsInSelectedYear.length;

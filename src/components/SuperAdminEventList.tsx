@@ -36,6 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import Link from 'next/link';
 
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
@@ -332,10 +333,10 @@ export default function SuperAdminEventList() {
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
                <Button asChild variant="outline" size="icon">
-                  <a href={`/event/${event.id}`} target="_blank" rel="noopener noreferrer">
+                  <Link href={`/event/${event.id}`}>
                     <MessageSquare className="h-4 w-4" />
                     <span className="sr-only">View Chat</span>
-                  </a>
+                  </Link>
                </Button>
                 <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
                   <FilePenLine className="h-4 w-4" />

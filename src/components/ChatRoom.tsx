@@ -327,15 +327,13 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
       <div className="bg-neutral-900/90 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10">
         {/* Wallpaper Background */}
         <div
-          className="absolute inset-0 z-0 opacity-30"
+          className="absolute inset-0 z-0"
           style={{
             backgroundImage: "url('/images/WALL.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
-        {/* Dark Overlay for readability */}
-        <div className="absolute inset-0 z-0 bg-black/50" />
 
         {/* Content */}
         <div className="relative z-10">

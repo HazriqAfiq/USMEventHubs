@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -304,21 +305,19 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
                 } else if (event.status === 'rejected') {
-                    // Check if it was rejected from 'pending' or 'pending-update'
-                    // A simple heuristic: if updateReason exists, it was likely an update.
-                    if (event.updateReason) {
-                        eventData.status = 'pending-update';
-                        eventData.updateReason = reason; // Use the new reason
-                    } else {
-                        eventData.status = 'pending';
-                    }
+                    // When resubmitting a rejected event, it goes back to a pending state.
+                    // Check if it was ever approved before to decide if it's a new pending or an updated pending.
+                    // A simple way is to check if it was previously in 'pending-update' or has an updateReason.
+                    const wasAnUpdate = event.updateReason;
+                    eventData.status = wasAnUpdate ? 'pending-update' : 'pending';
+                    eventData.updateReason = wasAnUpdate ? reason : '';
+                } else if (event.status === 'pending-update') {
+                    // If it's already a pending-update, keep it that way but update the reason
+                    eventData.status = 'pending-update';
+                    eventData.updateReason = reason;
                 } else {
-                    // For 'pending' or 'pending-update' statuses, it just stays the same
-                    // until approved or rejected by superadmin. But we can allow changing the reason.
-                     if (event.status === 'pending-update') {
-                        eventData.updateReason = reason;
-                    }
-                    eventData.status = event.status;
+                    // For 'pending' status, it just stays 'pending'.
+                    eventData.status = 'pending';
                 }
                 eventData.rejectionReason = ''; // Always clear rejection reason on resubmit.
              }
@@ -832,3 +831,4 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </>
   );
 }
+

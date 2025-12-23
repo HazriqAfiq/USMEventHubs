@@ -489,11 +489,13 @@ export default function EventDetailPage() {
 
         </CardContent>
       </Card>
+      
+      {showChat && (
+        <div className="mt-8">
+            <ChatRoom eventId={event.id} organizerId={event.organizerId} />
+        </div>
+      )}
     </div>
-
-    {showChat && (
-      <ChatRoom eventId={event.id} organizerId={event.organizerId} />
-    )}
 
     <RegistrationForm 
       isOpen={isFormOpen} 
@@ -537,3 +539,5 @@ export default function EventDetailPage() {
     </>
   );
 }
+
+    

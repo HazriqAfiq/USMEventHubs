@@ -300,7 +300,6 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
       <div className="bg-neutral-900/90 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10">
         {/* Wallpaper Background */}
         <div
@@ -348,6 +347,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
           {renderContent()}
         </div>
       </div>
-    </div>
   );
 }
+
+    

@@ -11,7 +11,7 @@ import { Terminal, ArrowLeft, CheckSquare, Check, X, FileClock, History, AlertTr
 import { Button } from '@/components/ui/button';
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
-import type { Event } from '@/types';
+import type { Event, UserProfile } from '@/types';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -29,6 +29,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
 import ApprovalDialog from '@/components/ApprovalDialog';
 import { ref, deleteObject } from 'firebase/storage';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type EventStatusFilter = 'pending' | 'pending-update' | 'pending-deletion' | 'all';
@@ -37,6 +39,7 @@ export default function EventApprovalsPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -50,6 +53,8 @@ export default function EventApprovalsPage() {
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
   const [eventToView, setEventToView] = useState<Event | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [organizerFilter, setOrganizerFilter] = useState('all');
 
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
@@ -63,7 +68,7 @@ export default function EventApprovalsPage() {
     const eventsRef = collection(db, 'events');
     const q = query(eventsRef, where('status', 'in', ['pending', 'pending-update', 'pending-deletion']));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeEvents = onSnapshot(q, (snapshot) => {
       const eventsData: Event[] = [];
       snapshot.forEach(doc => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
@@ -75,17 +80,57 @@ export default function EventApprovalsPage() {
       console.error("Error fetching events for approval: ", error);
       setLoading(false);
     });
+    
+    const usersRef = collection(db, 'users');
+    const unsubscribeUsers = onSnapshot(usersRef, (snapshot) => {
+        const usersData: UserProfile[] = [];
+        snapshot.forEach(doc => {
+            usersData.push(doc.data() as UserProfile);
+        });
+        setUsers(usersData);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeEvents();
+      unsubscribeUsers();
+    };
   }, [isSuperAdmin]);
   
+  const getOrganizerName = (organizerId?: string) => {
+    if (!organizerId) return 'Unknown Organizer';
+    const organizer = users.find(u => u.uid === organizerId);
+    return organizer?.name || 'Unknown Organizer';
+  }
+  
+  const organizers = useMemo(() => {
+    const organizerIds = new Set(events.map(e => e.organizerId));
+    return users.filter(u => u.role === 'organizer' && organizerIds.has(u.uid));
+  }, [events, users]);
+
+  
   const filteredEvents = useMemo(() => {
-    if (statusFilter === 'all') return events;
-    if (statusFilter === 'pending') {
-      return events.filter(event => event.status === 'pending');
+    let tempEvents = [...events];
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      tempEvents = tempEvents.filter(event => event.status === statusFilter);
     }
-    return events.filter(event => event.status === statusFilter);
-  }, [events, statusFilter]);
+    
+    // Organizer filter
+    if (organizerFilter !== 'all') {
+      tempEvents = tempEvents.filter(event => event.organizerId === organizerFilter);
+    }
+
+    // Search query filter
+    if (searchQuery) {
+        tempEvents = tempEvents.filter(event => 
+            event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            getOrganizerName(event.organizerId).toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }
+
+    return tempEvents;
+  }, [events, statusFilter, organizerFilter, searchQuery, users]);
 
   const handleApprove = async (event: Event) => {
     try {
@@ -230,20 +275,41 @@ export default function EventApprovalsPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and approve or reject events submitted by organizers.</p>
         </div>
         
-        <div className="my-8 flex justify-center">
-          <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-lg">
-            <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
-            <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">New</ToggleGroupItem>
-            <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Updates</ToggleGroupItem>
-            <ToggleGroupItem value="pending-deletion" className="w-full data-[state=on]:bg-orange-500/20 data-[state=on]:border-orange-500/50 data-[state=on]:text-orange-300">Deletions</ToggleGroupItem>
-          </ToggleGroup>
+        <div className="my-8 flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <Input 
+                placeholder="Search by title or organizer name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full md:flex-grow"
+              />
+              <Select value={organizerFilter} onValueChange={setOrganizerFilter}>
+                <SelectTrigger className="w-full md:w-[250px]">
+                  <SelectValue placeholder="Filter by organizer"/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizers</SelectItem>
+                  {organizers.map(org => (
+                    <SelectItem key={org.uid} value={org.uid}>{org.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-center">
+              <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-lg">
+                <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
+                <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">New</ToggleGroupItem>
+                <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Updates</ToggleGroupItem>
+                <ToggleGroupItem value="pending-deletion" className="w-full data-[state=on]:bg-orange-500/20 data-[state=on]:border-orange-500/50 data-[state=on]:text-orange-300">Deletions</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
         </div>
 
         <div className="mt-8 space-y-4">
           {filteredEvents.length === 0 ? (
             <Card className="p-12 text-center text-muted-foreground">
               <Check className="mx-auto h-12 w-12 text-green-500" />
-              <p className="mt-4">No events found for this category.</p>
+              <p className="mt-4">No events found for the selected criteria.</p>
             </Card>
           ) : (
             filteredEvents.map((event) => (
@@ -256,6 +322,9 @@ export default function EventApprovalsPage() {
                      {getStatusBadge(event.status)}
                      <h3 className="font-bold">{event.title}</h3>
                   </div>
+                  <p className="text-sm text-muted-foreground">
+                    By: {getOrganizerName(event.organizerId)}
+                  </p>
                   <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
                    {(event.status === 'pending-update' && event.updateReason) && (
                      <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>

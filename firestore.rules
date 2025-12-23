@@ -29,52 +29,86 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Site settings, like the global banner.
+    match /site_settings/{docId} {
+      // Anyone can read site settings
+      allow get: if true;
+      // Only superadmins can change site settings
+      allow write: if request.auth != null && isSuperAdmin(request.auth.uid);
+    }
+
     // Define rules for the 'events' collection
     match /events/{eventId} {
-      // Anyone can read event details
-      allow read: if true;
-      
-      // Organizers and Superadmins can create events, but must set themselves as the organizer
+      // Anyone can read event details IF the event is approved
+      // Organizers and Superadmins can read any event, regardless of status (for editing/previewing)
+      allow get: if (resource.data.status == 'approved') || 
+                   (request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid)));
+
+      // Allow listing events. Client-side queries handle filtering by 'approved' status for regular users.
+      // Organizers and Superadmins have broader list access handled by their specific page queries.
+      allow list: if request.auth != null;
+
+
+      // Creation of events
       allow create: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid))
                     && request.resource.data.organizerId == request.auth.uid
-                    && request.resource.data.imageUrl is string;
+                    && request.resource.data.imageUrl is string
+                    && (
+                      (isOrganizer(request.auth.uid) && request.resource.data.status == 'pending') ||
+                      (isSuperAdmin(request.auth.uid) && request.resource.data.status == 'approved')
+                    )
+                    // New events must not have the isApprovedOnce flag set to true
+                    && (request.resource.data.isApprovedOnce == false || request.resource.data.isApprovedOnce == null);
       
       // Update rules:
-      // 1. Organizer can update their event.
-      // 2. Any student can update *only* the viewCount field.
-      // 3. Superadmins can update any event.
       allow update: if request.auth != null && (
         ( // Rule for Organizer updates
           isOrganizer(request.auth.uid) 
           && resource.data.organizerId == request.auth.uid
-          && request.resource.data.imageUrl is string
+          && (
+            // Organizers can edit their pending/rejected events and resubmit
+            (resource.data.status == 'pending' && request.resource.data.status == 'pending')
+            ||
+            (resource.data.status == 'rejected' && (request.resource.data.status == 'pending' || request.resource.data.status == 'pending-update'))
+            ||
+            // Organizers can edit their approved events, but must move to 'pending-update' and provide a reason
+            (resource.data.status == 'approved' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string)
+            ||
+            // Organizers can edit their pending-update events
+            (resource.data.status == 'pending-update' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string)
+            ||
+            // Organizers can request deletion for an approved event by providing a reason
+            (resource.data.status == 'approved' && request.resource.data.status == 'pending-deletion' && request.resource.data.deletionReason is string)
+          )
         ) ||
         ( // Rule for student view count increment
           isStudent(request.auth.uid)
-          // Ensure only viewCount is being changed
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']) // Ensure only viewCount is being changed
         ) ||
-        ( // Rule for Superadmin updates
+        ( // Rule for Superadmin updates - can update anything, including status changes.
             isSuperAdmin(request.auth.uid)
         )
       );
       
-      // Organizers can delete their own events, Superadmins can delete any event.
+      // Organizers can delete their own events (if not approved), Superadmins can delete any event.
       allow delete: if request.auth != null && (
-          (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid) ||
-          isSuperAdmin(request.auth.uid)
+          isSuperAdmin(request.auth.uid) ||
+          (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid && resource.data.status != 'approved' && resource.data.status != 'pending-deletion')
       );
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
         // Organizers and Superadmins can list all registrations for any event.
-        allow list: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid));
+        allow list: if request.auth != null && (
+            (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) || 
+            isSuperAdmin(request.auth.uid)
+        );
       }
 
       // Rules for individual 'registrations' documents
       match /registrations/{registrationId} {
-        // Allow a user to create their own registration document
-        allow create: if request.auth.uid == registrationId;
+        // Allow a user to create their own registration document if event is approved
+        allow create: if request.auth.uid == registrationId && get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved';
 
         // Allow a user to delete their own registration (unregister)
         allow delete: if request.auth.uid == registrationId;
@@ -86,14 +120,14 @@ service cloud.firestore {
       // Rules for event chat messages
       match /messages/{messageId} {
         // Only authenticated organizers, superadmins or registered participants can read messages
-        allow read: if request.auth != null && (
+        allow read: if request.auth != null && get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved' && (
           isOrganizer(request.auth.uid) ||
           isSuperAdmin(request.auth.uid) ||
           exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
         );
 
         // Allow creating a message if the senderId matches auth and user is organizer, superadmin or registered
-        allow create: if request.auth != null
+        allow create: if request.auth != null && get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved'
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0

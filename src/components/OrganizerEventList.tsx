@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History, AlertTriangle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History, AlertTriangle, Undo2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -250,6 +250,22 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     }
   }
 
+  const handleCancelUpdate = async (eventToCancel: Event) => {
+    if (eventToCancel.status !== 'pending-update') return;
+
+    const eventRef = doc(db, 'events', eventToCancel.id);
+    try {
+        await updateDoc(eventRef, {
+            status: 'approved',
+            updateReason: '' // Clear the update reason
+        });
+        toast({ title: 'Update Cancelled', description: 'Your event has been restored to its approved state.' });
+    } catch (error: any) {
+        console.error("Error cancelling update:", error);
+        toast({ variant: 'destructive', title: 'Cancellation Failed', description: error.message });
+    }
+  }
+
   
   useEffect(() => {
     // Reset month filter when main filter changes
@@ -422,6 +438,29 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 </Button>
               </Link>
               
+              {event.status === 'pending-update' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300">
+                          <Undo2 className="h-4 w-4" />
+                          <span className="sr-only">Cancel Update</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel Update Request?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will revert your event to its last approved state and make it visible on the site again. Are you sure?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>No</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleCancelUpdate(event)}>Yes, Cancel Update</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+              )}
+
               {event.status === 'approved' ? (
                 <Dialog open={eventToRequestDelete?.id === event.id} onOpenChange={(isOpen) => {
                     if (!isOpen) setEventToRequestDelete(null);
@@ -458,7 +497,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
               ) : (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="icon" disabled={event.status === 'pending-deletion'}>
+                      <Button variant="destructive" size="icon" disabled={event.status === 'pending-deletion' || event.status === 'pending-update'}>
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete Event</span>
                       </Button>

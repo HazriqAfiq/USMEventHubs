@@ -299,13 +299,28 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              const docRef = doc(db, 'events', event.id);
              
              if (isOrganizer) {
+                // Determine the correct next status based on the current status
                 if (event.status === 'approved') {
                     eventData.status = 'pending-update';
-                    eventData.updateReason = reason; // Add the reason here
+                    eventData.updateReason = reason;
+                } else if (event.status === 'rejected') {
+                    // Check if it was rejected from 'pending' or 'pending-update'
+                    // A simple heuristic: if updateReason exists, it was likely an update.
+                    if (event.updateReason) {
+                        eventData.status = 'pending-update';
+                        eventData.updateReason = reason; // Use the new reason
+                    } else {
+                        eventData.status = 'pending';
+                    }
                 } else {
-                    eventData.status = 'pending';
+                    // For 'pending' or 'pending-update' statuses, it just stays the same
+                    // until approved or rejected by superadmin. But we can allow changing the reason.
+                     if (event.status === 'pending-update') {
+                        eventData.updateReason = reason;
+                    }
+                    eventData.status = event.status;
                 }
-                eventData.rejectionReason = ''; // Clear rejection reason on any resubmit
+                eventData.rejectionReason = ''; // Always clear rejection reason on resubmit.
              }
             
             await updateDoc(docRef, eventData)
@@ -357,7 +372,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   }
 
   function onSubmit(data: EventFormValues) {
-    if (isEditMode && event?.status === 'approved' && isOrganizer) {
+    // Open reason dialog for organizers editing approved or rejected events.
+    if (isEditMode && isOrganizer && (event?.status === 'approved' || event?.status === 'rejected' || event?.status === 'pending-update')) {
         setIsReasonDialogOpen(true);
     } else {
         processSubmit(data);

@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 
-type EventStatusFilter = 'pending' | 'pending-update' | 'rejected' | 'all';
+type EventStatusFilter = 'pending' | 'pending-update' | 'all';
 
 export default function EventApprovalsPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
@@ -57,7 +57,7 @@ export default function EventApprovalsPage() {
     if (!isSuperAdmin) return;
 
     const eventsRef = collection(db, 'events');
-    const q = query(eventsRef, where('status', '!=', 'approved'));
+    const q = query(eventsRef, where('status', 'in', ['pending', 'pending-update']));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const eventsData: Event[] = [];
@@ -173,7 +173,7 @@ export default function EventApprovalsPage() {
           <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-md">
             <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">Pending (New)</ToggleGroupItem>
             <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Pending (Updates)</ToggleGroupItem>
-            <ToggleGroupItem value="rejected" className="w-full data-[state=on]:bg-red-500/20 data-[state=on]:border-red-500/50 data-[state=on]:text-red-300">Rejected</ToggleGroupItem>
+            <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
           </ToggleGroup>
         </div>
 

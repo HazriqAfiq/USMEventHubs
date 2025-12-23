@@ -85,7 +85,7 @@ export function Header() {
                         </DropdownMenuItem>
                          <DropdownMenuItem onClick={() => router.push('/superadmin/approvals')}>
                           <CheckSquare className="mr-2 h-4 w-4" />
-                          <span>Event Approvals</span>
+                          <span>Event Approvals &amp; Requests</span>
                         </DropdownMenuItem>
                          <DropdownMenuItem onClick={() => router.push('/superadmin/events')}>
                           <CalendarDays className="mr-2 h-4 w-4" />

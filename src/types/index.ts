@@ -34,6 +34,7 @@ export interface Event {
   status: 'pending' | 'approved' | 'rejected' | 'pending-update';
   rejectionReason?: string;
   updateReason?: string;
+  isApprovedOnce?: boolean; // Flag to track if event has ever been approved
 }
 
 export interface UserProfile {

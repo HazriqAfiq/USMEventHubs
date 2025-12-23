@@ -62,6 +62,7 @@ const formSchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected', 'pending-update']).optional(),
   rejectionReason: z.string().optional(),
   updateReason: z.string().optional(),
+  isApprovedOnce: z.boolean().optional(),
 }).refine(data => {
     if (data.isFree === 'paid') {
         return data.price !== undefined && data.price >= 1;
@@ -196,6 +197,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       status: event.status,
       rejectionReason: event.rejectionReason,
       updateReason: event.updateReason || '',
+      isApprovedOnce: event.isApprovedOnce || false,
     } : {
       title: '',
       description: '',
@@ -213,6 +215,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
       eligibleCampuses: [],
       conductingCampus: userProfile?.campus || '',
       status: 'pending',
+      isApprovedOnce: false,
     },
   });
 
@@ -300,23 +303,23 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              const docRef = doc(db, 'events', event.id);
              
              if (isOrganizer) {
-                // Determine the correct next status based on the current status
                 if (event.status === 'approved') {
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
                 } else if (event.status === 'rejected') {
-                    // When resubmitting a rejected event, it goes back to a pending state.
-                    // Check if it was ever approved before to decide if it's a new pending or an updated pending.
-                    // A simple way is to check if it was previously in 'pending-update' or has an updateReason.
-                    const wasAnUpdate = event.updateReason;
-                    eventData.status = wasAnUpdate ? 'pending-update' : 'pending';
-                    eventData.updateReason = wasAnUpdate ? reason : '';
+                    // If resubmitting a rejected event, check if it was ever approved.
+                    // If it was, it's an update. If not, it's a new submission.
+                    if (event.isApprovedOnce) {
+                        eventData.status = 'pending-update';
+                        eventData.updateReason = reason;
+                    } else {
+                        eventData.status = 'pending';
+                        eventData.updateReason = ''; // Clear reason if it was a new event
+                    }
                 } else if (event.status === 'pending-update') {
-                    // If it's already a pending-update, keep it that way but update the reason
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
-                } else {
-                    // For 'pending' status, it just stays 'pending'.
+                } else { // status is 'pending'
                     eventData.status = 'pending';
                 }
                 eventData.rejectionReason = ''; // Always clear rejection reason on resubmit.
@@ -347,6 +350,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               createdAt: serverTimestamp(), 
               organizerId: user.uid,
               status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve for superadmins
+              isApprovedOnce: isSuperAdmin ? true : false,
             }).catch((serverError) => {
                const permissionError = new FirestorePermissionError({
                   path: collectionRef.path,
@@ -371,7 +375,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   }
 
   function onSubmit(data: EventFormValues) {
-    // Open reason dialog for organizers editing approved or rejected events.
     if (isEditMode && isOrganizer && (event?.status === 'approved' || event?.status === 'rejected' || event?.status === 'pending-update')) {
         setIsReasonDialogOpen(true);
     } else {
@@ -831,4 +834,3 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </>
   );
 }
-

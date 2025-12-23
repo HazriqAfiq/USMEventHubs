@@ -44,7 +44,7 @@ export default function EventApprovalsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('pending');
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('all');
 
 
   useEffect(() => {
@@ -83,7 +83,8 @@ export default function EventApprovalsPage() {
   const handleApprove = async (eventId: string) => {
     try {
       const eventRef = doc(db, 'events', eventId);
-      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '' });
+      // Set isApprovedOnce to true on the first approval. It will remain true thereafter.
+      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', isApprovedOnce: true });
       toast({ title: 'Event Approved', description: 'The event is now live.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
@@ -171,9 +172,9 @@ export default function EventApprovalsPage() {
         
         <div className="my-8 flex justify-center">
           <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-md">
+            <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
             <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">Pending (New)</ToggleGroupItem>
             <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Pending (Updates)</ToggleGroupItem>
-            <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
           </ToggleGroup>
         </div>
 

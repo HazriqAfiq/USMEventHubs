@@ -8,8 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Terminal, ShieldCheck, Users, ArrowRight, CheckSquare } from 'lucide-react';
-import SuperAdminEventList from '@/components/SuperAdminEventList';
+import { Terminal, ShieldCheck, Users, ArrowRight, CheckSquare, CalendarDays } from 'lucide-react';
 import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,7 +83,7 @@ export default function SuperAdminPage() {
           <GlobalBannerForm />
         </div>
         <Separator />
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
            <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><CheckSquare className="mr-2 h-5 w-5"/>Event Approvals</CardTitle>
@@ -115,17 +114,23 @@ export default function SuperAdminPage() {
               </Button>
             </CardContent>
            </Card>
-        </div>
-        <Separator />
-         <div>
-          <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Manage All Events</h2>
-           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-            Review, edit, or delete any event on the platform.
-          </p>
-          <SuperAdminEventList />
+           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5"/>Manage All Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Review, edit, or delete any event on the platform.
+              </p>
+              <Button asChild>
+                <Link href="/superadmin/events">
+                  Go to Event Management <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+              </Button>
+            </CardContent>
+           </Card>
         </div>
       </div>
     </div>
   );
 }
-

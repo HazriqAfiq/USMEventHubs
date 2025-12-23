@@ -213,7 +213,7 @@ export default function EventApprovalsPage() {
                      <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>
                    )}
                    <Button variant="link" className="text-sm text-primary h-auto p-0" onClick={() => openDetailView(event)}>
-                    View Full Details & Edit
+                    View Details
                   </Button>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">

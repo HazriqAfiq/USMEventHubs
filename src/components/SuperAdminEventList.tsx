@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +33,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import EventDetailDialog from './EventDetailDialog';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
+
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
@@ -49,6 +53,7 @@ export default function SuperAdminEventList() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -175,6 +180,11 @@ export default function SuperAdminEventList() {
            }
         }
       }
+       if (eventToDelete.videoUrl) {
+         try {
+          await deleteObject(ref(storage, eventToDelete.videoUrl));
+        } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event video:", e); }
+      }
 
       await deleteDoc(doc(db, 'events', eventToDelete.id));
 
@@ -196,6 +206,39 @@ export default function SuperAdminEventList() {
   const handleEditClick = (event: Event) => {
     setSelectedEvent(event);
     setIsDialogOpen(true);
+  };
+  
+  const StatusBadge = ({ event }: { event: Event }) => {
+    const isPending = ['pending', 'pending-update', 'pending-deletion'].includes(event.status);
+
+    const statusConfig: { [key in Event['status']]: { label: string; icon: React.ElementType; className: string; tooltip: string } } = {
+      approved: { label: 'Approved', icon: CheckCircle2, className: 'bg-green-500/20 text-green-400 border-green-500/30', tooltip: 'This event is live and visible.' },
+      pending: { label: 'Pending', icon: Clock, className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', tooltip: 'This event is awaiting approval.' },
+      'pending-update': { label: 'Updated', icon: History, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30', tooltip: 'This event update is awaiting approval.' },
+      'pending-deletion': { label: 'Deletion', icon: AlertTriangle, className: 'bg-orange-500/20 text-orange-400 border-orange-500/30', tooltip: 'This deletion request is awaiting approval.' },
+      rejected: { label: 'Rejected', icon: X, className: 'bg-red-500/20 text-red-400 border-red-500/30', tooltip: event.rejectionReason ? `Reason: ${event.rejectionReason}` : 'This event has been rejected.' }
+    };
+    
+    const config = statusConfig[event.status];
+    if (!config) return null;
+
+    const badge = (
+      <Badge className={cn('capitalize', config.className, isPending && 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-background')} onClick={isPending ? () => router.push('/superadmin/approvals') : undefined}>
+          <config.icon className="mr-1.5 h-3 w-3" />
+          {config.label}
+      </Badge>
+    );
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{badge}</TooltipTrigger>
+          <TooltipContent>
+            <p>{isPending ? `Click to go to approvals page` : config.tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
 
   if (loading || authLoading) {
@@ -282,7 +325,8 @@ export default function SuperAdminEventList() {
                     {event.viewCount ?? 0}
                 </span>
               </div>
-              <div className="mt-1">
+              <div className="flex items-center gap-2 mt-2">
+                <StatusBadge event={event} />
                 <Badge variant="secondary">{event.conductingCampus}</Badge>
               </div>
             </div>

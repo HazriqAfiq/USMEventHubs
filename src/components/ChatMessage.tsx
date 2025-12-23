@@ -3,7 +3,19 @@
 
 import React from "react";
 import { formatDistanceToNow } from 'date-fns';
-import { Crown, Pin } from 'lucide-react';
+import { Crown, Pin, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Button } from "./ui/button";
 
 interface Props {
   message: any;
@@ -11,13 +23,15 @@ interface Props {
   isEventOrganizer?: boolean;
   profile?: any;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
+  isSuperAdmin?: boolean;
+  onDelete?: (id: string) => void;
 }
 
-export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin }: Props) {
+export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin, isSuperAdmin, onDelete }: Props) {
   const timeAgo = message.createdAt?.toDate ? formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true }) : '';
 
   return (
-    <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}> 
+    <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}> 
       {!isOwn && (
         <img src={profile?.photoURL || message.senderPhotoURL || '/images/default-avatar.svg'} alt={profile?.name || message.senderName || 'avatar'} className="h-10 w-10 rounded-full mr-3 object-cover" />
       )}
@@ -29,12 +43,33 @@ export default function ChatMessage({ message, isOwn, isEventOrganizer, profile,
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {isEventOrganizer && (
-            <button onClick={() => onTogglePin?.(message.id, !!message.pinned)} className="ml-2 text-xs text-neutral-200 bg-transparent hover:opacity-80 px-2 py-1 rounded-md">
+          {(isEventOrganizer || isSuperAdmin) && (
+            <button onClick={() => onTogglePin?.(message.id, !!message.pinned)} className="ml-2 text-xs text-neutral-200 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
               {message.pinned ? 'Unpin' : 'Pin'}
             </button>
           )}
-          {isEventOrganizer && (
+           {isSuperAdmin && (
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <button className="text-xs text-red-400 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="h-3 w-3"/>
+                    </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this message? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete?.(message.id)}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+          )}
+          {message.isOrganizer && (
             <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-purple-700 text-white font-medium">
               <Crown className="h-3 w-3" /> Organizer
             </div>

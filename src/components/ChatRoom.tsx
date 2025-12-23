@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
-import { Send, Loader2 } from 'lucide-react';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDocs, writeBatch, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Send, Loader2, Trash2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function ChatRoom({ eventId, organizerId }: Props) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isSuperAdmin } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -145,8 +145,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
   const handleClearChat = async () => {
     if (!user || !eventId) return;
-    if (user.uid !== organizerId) {
-      toast({ title: 'Unauthorized', description: 'Only the event organizer can clear the chat.', variant: 'destructive' });
+    if (user.uid !== organizerId && !isSuperAdmin) {
+      toast({ title: 'Unauthorized', description: 'Only the event organizer or a superadmin can clear the chat.', variant: 'destructive' });
       return;
     }
 
@@ -182,10 +182,30 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
     }
   };
 
-  const togglePin = async (messageId: string, currentPinned: boolean | undefined) => {
+  const handleDeleteMessage = async (messageId: string) => {
+     if (!user || !eventId || !isSuperAdmin) {
+        toast({ title: 'Unauthorized', description: 'Only a superadmin can delete individual messages.', variant: 'destructive' });
+        return;
+     }
+
+     const messageRef = doc(db, 'events', eventId, 'messages', messageId);
+     try {
+        await deleteDoc(messageRef);
+        toast({ title: 'Message Deleted' });
+     } catch (error: any) {
+        const permissionError = new FirestorePermissionError({
+          path: messageRef.path,
+          operation: 'delete',
+        }, error);
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ title: 'Error', description: 'Failed to delete message. Check console for details.', variant: 'destructive' });
+     }
+  }
+
+const togglePin = async (messageId: string, currentPinned: boolean | undefined) => {
     if (!user || !eventId) return;
 
-    if (user.uid !== organizerId) {
+    if (user.uid !== organizerId && !isSuperAdmin) {
         toast({ title: 'Unauthorized', description: 'Only the event organizer can pin messages.', variant: 'destructive' });
         return;
     }
@@ -259,6 +279,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
                             isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
                             profile={profiles[m.senderId]}
                             onTogglePin={togglePin}
+                            isSuperAdmin={isSuperAdmin}
+                            onDelete={handleDeleteMessage}
                           />
                         ))}
                       </div>
@@ -274,6 +296,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
                             isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
                             profile={profiles[m.senderId]}
                             onTogglePin={togglePin}
+                            isSuperAdmin={isSuperAdmin}
+                            onDelete={handleDeleteMessage}
                           />
                         ))}
                       </div>
@@ -305,7 +329,7 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
         <div
           className="absolute inset-0 z-0 opacity-10"
           style={{
-            backgroundImage: "url('/images/usmbg.jpg')",
+            backgroundImage: "url('/images/WALL.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -317,13 +341,14 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Event Chat</h3>
-            {user?.uid === organizerId && (
+            {(user?.uid === organizerId || isSuperAdmin) && (
               <>
                 <button
                   onClick={() => setShowClearDialog(true)}
                   disabled={isClearing}
-                  className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
+                  className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm flex items-center gap-1.5"
                 >
+                  <Trash2 className='h-3.5 w-3.5' />
                   {isClearing ? 'Clearing...' : 'Clear Chat'}
                 </button>
 

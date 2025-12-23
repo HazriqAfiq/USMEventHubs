@@ -13,7 +13,7 @@ export async function sendNotificationToUsers(
     userIds: string[], 
     message: string, 
     href: string,
-    organizerId?: string
+    organizerId?: string | null
 ) {
     if (userIds.length === 0) return;
     
@@ -26,7 +26,7 @@ export async function sendNotificationToUsers(
             href,
             createdAt: serverTimestamp(),
             read: false,
-            organizerId, // Include organizerId for security rule validation
+            organizerId: organizerId || null, // Include organizerId for security rule validation
         });
     });
 

@@ -77,7 +77,7 @@ service cloud.firestore {
             // Organizers can edit their pending-update events
             (resource.data.status == 'pending-update' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string)
             ||
-            // Organizers can cancel a pending-update and revert to approved
+             // Organizers can cancel a pending-update and revert to approved
             (resource.data.status == 'pending-update' && request.resource.data.status == 'approved' && request.resource.data.updateReason == '')
             ||
             // Organizers can request deletion for an approved event by providing a reason
@@ -194,13 +194,12 @@ service cloud.firestore {
 
        // Define rules for the 'notifications' subcollection
       match /notifications/{notificationId} {
-        // A user can read/write their own notifications
+        // A user can manage their own notifications
         allow read, write, delete: if request.auth.uid == userId;
 
-        // Allow Superadmins and the event organizer to create notifications for users.
+        // Allow Superadmins OR the event organizer to create notifications for users.
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) ||
-            // Check if the auth user is the organizer of the event in the notification
             (isOrganizer(request.auth.uid) && request.resource.data.organizerId == request.auth.uid)
         );
       }

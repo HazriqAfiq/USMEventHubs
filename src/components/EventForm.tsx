@@ -59,7 +59,7 @@ const formSchema = z.object({
   qrCodeUrl: z.string().optional(),
   eligibleCampuses: z.array(z.string()).min(1, { message: 'Please select at least one eligible campus.' }),
   conductingCampus: z.string(),
-  status: z.enum(['pending', 'approved', 'rejected', 'pending-update']).optional(),
+  status: z.enum(['pending', 'approved', 'rejected', 'pending-update', 'pending-deletion']).optional(),
   rejectionReason: z.string().optional(),
   updateReason: z.string().optional(),
   isApprovedOnce: z.boolean().optional(),
@@ -321,6 +321,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              }
              if (isSuperAdmin) {
                 eventData.status = 'approved';
+                eventData.rejectionReason = '';
+                eventData.updateReason = '';
              }
             
             await updateDoc(docRef, eventData)
@@ -336,10 +338,11 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             
             if (isSuperAdmin) {
                 toast({ title: 'Event Updated!', description: `"${data.title}" has been saved.` });
+                router.push('/superadmin/events');
             } else {
                 toast({ title: 'Event Updated!', description: `"${data.title}" has been submitted for re-approval.` });
+                router.push('/organizer');
             }
-            router.push(isSuperAdmin ? '/superadmin' : '/organizer');
         } else {
             if (!userProfile.campus) {
               throw new Error("Organizer's campus is not set. Cannot create event.");
@@ -844,3 +847,5 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </>
   );
 }
+
+    

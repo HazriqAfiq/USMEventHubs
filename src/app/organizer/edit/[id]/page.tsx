@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -19,12 +20,14 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EditEventPage() {
   const { user, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
+  const { toast } = useToast();
   
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -127,7 +130,7 @@ export default function EditEventPage() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [hasPermission, loading, router, isSuperAdmin]);
+  }, [hasPermission, loading, router, isSuperAdmin, toast]);
 
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;
@@ -289,3 +292,5 @@ export default function EditEventPage() {
     </>
   );
 }
+
+    

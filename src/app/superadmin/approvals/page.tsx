@@ -90,7 +90,13 @@ export default function EventApprovalsPage() {
   const handleApprove = async (event: Event) => {
     try {
       const eventRef = doc(db, 'events', event.id);
-      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', deletionReason: '', isApprovedOnce: true });
+      await updateDoc(eventRef, { 
+        status: 'approved', 
+        rejectionReason: '', 
+        updateReason: '', 
+        deletionReason: '', 
+        isApprovedOnce: true 
+      });
       toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });
       closeDetailView();
     } catch (error: any) {

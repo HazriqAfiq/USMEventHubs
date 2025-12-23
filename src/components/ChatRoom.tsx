@@ -303,9 +303,9 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
       <div className="bg-neutral-900/90 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10">
         {/* Wallpaper Background */}
         <div
-          className="absolute inset-0 z-0 opacity-100" // Adjustable opacity
+          className="absolute inset-0 z-0 opacity-10"
           style={{
-            backgroundImage: "url('/images/WALL.png')",
+            backgroundImage: "url('/images/usmbg.jpg')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -349,5 +349,3 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
       </div>
   );
 }
-
-    

@@ -40,6 +40,7 @@ import { Info } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
+import { getRegisteredUserIds, sendNotificationToUsers } from '@/lib/notifications';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
@@ -307,6 +308,10 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 if (event.status === 'approved' || event.status === 'pending-update') {
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
+
+                    const registeredUserIds = await getRegisteredUserIds(event.id);
+                    await sendNotificationToUsers(registeredUserIds, `The event "${event.title}" is currently being updated by the organizer.`, `/event/${event.id}`, user.uid);
+
                 } else if (event.status === 'rejected') {
                     if (event.isApprovedOnce) {
                         eventData.status = 'pending-update';
@@ -847,5 +852,3 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     </>
   );
 }
-
-    

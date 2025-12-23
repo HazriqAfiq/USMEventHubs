@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { NotificationBell } from './NotificationBell';
 
 
 export function Header() {
@@ -50,6 +51,8 @@ export function Header() {
           {!loading && (
             <>
               {user && userProfile ? (
+                <>
+                <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/50 p-0 overflow-hidden hover:border-primary transition-all">
@@ -110,6 +113,7 @@ export function Header() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </>
               ) : (
                 <Button onClick={() => router.push('/login')} variant="secondary">
                   <LogIn className="mr-2 h-4 w-4" /> Login

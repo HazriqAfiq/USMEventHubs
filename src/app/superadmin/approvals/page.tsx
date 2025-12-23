@@ -31,6 +31,7 @@ import ApprovalDialog from '@/components/ApprovalDialog';
 import { ref, deleteObject } from 'firebase/storage';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getRegisteredUserIds, sendNotificationToUsers } from '@/lib/notifications';
 
 
 type EventStatusFilter = 'pending' | 'pending-update' | 'pending-deletion' | 'all';
@@ -135,6 +136,8 @@ export default function EventApprovalsPage() {
   const handleApprove = async (event: Event) => {
     try {
       const eventRef = doc(db, 'events', event.id);
+      const originalStatus = event.status;
+      
       await updateDoc(eventRef, { 
         status: 'approved', 
         rejectionReason: '', 
@@ -142,6 +145,14 @@ export default function EventApprovalsPage() {
         deletionReason: '', 
         isApprovedOnce: true 
       });
+
+      const registeredUserIds = await getRegisteredUserIds(event.id);
+      if (originalStatus === 'pending-update') {
+        await sendNotificationToUsers(registeredUserIds, `The details for "${event.title}" have been updated.`, `/event/${event.id}`);
+      } else {
+        await sendNotificationToUsers(registeredUserIds, `A new event you might be interested in, "${event.title}", is now live!`, `/event/${event.id}`);
+      }
+      
       toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });
       closeDetailView();
     } catch (error: any) {
@@ -163,6 +174,7 @@ export default function EventApprovalsPage() {
     setIsSubmitting(true);
     try {
       const eventRef = doc(db, 'events', selectedEventForAction.id);
+      const registeredUserIds = await getRegisteredUserIds(selectedEventForAction.id);
       
       // If rejecting a deletion request, revert status to 'approved'
       if (selectedEventForAction.status === 'pending-deletion') {
@@ -170,6 +182,7 @@ export default function EventApprovalsPage() {
             status: 'approved',
             deletionReason: '', // Clear the deletion reason
          });
+         await sendNotificationToUsers(registeredUserIds, `A request to cancel "${selectedEventForAction.title}" was denied. The event is still on.`, `/event/${selectedEventForAction.id}`);
          toast({ title: 'Deletion Request Rejected', description: 'The event remains approved.' });
       } else {
         await updateDoc(eventRef, { 
@@ -177,6 +190,7 @@ export default function EventApprovalsPage() {
           rejectionReason: rejectionReason.trim(),
           updateReason: '', // Clear update reason on rejection
         });
+        await sendNotificationToUsers(registeredUserIds, `An update for "${selectedEventForAction.title}" was not approved. The event details have not changed.`, `/event/${selectedEventForAction.id}`);
         toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
       }
 
@@ -191,6 +205,8 @@ export default function EventApprovalsPage() {
   
   const handleApproveDeletion = async (event: Event) => {
      try {
+      const registeredUserIds = await getRegisteredUserIds(event.id);
+
       if (event.imageUrl) {
         try {
           await deleteObject(ref(storage, event.imageUrl));
@@ -207,6 +223,9 @@ export default function EventApprovalsPage() {
         } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event QR code:", e); }
       }
       await deleteDoc(doc(db, 'events', event.id));
+      
+      await sendNotificationToUsers(registeredUserIds, `The event "${event.title}" has been cancelled and removed.`, `/`);
+      
       toast({ title: 'Deletion Approved', description: `Event "${event.title}" has been permanently deleted.` });
       closeDetailView();
     } catch (error: any) {

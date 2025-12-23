@@ -47,3 +47,11 @@ export interface UserProfile {
   campus?: string;
   disabled?: boolean;
 }
+
+export interface AppNotification {
+    id: string;
+    message: string;
+    href: string;
+    createdAt: Timestamp;
+    read: boolean;
+}

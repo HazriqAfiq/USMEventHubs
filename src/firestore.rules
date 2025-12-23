@@ -191,6 +191,19 @@ service cloud.firestore {
 
       // Only superadmins can delete user documents. A user cannot delete their own document.
       allow delete: if request.auth != null && isSuperAdmin(request.auth.uid);
+
+       // Define rules for the 'notifications' subcollection
+      match /notifications/{notificationId} {
+        // A user can read/write their own notifications
+        allow read, write, delete: if request.auth.uid == userId;
+
+        // Allow Superadmins and the event organizer to create notifications for users.
+        allow create: if request.auth != null && (
+            isSuperAdmin(request.auth.uid) ||
+            // Check if the auth user is the organizer of the event in the notification
+            (isOrganizer(request.auth.uid) && request.resource.data.organizerId == request.auth.uid)
+        );
+      }
     }
   }
 }

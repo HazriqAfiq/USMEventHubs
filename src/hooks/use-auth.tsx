@@ -1,7 +1,7 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import * as React from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
+const AuthContext = React.createContext<AuthContextType>({
   user: null,
   userProfile: null,
   isOrganizer: false,
@@ -24,14 +24,14 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
 });
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isOrganizer, setIsOrganizer] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = React.useState<User | null>(null);
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [isOrganizer, setIsOrganizer] = React.useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setLoading(true);
       if (user) {
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }

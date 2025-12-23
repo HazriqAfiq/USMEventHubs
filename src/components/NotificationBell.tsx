@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Mail } from 'lucide-react';
+import { Bell, Mail, Trash2 } from 'lucide-react';
 import { collection, query, onSnapshot, orderBy, limit, updateDoc, doc, getDocs, writeBatch, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -13,12 +13,25 @@ import { ScrollArea } from './ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Separator } from './ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function NotificationBell() {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const router = useRouter();
+    const { toast } = useToast();
 
     useEffect(() => {
         if (!user) return;
@@ -67,6 +80,28 @@ export function NotificationBell() {
         await batch.commit();
     };
 
+    const handleClearAll = async () => {
+        if (!user || notifications.length === 0) return;
+
+        const notifsRef = collection(db, 'users', user.uid, 'notifications');
+        const snapshot = await getDocs(notifsRef);
+        
+        if (snapshot.empty) return;
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Notifications Cleared', description: 'All your notifications have been deleted.' });
+        } catch (error) {
+            console.error("Error clearing notifications:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not clear notifications.' });
+        }
+    }
+
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -74,7 +109,7 @@ export function NotificationBell() {
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-white">
-                            {unreadCount}
+                            {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
                 </Button>
@@ -82,9 +117,32 @@ export function NotificationBell() {
             <PopoverContent className="w-80 p-0" align="end">
                 <div className="p-4 flex justify-between items-center">
                     <h4 className="font-medium text-sm">Notifications</h4>
-                    {unreadCount > 0 && (
-                        <Button variant="link" size="sm" className="h-auto p-0" onClick={handleMarkAllAsRead}>Mark all as read</Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                            <Button variant="link" size="sm" className="h-auto p-0" onClick={handleMarkAllAsRead}>Mark all as read</Button>
+                        )}
+                         {notifications.length > 0 && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" className="h-6 w-6">
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete all your notifications.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleClearAll}>Clear All</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </div>
                 </div>
                 <Separator />
                 <ScrollArea className="h-96">

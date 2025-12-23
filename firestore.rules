@@ -91,10 +91,7 @@ service cloud.firestore {
       );
       
       // Organizers can delete their own events (if not approved), Superadmins can delete any event.
-      allow delete: if request.auth != null && (
-          isSuperAdmin(request.auth.uid) ||
-          (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid && resource.data.status != 'approved' && resource.data.status != 'pending-deletion')
-      );
+      allow delete: if request.auth != null && (isSuperAdmin(request.auth.uid) || (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid && resource.data.status != 'approved' && resource.data.status != 'pending-deletion'));
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {

@@ -24,7 +24,7 @@ export default function ApprovalDialog({ isOpen, onClose, event, onApprove, onRe
         <DialogHeader>
           <DialogTitle>Review Event: {event.title}</DialogTitle>
           <DialogDescription>
-            Review the details below. You can edit fields before approving or rejecting.
+            Review the details below and then approve or reject the submission.
           </DialogDescription>
             {event.status === 'pending-update' && event.updateReason && (
               <div className="mt-2 text-sm text-blue-400 bg-blue-500/10 p-2 rounded-md">
@@ -34,7 +34,7 @@ export default function ApprovalDialog({ isOpen, onClose, event, onApprove, onRe
         </DialogHeader>
         <ScrollArea className="h-full">
             <div className="pr-6">
-                <EventForm event={event} isEditable={true} />
+                <EventForm event={event} isEditable={false} />
             </div>
         </ScrollArea>
         <DialogFooter className="pr-6">

@@ -270,9 +270,9 @@ export default function EventApprovalsPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold font-headline flex items-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             <CheckSquare className="mr-3 h-8 w-8 text-primary"/>
-            Event Approvals
+            Event Approvals & Requests
           </h1>
-          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review and approve or reject events submitted by organizers.</p>
+          <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Review new events, updates, and deletion requests from organizers.</p>
         </div>
         
         <div className="my-8 flex flex-col gap-4">
@@ -300,7 +300,7 @@ export default function EventApprovalsPage() {
                 <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
                 <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">New</ToggleGroupItem>
                 <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Updates</ToggleGroupItem>
-                <ToggleGroupItem value="pending-deletion" className="w-full data-[state=on]:bg-orange-500/20 data-[state=on]:border-orange-500/50 data-[state=on]:text-orange-300">Deletions</ToggleGroupItem>
+                <ToggleGroupItem value="pending-deletion" className="w-full data-[state=on]:bg-orange-500/20 data-[state=on]:border-orange-500/50 data-[state=on]:text-orange-300">Deletion Requests</ToggleGroupItem>
               </ToggleGroup>
             </div>
         </div>

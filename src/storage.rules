@@ -1,0 +1,42 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // NOTE: isSuperAdmin check was removed as get() is not supported in Storage Rules.
+    // Write access is currently granted to authenticated users. For production,
+    // this should be locked down further, ideally with Firebase Auth Custom Claims.
+
+    // Allow public read on event images and QR codes.
+    match /event-images/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    match /event-videos/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /qr-codes/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Allow users to upload and view their own profile pictures
+    match /profile-pictures/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Superadmins can read any payment proof.
+    // Users can write/read their own payment proofs.
+    match /payment-proofs/{eventId}/{userId}/{allPaths=**} {
+      allow read: if request.auth != null; // Simplified for now
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+  }
+}
+

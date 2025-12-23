@@ -2,13 +2,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, SortAsc, SortDesc } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,12 +24,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
 import type { Event } from '@/types';
-import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import EventDetailDialog from './EventDetailDialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
@@ -43,7 +45,9 @@ export default function SuperAdminEventList() {
   const [campusFilter, setCampusFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
-
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     if (authLoading || !isSuperAdmin) {
@@ -59,12 +63,14 @@ export default function SuperAdminEventList() {
       querySnapshot.forEach((doc) => {
         eventsData.push({ id: doc.id, ...doc.data() } as Event);
       });
-      // Initial sort by date desc, can be removed if sort logic handles it
-      // eventsData.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
       setEvents(eventsData);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching events: ", error);
+    }, (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: eventsRef.path,
+        operation: 'list',
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 
@@ -181,6 +187,11 @@ export default function SuperAdminEventList() {
       });
     }
   };
+  
+  const handleEditClick = (event: Event) => {
+    setSelectedEvent(event);
+    setIsDialogOpen(true);
+  };
 
   if (loading || authLoading) {
     return (
@@ -194,6 +205,7 @@ export default function SuperAdminEventList() {
   }
 
   return (
+    <>
     <div className="mt-6 space-y-4">
        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="flex-grow w-full md:w-auto">
@@ -270,18 +282,16 @@ export default function SuperAdminEventList() {
               </div>
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
-               <Link href={`/event/${event.id}`}>
-                <Button variant="outline" size="icon">
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="sr-only">View Chat</span>
-                </Button>
-              </Link>
-              <Link href={`/organizer/edit/${event.id}`}>
-                <Button variant="outline" size="icon">
+               <Button asChild variant="outline" size="icon">
+                  <a href={`/event/${event.id}`} target="_blank" rel="noopener noreferrer">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="sr-only">View Chat</span>
+                  </a>
+               </Button>
+                <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
                   <FilePenLine className="h-4 w-4" />
                   <span className="sr-only">Edit Event</span>
                 </Button>
-              </Link>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="icon">
@@ -309,5 +319,14 @@ export default function SuperAdminEventList() {
         ))
       )}
     </div>
+    {selectedEvent && (
+        <EventDetailDialog
+            event={selectedEvent}
+            isOpen={isDialogOpen}
+            onClose={() => setIsDialogOpen(false)}
+            isEditable={true} // Superadmin can always edit
+        />
+    )}
+    </>
   );
 }

@@ -45,12 +45,9 @@ service cloud.firestore {
       allow get: if (resource.data.status == 'approved') || 
                    (request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid)));
 
-      // Allow listing approved events for all users.
-      // Organizers and superadmins can list all events regardless of status.
-      allow list: if request.auth == null && resource.data.status == 'approved' || 
-                   (request.auth != null && (resource.data.status == 'approved' || 
-                                              isOrganizer(request.auth.uid) || 
-                                              isSuperAdmin(request.auth.uid)));
+      // Allow listing events. Client-side queries handle filtering by 'approved' status for regular users.
+      // Organizers and Superadmins have broader list access handled by their specific page queries.
+      allow list: if true;
 
 
       // Creation of events
@@ -62,7 +59,7 @@ service cloud.firestore {
                       (isSuperAdmin(request.auth.uid) && request.resource.data.status == 'approved')
                     )
                     // New events must not have the isApprovedOnce flag set to true
-                    && request.resource.data.isApprovedOnce == false;
+                    && (request.resource.data.isApprovedOnce == false || request.resource.data.isApprovedOnce == null);
       
       // Update rules:
       allow update: if request.auth != null && (

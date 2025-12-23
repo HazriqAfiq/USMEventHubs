@@ -31,10 +31,11 @@ export interface Event {
   conductingCampus: string;
   eligibleCampuses?: string[];
   viewCount?: number;
-  status: 'pending' | 'approved' | 'rejected' | 'pending-update';
+  status: 'pending' | 'approved' | 'rejected' | 'pending-update' | 'pending-deletion';
   rejectionReason?: string;
   updateReason?: string;
   isApprovedOnce?: boolean; // Flag to track if event has ever been approved
+  deletionReason?: string;
 }
 
 export interface UserProfile {

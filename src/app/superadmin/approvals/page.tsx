@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, ArrowLeft, CheckSquare, Check, X, FileClock, History } from 'lucide-react';
+import { Terminal, ArrowLeft, CheckSquare, Check, X, FileClock, History, AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
 import type { Event } from '@/types';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
@@ -28,9 +28,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
 import ApprovalDialog from '@/components/ApprovalDialog';
+import { ref, deleteObject } from 'firebase/storage';
 
 
-type EventStatusFilter = 'pending' | 'pending-update' | 'all';
+type EventStatusFilter = 'pending' | 'pending-update' | 'pending-deletion' | 'all';
 
 export default function EventApprovalsPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
@@ -60,7 +61,7 @@ export default function EventApprovalsPage() {
     if (!isSuperAdmin) return;
 
     const eventsRef = collection(db, 'events');
-    const q = query(eventsRef, where('status', 'in', ['pending', 'pending-update']));
+    const q = query(eventsRef, where('status', 'in', ['pending', 'pending-update', 'pending-deletion']));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const eventsData: Event[] = [];
@@ -80,13 +81,16 @@ export default function EventApprovalsPage() {
   
   const filteredEvents = useMemo(() => {
     if (statusFilter === 'all') return events;
+    if (statusFilter === 'pending') {
+      return events.filter(event => event.status === 'pending');
+    }
     return events.filter(event => event.status === statusFilter);
   }, [events, statusFilter]);
 
   const handleApprove = async (event: Event) => {
     try {
       const eventRef = doc(db, 'events', event.id);
-      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', isApprovedOnce: true });
+      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', deletionReason: '', isApprovedOnce: true });
       toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });
       closeDetailView();
     } catch (error: any) {
@@ -108,12 +112,23 @@ export default function EventApprovalsPage() {
     setIsSubmitting(true);
     try {
       const eventRef = doc(db, 'events', selectedEventForAction.id);
-      await updateDoc(eventRef, { 
-        status: 'rejected',
-        rejectionReason: rejectionReason.trim(),
-        updateReason: '', // Clear update reason on rejection
-      });
-      toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
+      
+      // If rejecting a deletion request, revert status to 'approved'
+      if (selectedEventForAction.status === 'pending-deletion') {
+         await updateDoc(eventRef, { 
+            status: 'approved',
+            deletionReason: '', // Clear the deletion reason
+         });
+         toast({ title: 'Deletion Request Rejected', description: 'The event remains approved.' });
+      } else {
+        await updateDoc(eventRef, { 
+          status: 'rejected',
+          rejectionReason: rejectionReason.trim(),
+          updateReason: '', // Clear update reason on rejection
+        });
+        toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
+      }
+
       setIsRejectDialogOpen(false);
       closeDetailView();
     } catch (error: any) {
@@ -123,6 +138,31 @@ export default function EventApprovalsPage() {
     }
   };
   
+  const handleApproveDeletion = async (event: Event) => {
+     try {
+      if (event.imageUrl) {
+        try {
+          await deleteObject(ref(storage, event.imageUrl));
+        } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event image:", e); }
+      }
+      if (event.videoUrl) {
+         try {
+          await deleteObject(ref(storage, event.videoUrl));
+        } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event video:", e); }
+      }
+      if (event.qrCodeUrl) {
+         try {
+          await deleteObject(ref(storage, event.qrCodeUrl));
+        } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event QR code:", e); }
+      }
+      await deleteDoc(doc(db, 'events', event.id));
+      toast({ title: 'Deletion Approved', description: `Event "${event.title}" has been permanently deleted.` });
+      closeDetailView();
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+    }
+  }
+
   const openDetailView = (event: Event) => {
     setEventToView(event);
     setIsDetailViewOpen(true);
@@ -137,6 +177,7 @@ export default function EventApprovalsPage() {
     switch (status) {
         case 'pending': return <Badge variant="outline" className="text-yellow-400 border-yellow-400/50"><FileClock className="mr-1 h-3 w-3" />New</Badge>
         case 'pending-update': return <Badge variant="outline" className="text-blue-400 border-blue-400/50"><History className="mr-1 h-3 w-3" />Updated</Badge>
+        case 'pending-deletion': return <Badge variant="outline" className="text-orange-400 border-orange-400/50"><AlertTriangle className="mr-1 h-3 w-3" />Deletion Request</Badge>
         default: return null;
     }
   }
@@ -184,10 +225,11 @@ export default function EventApprovalsPage() {
         </div>
         
         <div className="my-8 flex justify-center">
-          <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-md">
+          <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => {if(value) setStatusFilter(value as EventStatusFilter)}} className="w-full max-w-lg">
             <ToggleGroupItem value="all" className="w-full data-[state=on]:bg-zinc-500/20 data-[state=on]:border-zinc-500/50 data-[state=on]:text-zinc-300">All Pending</ToggleGroupItem>
-            <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">Pending (New)</ToggleGroupItem>
-            <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Pending (Updates)</ToggleGroupItem>
+            <ToggleGroupItem value="pending" className="w-full data-[state=on]:bg-yellow-500/20 data-[state=on]:border-yellow-500/50 data-[state=on]:text-yellow-300">New</ToggleGroupItem>
+            <ToggleGroupItem value="pending-update" className="w-full data-[state=on]:bg-blue-500/20 data-[state=on]:border-blue-500/50 data-[state=on]:text-blue-300">Updates</ToggleGroupItem>
+            <ToggleGroupItem value="pending-deletion" className="w-full data-[state=on]:bg-orange-500/20 data-[state=on]:border-orange-500/50 data-[state=on]:text-orange-300">Deletions</ToggleGroupItem>
           </ToggleGroup>
         </div>
 
@@ -209,20 +251,36 @@ export default function EventApprovalsPage() {
                      <h3 className="font-bold">{event.title}</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
-                   {event.status === 'pending-update' && event.updateReason && (
+                   {(event.status === 'pending-update' && event.updateReason) && (
                      <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>
+                   )}
+                   {(event.status === 'pending-deletion' && event.deletionReason) && (
+                     <p className="text-xs text-orange-400 mt-1">Deletion Reason: {event.deletionReason}</p>
                    )}
                    <Button variant="link" className="text-sm text-primary h-auto p-0" onClick={() => openDetailView(event)}>
                     View Details
                   </Button>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
-                  <Button variant="outline" size="sm" onClick={() => handleApprove(event)}>
-                    <Check className="mr-2 h-4 w-4 text-green-500" /> Approve
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => openRejectDialog(event)}>
-                    <X className="mr-2 h-4 w-4" /> Reject
-                  </Button>
+                 {event.status === 'pending-deletion' ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => openRejectDialog(event)}>
+                        <X className="mr-2 h-4 w-4" /> Reject Deletion
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleApproveDeletion(event)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Approve Deletion
+                      </Button>
+                    </>
+                 ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleApprove(event)}>
+                        <Check className="mr-2 h-4 w-4 text-green-500" /> Approve
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openRejectDialog(event)}>
+                        <X className="mr-2 h-4 w-4" /> Reject
+                      </Button>
+                    </>
+                 )}
                 </div>
               </Card>
             ))
@@ -234,9 +292,9 @@ export default function EventApprovalsPage() {
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Event: {selectedEventForAction?.title}</DialogTitle>
+            <DialogTitle>Reject Request: {selectedEventForAction?.title}</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this event. This will be shown to the organizer.
+              Please provide a reason for rejecting this request. This will be shown to the organizer.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -250,13 +308,13 @@ export default function EventApprovalsPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsRejectDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
             <Button variant="destructive" onClick={handleReject} disabled={isSubmitting || !rejectionReason.trim()}>
-              {isSubmitting ? 'Rejecting...' : 'Reject Event'}
+              {isSubmitting ? 'Submitting...' : 'Confirm Rejection'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Event Details and Edit Dialog */}
+      {/* Event Details Dialog */}
       {eventToView && (
         <ApprovalDialog 
           event={eventToView}
@@ -264,6 +322,7 @@ export default function EventApprovalsPage() {
           onClose={closeDetailView}
           onApprove={handleApprove}
           onReject={openRejectDialog}
+          onApproveDeletion={handleApproveDeletion}
         />
       )}
     </>

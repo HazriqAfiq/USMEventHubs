@@ -3,13 +3,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, where, getCountFromServer, updateDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History, AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
@@ -32,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { Textarea } from './ui/textarea';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -43,10 +53,14 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'pending-deletion'>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
-  const [monthFilter, setMonthFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState('all');
   const { user, isOrganizer, loading: authLoading } = useAuth();
+  
+  const [isRequestingDelete, setIsRequestingDelete] = useState(false);
+  const [deletionReason, setDeletionReason] = useState("");
+  const [eventToRequestDelete, setEventToRequestDelete] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -164,11 +178,11 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const handleDelete = async (eventToDelete: Event) => {
     try {
       // An organizer can only delete events that are not approved
-      if (eventToDelete.status === 'approved') {
+      if (eventToDelete.status === 'approved' || eventToDelete.status === 'pending-deletion') {
         toast({
           variant: 'destructive',
           title: 'Action Not Allowed',
-          description: 'Cannot delete an event that has been approved. Contact a superadmin for assistance.',
+          description: 'Cannot delete an event that is live or pending deletion. Please use "Request Deletion".',
         });
         return;
       }
@@ -211,6 +225,32 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     }
   };
   
+  const handleRequestDelete = async () => {
+    if (!eventToRequestDelete || !deletionReason.trim()) {
+        toast({ variant: 'destructive', title: "Reason required", description: "Please provide a reason for requesting deletion." });
+        return;
+    }
+    
+    setIsRequestingDelete(true);
+    const eventRef = doc(db, 'events', eventToRequestDelete.id);
+    
+    try {
+        await updateDoc(eventRef, {
+            status: 'pending-deletion',
+            deletionReason: deletionReason.trim()
+        });
+        toast({ title: "Deletion Requested", description: "Your request has been sent to the superadmins for review." });
+        setEventToRequestDelete(null);
+        setDeletionReason("");
+    } catch (error: any) {
+        console.error("Error requesting deletion:", error);
+        toast({ variant: 'destructive', title: "Request Failed", description: error.message });
+    } finally {
+        setIsRequestingDelete(false);
+    }
+  }
+
+  
   useEffect(() => {
     // Reset month filter when main filter changes
     setMonthFilter('all');
@@ -235,6 +275,12 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
         icon: History,
         className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
         tooltip: 'This event has been updated and is awaiting re-approval.'
+      },
+      'pending-deletion': {
+        label: 'Pending Deletion',
+        icon: AlertTriangle,
+        className: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+        tooltip: 'Deletion request is awaiting approval from a superadmin.'
       },
       rejected: {
         label: 'Rejected',
@@ -292,6 +338,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
                 <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
                 <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
+                <ToggleGroupItem value="pending-deletion">Pending Deletion</ToggleGroupItem>
               </ToggleGroup>
               
                <ToggleGroup
@@ -374,28 +421,65 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                   <span className="sr-only">Edit Event</span>
                 </Button>
               </Link>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon" disabled={event.status === 'approved'}>
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Event</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the event "{event.title}" and its associated images from storage.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(event)}>
-                      Continue
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              
+              {event.status === 'approved' ? (
+                <Dialog open={eventToRequestDelete?.id === event.id} onOpenChange={(isOpen) => {
+                    if (!isOpen) setEventToRequestDelete(null);
+                }}>
+                    <DialogTrigger asChild>
+                        <Button variant="destructive" size="icon" onClick={() => setEventToRequestDelete(event)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Request Deletion</span>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Request to Delete Event</DialogTitle>
+                            <DialogDescription>
+                                To delete an approved event, you must provide a reason. This request will be sent to a superadmin for review.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Textarea
+                                placeholder="e.g., Event has been cancelled due to unforeseen circumstances."
+                                value={deletionReason}
+                                onChange={(e) => setDeletionReason(e.target.value)}
+                                disabled={isRequestingDelete}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setEventToRequestDelete(null)}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleRequestDelete} disabled={isRequestingDelete || !deletionReason.trim()}>
+                                {isRequestingDelete ? 'Submitting...' : 'Submit Request'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+              ) : (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="icon" disabled={event.status === 'pending-deletion'}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete Event</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the event "{event.title}" and its associated images. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(event)}>
+                          Continue
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
+
             </div>
           </Card>
         ))

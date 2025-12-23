@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Bell, Mail } from 'lucide-react';
-import { collection, query, onSnapshot, orderBy, limit, updateDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, limit, updateDoc, doc, getDocs, writeBatch, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { AppNotification } from '@/types';

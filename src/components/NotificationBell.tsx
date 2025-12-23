@@ -161,7 +161,7 @@ export function NotificationBell() {
                                 >
                                     <p className={`text-sm mb-1 ${!notif.read ? 'font-semibold' : ''}`}>{notif.message}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true })}
+                                        {notif.createdAt ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true }) : ''}
                                     </p>
                                 </div>
                             ))}

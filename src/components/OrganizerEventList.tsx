@@ -31,7 +31,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -92,7 +92,9 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
         }));
       }, (error) => {
         // This can happen if an event is deleted. We just ignore the error.
-        // console.error(`Error fetching registrations for event ${event.id}:`, error);
+        if (error.code !== 'permission-denied') {
+          console.error(`Error fetching registrations for event ${event.id}:`, error);
+        }
       });
       unsubscribers.push(unsubscribe);
     });

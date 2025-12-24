@@ -40,7 +40,7 @@ import { Info } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
-import { getRegisteredUserIds, sendNotificationToUsers, getSuperAdminUserIds } from '@/lib/notifications';
+import { sendNotificationToUsers } from '@/lib/notifications';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
@@ -323,14 +323,6 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 if (event.status === 'approved' || event.status === 'pending-update' || (event.status === 'rejected' && event.isApprovedOnce)) {
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
-
-                    const superAdminIds = await getSuperAdminUserIds();
-                    await sendNotificationToUsers(
-                      superAdminIds,
-                      `Event "${event.title}" is requesting updates. Please review and approve.`,
-                      '/superadmin/approvals',
-                      user.uid // Pass organizerId for the security rule
-                    );
 
                 } else if (event.status === 'rejected') { // And !isApprovedOnce
                     eventData.status = 'pending';

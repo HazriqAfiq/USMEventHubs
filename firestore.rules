@@ -209,7 +209,9 @@ service cloud.firestore {
         // Ensure new notification data has required fields
         && request.resource.data.message is string
         && request.resource.data.href is string
-        && request.resource.data.read == false;
+        && request.resource.data.read == false
+        // Allow optional updateReason field, but if it exists, it must be a string
+        && (!('updateReason' in request.resource.data) || request.resource.data.updateReason is string);
       }
     }
   }

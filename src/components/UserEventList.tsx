@@ -36,7 +36,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
@@ -103,6 +103,23 @@ export default function UserEventList({ userId }: UserEventListProps) {
     
     let baseFiltered = events;
 
+    // Filter by Year
+    if (selectedYear !== 'all') {
+      baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    }
+    
+    const yearForStats = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+    const eventsInYearForStats = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(yearForStats, 0, 1)));
+    let upcomingInYear = 0;
+    let pastInYear = 0;
+    eventsInYearForStats.forEach(event => {
+        const eventEndDate = getEventEndTime(event);
+        if(eventEndDate) {
+            if (eventEndDate >= now) upcomingInYear++;
+            else pastInYear++;
+        }
+    });
+
     // Filter by Time
     if (timeFilter !== 'all') {
       baseFiltered = baseFiltered.filter(event => {
@@ -118,11 +135,11 @@ export default function UserEventList({ userId }: UserEventListProps) {
       baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
     } else if (monthFilter !== 'all') {
       const selectedMonthDate = new Date(monthFilter);
-      const interval = {
-        start: startOfMonth(selectedMonthDate),
-        end: endOfMonth(selectedMonthDate)
-      };
-      baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
+      baseFiltered = baseFiltered.filter(event => {
+        if (!event.date) return false;
+        const eventDate = event.date.toDate();
+        return getMonth(eventDate) === getMonth(selectedMonthDate) && getYear(eventDate) === getYear(selectedMonthDate);
+      });
     }
 
     // Sort
@@ -137,42 +154,26 @@ export default function UserEventList({ userId }: UserEventListProps) {
     });
 
     const yearSet = new Set<number>();
-    const monthCounts: { [key: number]: number[] } = {};
     const monthSet = new Set<string>();
-
+    
     events.forEach(event => {
       if (!event.date) return;
       const eventDate = event.date.toDate();
-      const eventYear = getYear(eventDate);
-      yearSet.add(eventYear);
-      
-      const month = getMonth(eventDate);
-      if (!monthCounts[eventYear]) {
-        monthCounts[eventYear] = Array(12).fill(0);
-      }
-      monthCounts[eventYear][month]++;
+      yearSet.add(getYear(eventDate));
+      monthSet.add(format(eventDate, 'yyyy-MM'));
     });
 
-    const eventsInSelectedYear = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
-    
-    eventsInSelectedYear.forEach(event => {
-      monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
-    });
-    
-    let upcomingInYear = 0;
-    let pastInYear = 0;
-    eventsInSelectedYear.forEach(event => {
-        const eventEndDate = getEventEndTime(event);
-        if(eventEndDate) {
-            if (eventEndDate >= now) upcomingInYear++;
-            else pastInYear++;
+    const yearForChart = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+    const monthCounts = Array(12).fill(0);
+    events.forEach(event => {
+        if(event.date && isSameYear(event.date.toDate(), new Date(yearForChart, 0, 1))) {
+            const month = getMonth(event.date.toDate());
+            monthCounts[month]++;
         }
     });
 
-
-    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
-    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => ({
-      name: format(new Date(selectedYear, monthIndex), 'MMM'),
+    const monthlyData: MonthlyEventCount[] = monthCounts.map((total, monthIndex) => ({
+      name: format(new Date(yearForChart, monthIndex), 'MMM'),
       total: total,
     }));
 
@@ -217,8 +218,9 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   const handleBarClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
+      const yearForChart = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
       const monthName = data.activePayload[0].payload.name;
-      const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
+      const clickedDate = parse(monthName, 'MMM', new Date(yearForChart, 0));
       setChartMonthFilter(clickedDate);
       setTimeFilter('all');
       setMonthFilter('all');
@@ -239,6 +241,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
     setMonthFilter(value);
     setChartMonthFilter(null);
   };
+  
+  const handleYearChange = (value: string) => {
+      setSelectedYear(value === 'all' ? 'all' : Number(value));
+  }
+  
+  const getYearForStats = () => {
+    return selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+  }
 
   return (
     <>
@@ -246,22 +256,22 @@ export default function UserEventList({ userId }: UserEventListProps) {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Upcoming in {selectedYear}</CardTitle>
+                    <CardTitle className="text-sm font-medium">Upcoming in {getYearForStats()}</CardTitle>
                     <CalendarCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{upcomingCount}</div>
-                    <p className="text-xs text-muted-foreground">Upcoming events you're registered for in {selectedYear}.</p>
+                    <p className="text-xs text-muted-foreground">Upcoming events in {getYearForStats()}.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Past in {selectedYear}</CardTitle>
+                    <CardTitle className="text-sm font-medium">Past in {getYearForStats()}</CardTitle>
                     <CalendarX className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{pastCount}</div>
-                    <p className="text-xs text-muted-foreground">Past events you were registered for in {selectedYear}.</p>
+                    <p className="text-xs text-muted-foreground">Past events in {getYearForStats()}.</p>
                 </CardContent>
             </Card>
              <Card>
@@ -281,17 +291,18 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>My Participation</CardTitle>
+                      <CardTitle>My Participation ({getYearForStats()})</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                          Number of events you've joined per month for the year {selectedYear}.
+                          Number of events you've joined per month for {getYearForStats()}.
                       </p>
                     </div>
                      {availableYears.length > 0 && (
-                        <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                        <Select value={String(selectedYear)} onValueChange={handleYearChange}>
                             <SelectTrigger className="w-[120px]">
                                 <SelectValue placeholder="Select Year" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="all">All Years</SelectItem>
                                 {availableYears.map(year => (
                                     <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                                 ))}
@@ -420,3 +431,4 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+

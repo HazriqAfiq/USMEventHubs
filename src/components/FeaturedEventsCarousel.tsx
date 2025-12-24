@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Laptop, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Laptop, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
 import type { Event } from '@/types';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, formatDistanceToNowStrict } from 'date-fns';
 import { Calendar, Clock } from 'lucide-react';
 import { Badge } from './ui/badge';
 
@@ -29,6 +29,52 @@ const formatTime = (timeString: string) => {
   date.setSeconds(0);
 
   return format(date, 'p');
+};
+
+const EventCountdown = ({ event }: { event: Event }) => {
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    if (!event.date || !event.startTime || !event.endTime) return null;
+    
+    const eventDate = event.date.toDate();
+    const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+    const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
+    
+    const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+    const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+
+    if (now >= startDateTime && now <= endDateTime) {
+        return (
+            <Badge className="bg-red-500 text-white border-red-400 animate-pulse text-sm">
+                <Zap className="h-3 w-3 mr-1.5" />
+                Happening Now
+            </Badge>
+        );
+    }
+    
+    if (now > endDateTime) {
+        return null; // Event is over
+    }
+    
+    const diff = startDateTime.getTime() - now.getTime();
+    const diffInHours = diff / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+         const diffInMinutes = Math.ceil(diff / (1000 * 60));
+         return <Badge variant="destructive">Starts in {diffInMinutes} min</Badge>
+    }
+    
+    if (diffInHours < 24) {
+        const diffInHoursRounded = Math.ceil(diffInHours);
+        return <Badge variant="destructive">Starts in {diffInHoursRounded} hours</Badge>
+    }
+
+    return <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">Starts in {formatDistanceToNowStrict(startDateTime, { unit: 'day', roundingMethod: 'ceil' })}</Badge>;
 };
 
 
@@ -116,7 +162,8 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             {event.title}
             </h3>
 
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center items-center gap-2">
+              <EventCountdown event={event} />
               <Badge
                 variant="outline"
                 className="text-sm bg-background/80 backdrop-blur-sm"

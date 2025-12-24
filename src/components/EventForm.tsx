@@ -40,7 +40,8 @@ import { Info } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
-import { getRegisteredUserIds, sendNotificationToUsers } from '@/lib/notifications';
+import { getRegisteredUserIds, sendNotificationToUsers, getSuperAdminUserIds } from '@/lib/notifications';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
@@ -169,14 +170,28 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
     });
 }
 
+const updateReasons = [
+    "Update event date",
+    "Update event time",
+    "Update location",
+    "Update event images or video",
+    "Update eligible campus",
+    "Update description",
+    "Update QR code",
+    "Update title",
+    "Other",
+];
+
 export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { user, userProfile, isOrganizer, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
-  const [updateReason, setUpdateReason] = useState('');
   
+  const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
+  const [updateReasonSelection, setUpdateReasonSelection] = useState('');
+  const [customUpdateReason, setCustomUpdateReason] = useState('');
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -309,8 +324,13 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
 
-                    const registeredUserIds = await getRegisteredUserIds(event.id);
-                    await sendNotificationToUsers(registeredUserIds, `The event "${event.title}" is currently being updated by the organizer.`, `/event/${event.id}`, user.uid);
+                    const superAdminIds = await getSuperAdminUserIds();
+                    await sendNotificationToUsers(
+                      superAdminIds,
+                      `Event "${event.title}" is requesting updates. Please review and approve.`,
+                      '/superadmin/approvals',
+                      user.uid
+                    );
 
                 } else if (event.status === 'rejected') {
                     if (event.isApprovedOnce) {
@@ -380,12 +400,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
     } finally {
         setIsSubmitting(false);
         setIsReasonDialogOpen(false);
-        setUpdateReason('');
+        setUpdateReasonSelection('');
+        setCustomUpdateReason('');
     }
   }
 
   function onSubmit(data: EventFormValues) {
-    if (isEditMode && isOrganizer && (event?.status === 'approved' || (event?.status === 'rejected' && event?.isApprovedOnce))) {
+    const isUpdateConditionMet = isEditMode && isOrganizer && (event?.status === 'approved' || event?.status === 'pending-update' || (event?.status === 'rejected' && event?.isApprovedOnce));
+    if (isUpdateConditionMet) {
         setIsReasonDialogOpen(true);
     } else {
         processSubmit(data);
@@ -393,16 +415,18 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   }
   
   const handleConfirmUpdate = () => {
-    if (updateReason.trim().length < 10) {
+    const finalReason = updateReasonSelection === 'Other' ? customUpdateReason : updateReasonSelection;
+
+    if (!finalReason || finalReason.trim().length < 10) {
         toast({
             variant: 'destructive',
             title: 'Reason is required',
-            description: 'Please briefly explain what you changed (min. 10 characters).',
+            description: 'Please provide a clear reason for the update (min. 10 characters).',
         });
         return;
     }
     const data = form.getValues();
-    processSubmit(data, updateReason);
+    processSubmit(data, finalReason);
   }
 
   const [uploadProgress, setUploadProgress] = useState<{ type: 'event' | 'qr' | 'video' | null, loading: boolean }>({ type: null, loading: false });
@@ -829,21 +853,33 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             <DialogHeader>
                 <DialogTitle>Reason for Update</DialogTitle>
                 <DialogDescription>
-                    Please briefly explain the changes you made. This will be shown to the superadmin during re-approval.
+                    Please select or specify the reason for updating this event. This will be shown to the superadmin during re-approval.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-                <Textarea
-                    placeholder="e.g., Updated event time and description to add more details."
-                    value={updateReason}
-                    onChange={(e) => setUpdateReason(e.target.value)}
-                    disabled={isSubmitting}
-                    className="min-h-[100px]"
-                />
+            <div className="py-4 space-y-4">
+                <Select value={updateReasonSelection} onValueChange={setUpdateReasonSelection}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {updateReasons.map(reason => (
+                            <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {updateReasonSelection === 'Other' && (
+                    <Textarea
+                        placeholder="Please specify the changes made (min. 10 characters)."
+                        value={customUpdateReason}
+                        onChange={(e) => setCustomUpdateReason(e.target.value)}
+                        disabled={isSubmitting}
+                        className="min-h-[100px]"
+                    />
+                )}
             </div>
             <DialogFooter>
                 <Button variant="ghost" onClick={() => setIsReasonDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                <Button onClick={handleConfirmUpdate} disabled={isSubmitting || updateReason.trim().length < 10}>
+                <Button onClick={handleConfirmUpdate} disabled={isSubmitting || !updateReasonSelection || (updateReasonSelection === 'Other' && customUpdateReason.trim().length < 10)}>
                     {isSubmitting ? 'Submitting...' : 'Confirm & Submit'}
                 </Button>
             </DialogFooter>

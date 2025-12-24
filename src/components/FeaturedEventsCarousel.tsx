@@ -48,33 +48,36 @@ const EventCountdown = ({ event }: { event: Event }) => {
     const [endHours, endMinutes] = event.endTime.split(':').map(Number);
     const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
 
+    let countdownText = '';
+    let textClass = 'text-white/90';
+
     if (now >= startDateTime && now <= endDateTime) {
-        return (
-            <Badge className="bg-red-500 text-white border-red-400 animate-pulse text-sm">
-                <Zap className="h-3 w-3 mr-1.5" />
-                Happening Now
-            </Badge>
-        );
-    }
-    
-    if (now > endDateTime) {
-        return null; // Event is over
-    }
-    
-    const diff = startDateTime.getTime() - now.getTime();
-    const diffInHours = diff / (1000 * 60 * 60);
+        countdownText = "Happening Now";
+        textClass = "text-red-400 animate-pulse";
+    } else if (now < startDateTime) {
+        const diff = startDateTime.getTime() - now.getTime();
+        const diffInHours = diff / (1000 * 60 * 60);
 
-    if (diffInHours < 1) {
-         const diffInMinutes = Math.ceil(diff / (1000 * 60));
-         return <Badge variant="destructive">Starts in {diffInMinutes} min</Badge>
-    }
-    
-    if (diffInHours < 24) {
-        const diffInHoursRounded = Math.ceil(diffInHours);
-        return <Badge variant="destructive">Starts in {diffInHoursRounded} hours</Badge>
+        if (diffInHours < 1) {
+            const diffInMinutes = Math.ceil(diff / (1000 * 60));
+            countdownText = `Starts in ${diffInMinutes} min`;
+            textClass = "text-orange-400";
+        } else if (diffInHours < 24) {
+            const diffInHoursRounded = Math.ceil(diffInHours);
+            countdownText = `Starts in ${diffInHoursRounded} hours`;
+            textClass = "text-yellow-400";
+        } else {
+            countdownText = `Starts in ${formatDistanceToNowStrict(startDateTime, { unit: 'day', roundingMethod: 'ceil' })}`;
+        }
     }
 
-    return <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">Starts in {formatDistanceToNowStrict(startDateTime, { unit: 'day', roundingMethod: 'ceil' })}</Badge>;
+    if (!countdownText) return null;
+
+    return (
+        <div className={`text-2xl font-bold mt-2 mb-3 ${textClass}`} style={{textShadow: '0 1px 4px rgba(0,0,0,0.7)'}}>
+            {countdownText}
+        </div>
+    );
 };
 
 
@@ -157,13 +160,14 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
             className="w-full h-full object-cover rounded-2xl"
           />
         </div>
-        <div className="flex flex-col items-center gap-3 text-white text-center w-full max-w-[432.67px] px-4">
+        <div className="flex flex-col items-center gap-2 text-white text-center w-full max-w-lg px-4">
             <h3 className="text-xl font-bold line-clamp-2 mt-4" style={{textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}>
             {event.title}
             </h3>
+            
+            <EventCountdown event={event} />
 
             <div className="flex flex-wrap justify-center items-center gap-2">
-              <EventCountdown event={event} />
               <Badge
                 variant="outline"
                 className="text-sm bg-background/80 backdrop-blur-sm"
@@ -193,7 +197,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
               </Badge>
             </div>
 
-            <div className="text-sm text-white/90 space-y-1">
+            <div className="text-sm text-white/90 space-y-1 mt-2">
               <div className="flex items-center justify-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <span>{event.date ? format(toMalaysiaTime(event.date.toDate()), 'MMM d, yyyy') : 'No date'}</span>
@@ -242,7 +246,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
   }
 
   return (
-    <div className="relative w-full h-[450px] md:h-[500px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
+    <div className="relative w-full h-[500px] md:h-[550px] rounded-3xl overflow-hidden mb-10 p-4 md:p-6 flex items-center justify-center">
       {/* Main slides container */}
       <div className="relative w-full max-w-lg h-full flex items-center justify-center">
         {/* Side slides for visual effect */}

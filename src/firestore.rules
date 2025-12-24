@@ -102,7 +102,7 @@ service cloud.firestore {
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
-        // Organizers of the event and Superadmins can list all registrations.
+        // Organizers and Superadmins can list all registrations for any event.
         allow list: if request.auth != null && (
             (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) || 
             isSuperAdmin(request.auth.uid)
@@ -201,11 +201,22 @@ service cloud.firestore {
         // A user can manage their own notifications
         allow read, write, delete: if request.auth.uid == userId;
 
-        // Allow Superadmins OR the event organizer to create notifications for users.
+        // Allow Superadmins OR the event organizer to create notifications.
         allow create: if request.auth != null && (
-            isSuperAdmin(request.auth.uid) ||
-            (isOrganizer(request.auth.uid) && request.resource.data.organizerId == request.auth.uid)
-        );
+            isSuperAdmin(request.auth.uid) || 
+            (isOrganizer(request.auth.uid) && (
+                // Organizer can notify a superadmin about an event update
+                isSuperAdmin(userId) && request.resource.data.organizerId == request.auth.uid ||
+                // Organizer can notify participants about an event they are registered for
+                (request.resource.data.organizerId == request.auth.uid)
+            ))
+        )
+        // Ensure new notification data has required fields
+        && request.resource.data.message is string
+        && request.resource.data.href is string
+        && request.resource.data.read == false
+        // Allow optional updateReason field, but if it exists, it must be a string
+        && (!('updateReason' in request.resource.data) || request.resource.data.updateReason is string);
       }
     }
   }

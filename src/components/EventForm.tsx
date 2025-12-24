@@ -320,7 +320,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
              
              if (isOrganizer) {
                 // Logic for status transitions when an organizer edits an event
-                if (event.status === 'approved' || event.status === 'pending-update') {
+                if (event.status === 'approved' || event.status === 'pending-update' || (event.status === 'rejected' && event.isApprovedOnce)) {
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
 
@@ -329,16 +329,11 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                       superAdminIds,
                       `Event "${event.title}" is requesting updates. Please review and approve.`,
                       '/superadmin/approvals',
-                      user.uid
+                      user.uid // Pass organizerId for the security rule
                     );
 
-                } else if (event.status === 'rejected') {
-                    if (event.isApprovedOnce) {
-                        eventData.status = 'pending-update';
-                        eventData.updateReason = reason;
-                    } else {
-                        eventData.status = 'pending';
-                    }
+                } else if (event.status === 'rejected') { // And !isApprovedOnce
+                    eventData.status = 'pending';
                 } else { // status is 'pending'
                     eventData.status = 'pending';
                 }

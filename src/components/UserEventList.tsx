@@ -41,7 +41,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
-  const [selectedCampusFilter, setSelectedCampusFilter] = useState<string>(campuses[0]);
+  const [campusCountFilter, setCampusCountFilter] = useState<string>(campuses[0]);
+  const [campusFilter, setCampusFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!userId) {
@@ -115,9 +116,10 @@ export default function UserEventList({ userId }: UserEventListProps) {
     
     let baseFiltered = events;
     
-    // If the time filter is NOT 'all', then we filter by year first
-    if (timeFilter !== 'all') {
-        baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    if (timeFilter === 'all') {
+      // No year filter when 'all' is selected
+    } else {
+      baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
     }
     
     if (timeFilter === 'upcoming') {
@@ -132,6 +134,10 @@ export default function UserEventList({ userId }: UserEventListProps) {
         });
     }
 
+    if (campusFilter !== 'all') {
+      baseFiltered = baseFiltered.filter(event => event.conductingCampus === campusFilter);
+    }
+
     const yearForStats = selectedYear;
     const eventsInYearForStats = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(yearForStats, 0, 1)));
     let upcomingInYear = 0;
@@ -144,7 +150,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
         }
     });
 
-    const campusEventCount = events.filter(e => e.conductingCampus === selectedCampusFilter).length;
+    const campusEventCount = events.filter(e => e.conductingCampus === campusCountFilter).length;
 
 
     if (chartMonthFilter) {
@@ -213,7 +219,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       availableMonths,
       campusEventCount,
     };
-  }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter, selectedCampusFilter]);
+  }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter, campusCountFilter, campusFilter]);
 
   if (loading) {
     return (
@@ -308,7 +314,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 <CardContent>
                     <div className="flex items-center justify-between">
                       <div className="text-2xl font-bold">{campusEventCount}</div>
-                      <Select value={selectedCampusFilter} onValueChange={setSelectedCampusFilter}>
+                      <Select value={campusCountFilter} onValueChange={setCampusCountFilter}>
                         <SelectTrigger className="w-[150px] text-xs">
                           <SelectValue placeholder="Select Campus"/>
                         </SelectTrigger>
@@ -317,7 +323,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <p className="text-xs text-muted-foreground">Events joined from {selectedCampusFilter}.</p>
+                    <p className="text-xs text-muted-foreground">Events joined from {campusCountFilter}.</p>
                 </CardContent>
             </Card>
         </div>
@@ -390,7 +396,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                   <ToggleGroupItem value="past">Past</ToggleGroupItem>
               </ToggleGroup>
 
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                  {availableMonths.length > 0 && (
                   <Select value={monthFilter} onValueChange={handleMonthFilterChange}>
                       <SelectTrigger className="w-full sm:w-[180px]">
@@ -406,6 +412,15 @@ export default function UserEventList({ userId }: UserEventListProps) {
                       </SelectContent>
                   </Select>
                  )}
+                 <Select value={campusFilter} onValueChange={setCampusFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filter by campus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Campuses</SelectItem>
+                      {campuses.map(campus => <SelectItem key={campus} value={campus}>{campus}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                  <Select value={sortOption} onValueChange={setSortOption}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Sort by" />
@@ -466,7 +481,4 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
-
-
-
 

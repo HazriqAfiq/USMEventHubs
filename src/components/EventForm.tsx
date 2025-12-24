@@ -515,7 +515,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                   </AlertDescription>
               </Alert>
           )}
-          {event?.status === 'approved' && isOrganizer && (
+          {event?.status === 'approved' && isOrganizer && isEditable && (
               <Alert variant="default" className="bg-blue-500/10 border-blue-500/30 text-blue-300">
                   <Info className="h-4 w-4 text-blue-400" />
                   <AlertTitle>Approved Event</AlertTitle>

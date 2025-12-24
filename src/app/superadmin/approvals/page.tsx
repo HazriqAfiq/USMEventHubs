@@ -137,6 +137,7 @@ export default function EventApprovalsPage() {
     try {
       const eventRef = doc(db, 'events', event.id);
       const originalStatus = event.status;
+      const updateReason = event.updateReason; // Capture reason before clearing
       
       await updateDoc(eventRef, { 
         status: 'approved', 
@@ -150,10 +151,13 @@ export default function EventApprovalsPage() {
       if (originalStatus === 'pending-update') {
         const registeredUserIds = await getRegisteredUserIds(event.id);
         if (registeredUserIds.length > 0) {
+          const notificationMessage = `Event Updated: "${event.title}". Reason: ${updateReason || 'Details updated'}. Check for changes.`;
           await sendNotificationToUsers(
             registeredUserIds, 
-            `The details for "${event.title}" have been updated. Please check for changes.`, 
-            `/event/${event.id}`
+            notificationMessage,
+            `/event/${event.id}`,
+            null, // Not sent by an organizer
+            updateReason || 'Details updated'
           );
         }
       }
@@ -179,7 +183,7 @@ export default function EventApprovalsPage() {
     setIsSubmitting(true);
     try {
       const eventRef = doc(db, 'events', selectedEventForAction.id);
-      const registeredUserIds = await getRegisteredUserIds(selectedEventForAction.id);
+      const updateReason = selectedEventForAction.updateReason; // Capture reason
       
       // If rejecting a deletion request, revert status to 'approved'
       if (selectedEventForAction.status === 'pending-deletion') {
@@ -187,15 +191,21 @@ export default function EventApprovalsPage() {
             status: 'approved',
             deletionReason: '', // Clear the deletion reason
          });
+         const registeredUserIds = await getRegisteredUserIds(selectedEventForAction.id);
          await sendNotificationToUsers(registeredUserIds, `A request to cancel "${selectedEventForAction.title}" was denied. The event is still on.`, `/event/${selectedEventForAction.id}`);
          toast({ title: 'Deletion Request Rejected', description: 'The event remains approved.' });
-      } else {
+      } else { // Rejecting a new or updated event
         await updateDoc(eventRef, { 
           status: 'rejected',
           rejectionReason: rejectionReason.trim(),
           updateReason: '', // Clear update reason on rejection
         });
-        await sendNotificationToUsers(registeredUserIds, `An update for "${selectedEventForAction.title}" was not approved. The event details have not changed.`, `/event/${selectedEventForAction.id}`);
+        // If it was a rejected update, notify participants that it was not approved
+        if (selectedEventForAction.status === 'pending-update') {
+            const registeredUserIds = await getRegisteredUserIds(selectedEventForAction.id);
+            const notificationMessage = `An update for "${selectedEventForAction.title}" was not approved. The event details have not changed.`;
+            await sendNotificationToUsers(registeredUserIds, notificationMessage, `/event/${selectedEventForAction.id}`, null, updateReason);
+        }
         toast({ title: 'Event Rejected', description: 'The organizer has been notified.' });
       }
 

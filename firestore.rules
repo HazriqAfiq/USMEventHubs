@@ -205,7 +205,11 @@ service cloud.firestore {
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) ||
             (isOrganizer(request.auth.uid) && request.resource.data.organizerId == request.auth.uid)
-        );
+        )
+        // Ensure new notification data has required fields
+        && request.resource.data.message is string
+        && request.resource.data.href is string
+        && request.resource.data.read == false;
       }
     }
   }

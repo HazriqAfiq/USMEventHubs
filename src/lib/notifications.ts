@@ -1,4 +1,5 @@
 
+
 import { db } from './firebase';
 import { collection, writeBatch, serverTimestamp, doc, getDocs, query, where } from 'firebase/firestore';
 
@@ -8,12 +9,14 @@ import { collection, writeBatch, serverTimestamp, doc, getDocs, query, where } f
  * @param message - The notification message.
  * @param href - The URL the notification should link to.
  * @param organizerId - The UID of the organizer triggering the notification.
+ * @param updateReason - The reason for the event update, if applicable.
  */
 export async function sendNotificationToUsers(
     userIds: string[], 
     message: string, 
     href: string,
-    organizerId?: string | null
+    organizerId?: string | null,
+    updateReason?: string
 ) {
     if (userIds.length === 0) return;
     
@@ -21,13 +24,17 @@ export async function sendNotificationToUsers(
 
     userIds.forEach(uid => {
         const notifRef = doc(collection(db, 'users', uid, 'notifications'));
-        batch.set(notifRef, {
+        const notificationData: any = {
             message,
             href,
             createdAt: serverTimestamp(),
             read: false,
             organizerId: organizerId || null, // Include organizerId for security rule validation
-        });
+        };
+        if (updateReason) {
+            notificationData.updateReason = updateReason;
+        }
+        batch.set(notifRef, notificationData);
     });
 
     try {

@@ -54,4 +54,5 @@ export interface AppNotification {
     href: string;
     createdAt: Timestamp;
     read: boolean;
+    updateReason?: string;
 }

@@ -1,6 +1,6 @@
 
 import { db } from './firebase';
-import { collection, writeBatch, serverTimestamp, doc, getDocs } from 'firebase/firestore';
+import { collection, writeBatch, serverTimestamp, doc, getDocs, query, where } from 'firebase/firestore';
 
 /**
  * Sends a notification to a list of users.
@@ -49,6 +49,22 @@ export async function getRegisteredUserIds(eventId: string): Promise<string[]> {
         return snapshot.docs.map(doc => doc.id);
     } catch (error) {
         console.error(`Failed to get registered users for event ${eventId}:`, error);
+        return [];
+    }
+}
+
+/**
+ * Fetches the UIDs of all users with the 'superadmin' role.
+ * @returns A promise that resolves to an array of superadmin user UIDs.
+ */
+export async function getSuperAdminUserIds(): Promise<string[]> {
+    try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('role', '==', 'superadmin'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.id);
+    } catch (error) {
+        console.error("Failed to get superadmin users:", error);
         return [];
     }
 }

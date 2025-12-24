@@ -36,7 +36,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
-  const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
@@ -104,11 +104,9 @@ export default function UserEventList({ userId }: UserEventListProps) {
     let baseFiltered = events;
 
     // Filter by Year
-    if (selectedYear !== 'all') {
-      baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
-    }
+    baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
     
-    const yearForStats = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+    const yearForStats = selectedYear;
     const eventsInYearForStats = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(yearForStats, 0, 1)));
     let upcomingInYear = 0;
     let pastInYear = 0;
@@ -163,7 +161,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       monthSet.add(format(eventDate, 'yyyy-MM'));
     });
 
-    const yearForChart = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+    const yearForChart = selectedYear;
     const monthCounts = Array(12).fill(0);
     events.forEach(event => {
         if(event.date && isSameYear(event.date.toDate(), new Date(yearForChart, 0, 1))) {
@@ -218,7 +216,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   const handleBarClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
-      const yearForChart = selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+      const yearForChart = selectedYear;
       const monthName = data.activePayload[0].payload.name;
       const clickedDate = parse(monthName, 'MMM', new Date(yearForChart, 0));
       setChartMonthFilter(clickedDate);
@@ -243,11 +241,11 @@ export default function UserEventList({ userId }: UserEventListProps) {
   };
   
   const handleYearChange = (value: string) => {
-      setSelectedYear(value === 'all' ? 'all' : Number(value));
+      setSelectedYear(Number(value));
   }
   
   const getYearForStats = () => {
-    return selectedYear === 'all' ? new Date().getFullYear() : selectedYear;
+    return selectedYear;
   }
 
   return (
@@ -261,7 +259,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{upcomingCount}</div>
-                    <p className="text-xs text-muted-foreground">Upcoming events in {getYearForStats()}.</p>
+                    <p className="text-xs text-muted-foreground">Upcoming events you're registered for in {getYearForStats()}.</p>
                 </CardContent>
             </Card>
             <Card>
@@ -271,7 +269,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{pastCount}</div>
-                    <p className="text-xs text-muted-foreground">Past events in {getYearForStats()}.</p>
+                    <p className="text-xs text-muted-foreground">Past events you were registered for in {getYearForStats()}.</p>
                 </CardContent>
             </Card>
              <Card>
@@ -302,7 +300,6 @@ export default function UserEventList({ userId }: UserEventListProps) {
                                 <SelectValue placeholder="Select Year" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Years</SelectItem>
                                 {availableYears.map(year => (
                                     <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                                 ))}
@@ -431,4 +428,5 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+
 

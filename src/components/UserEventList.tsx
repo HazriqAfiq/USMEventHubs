@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye, MessageSquare, XCircle } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -96,7 +97,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
     return null;
   }
 
-  const { filteredEvents, upcomingCount, pastCount, monthlyData, availableYears } = useMemo(() => {
+  const { filteredEvents, upcomingCount, pastCount, totalEventsCount, monthlyData, availableYears } = useMemo(() => {
     const now = new Date();
     
     const eventsInSelectedYear = events.filter(event => 
@@ -172,6 +173,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       filteredEvents: displayedEvents,
       upcomingCount: upcomingCountInYear,
       pastCount: pastCountInYear,
+      totalEventsCount: events.length,
       monthlyData,
       availableYears,
     };
@@ -180,7 +182,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
   if (loading) {
     return (
       <div className="mt-6 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
+            <Skeleton className="h-28"/>
             <Skeleton className="h-28"/>
             <Skeleton className="h-28"/>
         </div>
@@ -210,7 +213,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   return (
     <>
     <div className="mt-6 space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Upcoming in {selectedYear}</CardTitle>
@@ -230,6 +233,16 @@ export default function UserEventList({ userId }: UserEventListProps) {
                     <div className="text-2xl font-bold">{pastCount}</div>
                     <p className="text-xs text-muted-foreground">Past events you were registered for in {selectedYear}.</p>
                 </CardContent>
+            </Card>
+             <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Events Joined</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalEventsCount}</div>
+                <p className="text-xs text-muted-foreground">All events you have ever registered for.</p>
+              </CardContent>
             </Card>
         </div>
 
@@ -345,4 +358,3 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
-

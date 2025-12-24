@@ -77,6 +77,9 @@ service cloud.firestore {
             // Organizers can edit their pending-update events
             (resource.data.status == 'pending-update' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string)
             ||
+             // Organizers can cancel a pending-update and revert to approved
+            (resource.data.status == 'pending-update' && request.resource.data.status == 'approved' && request.resource.data.updateReason == '')
+            ||
             // Organizers can request deletion for an approved event by providing a reason
             (resource.data.status == 'approved' && request.resource.data.status == 'pending-deletion' && request.resource.data.deletionReason is string)
           )
@@ -134,25 +137,18 @@ service cloud.firestore {
             exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
           );
 
-        // Allow the event organizer, organizers or superadmins to toggle the `pinned` flag only.
+        // Allow the event organizer or superadmins to toggle the `pinned` flag only.
         allow update: if request.auth != null && (
-          isOrganizer(request.auth.uid) ||
           isSuperAdmin(request.auth.uid) ||
           // organizer of the parent event can pin/unpin
           get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
         )
         // Ensure only `pinned` is being changed and it is a boolean
-        && request.resource.data.pinned is bool
-        && request.resource.data.text == resource.data.text
-        && request.resource.data.senderId == resource.data.senderId
-        && request.resource.data.senderName == resource.data.senderName
-        && request.resource.data.senderPhotoURL == resource.data.senderPhotoURL
-        && request.resource.data.isOrganizer == resource.data.isOrganizer
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned'])
+        && request.resource.data.pinned is bool;
 
-        // Allow delete by organizer, superadmin or the original sender
+        // Allow delete by superadmin or the original sender
         allow delete: if request.auth != null && (
-          isOrganizer(request.auth.uid) || 
           isSuperAdmin(request.auth.uid) || 
           resource.data.senderId == request.auth.uid
         );
@@ -195,6 +191,18 @@ service cloud.firestore {
 
       // Only superadmins can delete user documents. A user cannot delete their own document.
       allow delete: if request.auth != null && isSuperAdmin(request.auth.uid);
+
+       // Define rules for the 'notifications' subcollection
+      match /notifications/{notificationId} {
+        // A user can manage their own notifications
+        allow read, write, delete: if request.auth.uid == userId;
+
+        // Allow Superadmins OR the event organizer to create notifications for users.
+        allow create: if request.auth != null && (
+            isSuperAdmin(request.auth.uid) ||
+            (isOrganizer(request.auth.uid) && request.resource.data.organizerId == request.auth.uid)
+        );
+      }
     }
   }
 }

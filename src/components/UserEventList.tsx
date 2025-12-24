@@ -304,30 +304,30 @@ export default function UserEventList({ userId }: UserEventListProps) {
         ) : (
             <div className="space-y-4">
             {filteredEvents.map((event) => (
-            <Card key={event.id} className="flex items-center p-4 gap-4 transition-all hover:shadow-md">
-                <div className="relative h-16 w-16 md:h-20 md:w-28 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-                <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
+            <Card key={event.id} className="flex flex-col sm:flex-row items-start p-4 gap-4 transition-all hover:shadow-md">
+                <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                    <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className="flex-grow overflow-hidden">
-                <h3 className="font-bold truncate">{event.title}</h3>
-                <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
-                 <p className="text-sm text-muted-foreground">{event.location}</p>
-                </div>
-                <div className='flex gap-2 flex-shrink-0'>
-                <Link href={`/event/${event.id}`}>
-                    <Button variant="outline" size="sm">
-                       <Eye className="h-4 w-4 mr-2" />
-                        View Event
-                    </Button>
-                </Link>
-                {isEventUpcoming(event) && (
-                    <Link href={`/event/${event.id}`}>
-                        <Button variant="outline" size="sm">
-                           <MessageSquare className="h-4 w-4 mr-2" />
-                            View Chat
-                        </Button>
-                    </Link>
-                )}
+                    <h3 className="font-bold truncate">{event.title}</h3>
+                    <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+                    <p className="text-sm text-muted-foreground">{event.location}</p>
+                     <div className="flex gap-2 mt-2">
+                        <Link href={`/event/${event.id}`}>
+                            <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Event
+                            </Button>
+                        </Link>
+                        {isEventUpcoming(event) && (
+                            <Link href={`/event/${event.id}`}>
+                                <Button variant="outline" size="sm">
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    View Chat
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </Card>
             ))}

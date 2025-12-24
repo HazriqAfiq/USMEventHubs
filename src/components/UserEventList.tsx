@@ -389,20 +389,20 @@ export default function UserEventList({ userId }: UserEventListProps) {
                     <h3 className="font-bold truncate">{event.title}</h3>
                     <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
                     <p className="text-sm text-muted-foreground">{event.location}</p>
-                </div>
-                <div className="flex items-center gap-2 self-start sm:self-center flex-shrink-0">
-                    <Button asChild variant="outline" size="sm">
-                        <Link href={`/event/${event.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Event
-                        </Link>
-                    </Button>
-                    {isEventUpcoming(event) && (
-                       <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            View Chat
-                       </Button>
-                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/event/${event.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Event
+                            </Link>
+                        </Button>
+                         {isEventUpcoming(event) && (
+                           <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                View Chat
+                           </Button>
+                        )}
+                    </div>
                 </div>
               </div>
             </Card>

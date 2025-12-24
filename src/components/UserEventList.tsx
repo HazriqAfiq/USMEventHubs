@@ -103,9 +103,26 @@ export default function UserEventList({ userId }: UserEventListProps) {
     
     let baseFiltered = events;
 
-    // Filter by Year
-    baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    // Filter by Time first (upcoming/past)
+    if (timeFilter === 'upcoming') {
+        baseFiltered = baseFiltered.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate >= now : false;
+        });
+    } else if (timeFilter === 'past') {
+        baseFiltered = baseFiltered.filter(event => {
+            const eventEndDate = getEventEndTime(event);
+            return eventEndDate ? eventEndDate < now : true;
+        });
+    }
+    // If 'all', use all events before year/month filtering.
+
+    // If not 'all' time, then filter by year
+    if (timeFilter !== 'all') {
+        baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    }
     
+    // Calculate stats based on the selected year, regardless of time filter
     const yearForStats = selectedYear;
     const eventsInYearForStats = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(yearForStats, 0, 1)));
     let upcomingInYear = 0;
@@ -118,16 +135,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
         }
     });
 
-    // Filter by Time
-    if (timeFilter !== 'all') {
-      baseFiltered = baseFiltered.filter(event => {
-        const eventEndDate = getEventEndTime(event);
-        if (!eventEndDate) return false;
-        return timeFilter === 'upcoming' ? eventEndDate >= now : eventEndDate < now;
-      });
-    }
 
-    // Filter by Month
+    // Filter by Month (from chart click or dropdown)
     if (chartMonthFilter) {
       const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
       baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
@@ -140,7 +149,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       });
     }
 
-    // Sort
+    // Sort the final list
     baseFiltered.sort((a, b) => {
       switch (sortOption) {
         case 'date-asc':
@@ -428,5 +437,6 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+
 
 

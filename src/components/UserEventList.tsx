@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye, XCircle } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, MessageSquare, XCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -199,6 +199,11 @@ export default function UserEventList({ userId }: UserEventListProps) {
       setChartMonthFilter(clickedDate);
     }
   };
+  
+  const isEventUpcoming = (event: Event) => {
+    const eventEndDate = getEventEndTime(event);
+    return eventEndDate ? eventEndDate >= new Date() : false;
+  }
 
   return (
     <div className="mt-6 space-y-6">
@@ -315,6 +320,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
                         View Event
                     </Button>
                 </Link>
+                {isEventUpcoming(event) && (
+                    <Link href={`/event/${event.id}`}>
+                        <Button variant="outline" size="sm">
+                           <MessageSquare className="h-4 w-4 mr-2" />
+                            View Chat
+                        </Button>
+                    </Link>
+                )}
                 </div>
             </Card>
             ))}

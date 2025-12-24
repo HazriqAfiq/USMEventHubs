@@ -500,6 +500,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const previewVideo = form.watch('videoUrl');
   const getCurrentTime = () => format(getMalaysiaTimeNow(), 'HH:mm');
   const isUploading = uploadProgress.loading;
+  const { isDirty } = form.formState;
 
   return (
     <>
@@ -839,7 +840,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 {!isEditMode && (<Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}><Trash2 className="mr-2 h-4 w-4"/>Clear Form</Button>)}
                 {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
                 {canEdit && (
-                  <Button type="submit" disabled={isSubmitting || isUploading}>
+                  <Button type="submit" disabled={isSubmitting || isUploading || (isEditMode && !isDirty)}>
                     {getButtonText()}
                   </Button>
                 )}

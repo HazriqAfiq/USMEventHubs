@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle, FilePenLine } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -33,7 +33,9 @@ type MonthlyEventCount = {
 export default function UserEventList({ userId }: UserEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('date-desc');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
@@ -53,7 +55,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
         const registeredEventsPromises = eventsSnapshot.docs.map(async (eventDoc) => {
           const eventId = eventDoc.id;
           const registrationRef = doc(db, 'events', eventId, 'registrations', userId);
-          const registrationSnap = await getDoc(registrationRef).catch(() => null); // Catch potential permission errors on individual docs
+          const registrationSnap = await getDoc(registrationRef).catch(() => null);
           
           if (registrationSnap && registrationSnap.exists()) {
             return { id: eventId, ...eventDoc.data() } as Event;
@@ -63,7 +65,6 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
         const registeredEvents = (await Promise.all(registeredEventsPromises)).filter(event => event !== null && event.status === 'approved') as Event[];
         
-        registeredEvents.sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
         setEvents(registeredEvents);
 
       } catch (serverError) {
@@ -97,48 +98,49 @@ export default function UserEventList({ userId }: UserEventListProps) {
     return null;
   }
 
-  const { filteredEvents, upcomingCount, pastCount, totalEventsCount, monthlyData, availableYears } = useMemo(() => {
+  const { filteredEvents, upcomingCount, pastCount, totalEventsCount, monthlyData, availableYears, availableMonths } = useMemo(() => {
     const now = new Date();
     
-    const eventsInSelectedYear = events.filter(event => 
-        event.date && isSameYear(event.date.toDate(), new Date(selectedYear, 0, 1))
-    );
+    let baseFiltered = events;
 
-    let upcomingCountInYear = 0;
-    let pastCountInYear = 0;
+    // Filter by Time
+    if (timeFilter !== 'all') {
+      baseFiltered = baseFiltered.filter(event => {
+        const eventEndDate = getEventEndTime(event);
+        if (!eventEndDate) return false;
+        return timeFilter === 'upcoming' ? eventEndDate >= now : eventEndDate < now;
+      });
+    }
 
-    eventsInSelectedYear.forEach(event => {
-      const eventEndDate = getEventEndTime(event);
-      if (eventEndDate) {
-        if (eventEndDate >= now) {
-            upcomingCountInYear++;
-        } else {
-            pastCountInYear++;
-        }
+    // Filter by Month
+    if (chartMonthFilter) {
+      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
+      baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
+    } else if (monthFilter !== 'all') {
+      const selectedMonthDate = new Date(monthFilter);
+      const interval = {
+        start: startOfMonth(selectedMonthDate),
+        end: endOfMonth(selectedMonthDate)
+      };
+      baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
+    }
+
+    // Sort
+    baseFiltered.sort((a, b) => {
+      switch (sortOption) {
+        case 'date-asc':
+          return a.date.toDate().getTime() - b.date.toDate().getTime();
+        case 'date-desc':
+        default:
+          return b.date.toDate().getTime() - a.date.toDate().getTime();
       }
     });
 
-    let displayedEvents: Event[];
-    if (chartMonthFilter) {
-      const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
-      displayedEvents = events.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
-    } else {
-      displayedEvents = (filter === 'upcoming' 
-        ? events.filter(event => {
-            const eventEndDate = getEventEndTime(event);
-            return eventEndDate ? eventEndDate >= now : false;
-        }) 
-        : events.filter(event => {
-            const eventEndDate = getEventEndTime(event);
-            return eventEndDate ? eventEndDate < now : true;
-        })
-      );
-    }
-    
     const yearSet = new Set<number>();
-    const monthCounts: { [key: number]: number[] } = {}; // year -> month counts
+    const monthCounts: { [key: number]: number[] } = {};
+    const monthSet = new Set<string>();
 
-     events.forEach(event => {
+    events.forEach(event => {
       if (!event.date) return;
       const eventDate = event.date.toDate();
       const eventYear = getYear(eventDate);
@@ -151,33 +153,49 @@ export default function UserEventList({ userId }: UserEventListProps) {
       monthCounts[eventYear][month]++;
     });
 
-    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
-
-    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => {
-      const date = new Date(selectedYear, monthIndex);
-      return {
-        name: format(date, 'MMM'),
-        total: total,
-      };
+    const eventsInSelectedYear = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    
+    eventsInSelectedYear.forEach(event => {
+      monthSet.add(format(event.date.toDate(), 'yyyy-MM'));
+    });
+    
+    let upcomingInYear = 0;
+    let pastInYear = 0;
+    eventsInSelectedYear.forEach(event => {
+        const eventEndDate = getEventEndTime(event);
+        if(eventEndDate) {
+            if (eventEndDate >= now) upcomingInYear++;
+            else pastInYear++;
+        }
     });
 
-    const availableYears = Array.from(yearSet).sort((a,b) => b-a);
+
+    const currentYearData = monthCounts[selectedYear] || Array(12).fill(0);
+    const monthlyData: MonthlyEventCount[] = currentYearData.map((total, monthIndex) => ({
+      name: format(new Date(selectedYear, monthIndex), 'MMM'),
+      total: total,
+    }));
+
+    const availableYears = Array.from(yearSet).sort((a, b) => b - a);
     if (availableYears.length === 0 || !yearSet.has(new Date().getFullYear())) {
-       if (!availableYears.includes(new Date().getFullYear())) {
-            availableYears.push(new Date().getFullYear());
-            availableYears.sort((a,b) => b - a);
-        }
+      if (!availableYears.includes(new Date().getFullYear())) {
+        availableYears.push(new Date().getFullYear());
+        availableYears.sort((a, b) => b - a);
+      }
     }
+    
+    const availableMonths = Array.from(monthSet).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     return {
-      filteredEvents: displayedEvents,
-      upcomingCount: upcomingCountInYear,
-      pastCount: pastCountInYear,
+      filteredEvents: baseFiltered,
+      upcomingCount: upcomingInYear,
+      pastCount: pastInYear,
       totalEventsCount: events.length,
       monthlyData,
       availableYears,
+      availableMonths,
     };
-  }, [events, filter, selectedYear, chartMonthFilter]);
+  }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter]);
 
   if (loading) {
     return (
@@ -202,6 +220,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
       const monthName = data.activePayload[0].payload.name;
       const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
       setChartMonthFilter(clickedDate);
+      setTimeFilter('all');
+      setMonthFilter('all');
     }
   };
   
@@ -209,11 +229,21 @@ export default function UserEventList({ userId }: UserEventListProps) {
     const eventEndDate = getEventEndTime(event);
     return eventEndDate ? eventEndDate >= new Date() : false;
   }
+  
+  const handleTimeFilterChange = (value: 'all' | 'upcoming' | 'past') => {
+    setTimeFilter(value);
+    setChartMonthFilter(null);
+  };
+  
+  const handleMonthFilterChange = (value: string) => {
+    setMonthFilter(value);
+    setChartMonthFilter(null);
+  };
 
   return (
     <>
     <div className="mt-6 space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Upcoming in {selectedYear}</CardTitle>
@@ -290,27 +320,57 @@ export default function UserEventList({ userId }: UserEventListProps) {
             </Card>
       </div>
 
-      <div className='mt-8'>
+      <div className='mt-8 space-y-4'>
         {chartMonthFilter ? (
-          <div>
-            <Button variant="ghost" onClick={() => setChartMonthFilter(null)}>
-              <XCircle className="mr-2 h-4 w-4" />
-              Clear filter for {format(chartMonthFilter, 'MMMM yyyy')}
-            </Button>
-          </div>
+            <div className='flex justify-between items-center'>
+              <h3 className="text-xl font-bold text-white">Events in {format(chartMonthFilter, 'MMMM yyyy')}</h3>
+              <Button variant="ghost" onClick={() => setChartMonthFilter(null)}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Clear Filter
+              </Button>
+            </div>
         ) : (
-          <ToggleGroup
-              type="single"
-              variant="outline"
-              value={filter}
-              onValueChange={(value) => {
-                if (value) setFilter(value as any)
-              }}
-              className="mb-4"
-              >
-              <ToggleGroupItem value="upcoming" className="text-white">Upcoming</ToggleGroupItem>
-              <ToggleGroupItem value="past" className="text-white">Past</ToggleGroupItem>
-          </ToggleGroup>
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
+              <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  value={timeFilter}
+                  onValueChange={(value) => {
+                      if (value) handleTimeFilterChange(value as any);
+                  }}
+                  >
+                  <ToggleGroupItem value="all">All</ToggleGroupItem>
+                  <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+                  <ToggleGroupItem value="past">Past</ToggleGroupItem>
+              </ToggleGroup>
+
+              <div className="flex gap-2 w-full sm:w-auto">
+                 {availableMonths.length > 0 && (
+                  <Select value={monthFilter} onValueChange={handleMonthFilterChange}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Filter by month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Months</SelectItem>
+                          {availableMonths.map(monthStr => (
+                              <SelectItem key={monthStr} value={monthStr}>
+                                  {format(new Date(monthStr), 'MMMM yyyy')}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                 )}
+                 <Select value={sortOption} onValueChange={setSortOption}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date-desc">Newest First</SelectItem>
+                      <SelectItem value="date-asc">Oldest First</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
+          </div>
         )}
 
         {filteredEvents.length === 0 ? (
@@ -320,7 +380,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
         ) : (
             <div className="space-y-4">
             {filteredEvents.map((event) => (
-            <Card key={event.id} className="flex flex-col sm:flex-row items-start p-4 gap-4 transition-all hover:shadow-md">
+            <Card key={event.id} className="p-4">
+              <div className="flex flex-col sm:flex-row items-start gap-4">
                 <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
                     <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
                 </div>
@@ -328,21 +389,22 @@ export default function UserEventList({ userId }: UserEventListProps) {
                     <h3 className="font-bold truncate">{event.title}</h3>
                     <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
                     <p className="text-sm text-muted-foreground">{event.location}</p>
-                     <div className="flex gap-2 mt-2">
-                        <Link href={`/event/${event.id}`}>
-                            <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Event
-                            </Button>
-                        </Link>
-                        {isEventUpcoming(event) && (
-                           <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                View Chat
-                           </Button>
-                        )}
-                    </div>
                 </div>
+                <div className="flex items-center gap-2 self-start sm:self-center flex-shrink-0">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={`/event/${event.id}`}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Event
+                        </Link>
+                    </Button>
+                    {isEventUpcoming(event) && (
+                       <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            View Chat
+                       </Button>
+                    )}
+                </div>
+              </div>
             </Card>
             ))}
             </div>

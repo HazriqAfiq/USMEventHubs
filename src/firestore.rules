@@ -66,10 +66,14 @@ service cloud.firestore {
           isOrganizer(request.auth.uid) 
           && resource.data.organizerId == request.auth.uid
           && (
-            // Organizers can edit their pending/rejected events and resubmit
+            // Organizers can edit their pending events and keep them pending
             (resource.data.status == 'pending' && request.resource.data.status == 'pending')
             ||
-            (resource.data.status == 'rejected' && (request.resource.data.status == 'pending' || request.resource.data.status == 'pending-update'))
+            // Organizers can resubmit a rejected event (that has never been approved) as pending
+            (resource.data.status == 'rejected' && request.resource.data.status == 'pending' && (resource.data.isApprovedOnce == false || resource.data.isApprovedOnce == null))
+            ||
+            // Organizers can resubmit a rejected event (that HAS been approved) as pending-update
+            (resource.data.status == 'rejected' && request.resource.data.status == 'pending-update' && resource.data.isApprovedOnce == true)
             ||
             // Organizers can edit their approved events, but must move to 'pending-update' and provide a reason
             (resource.data.status == 'approved' && request.resource.data.status == 'pending-update' && request.resource.data.updateReason is string)
@@ -98,7 +102,7 @@ service cloud.firestore {
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
-        // Organizers and Superadmins can list all registrations for any event.
+        // Organizers of the event and Superadmins can list all registrations.
         allow list: if request.auth != null && (
             (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) || 
             isSuperAdmin(request.auth.uid)

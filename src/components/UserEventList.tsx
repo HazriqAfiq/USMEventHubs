@@ -17,6 +17,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ChatDialog from './ChatDialog';
 
 interface UserEventListProps {
   userId: string;
@@ -34,6 +35,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
+  const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -206,6 +208,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   }
 
   return (
+    <>
     <div className="mt-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -320,12 +323,10 @@ export default function UserEventList({ userId }: UserEventListProps) {
                             </Button>
                         </Link>
                         {isEventUpcoming(event) && (
-                            <Link href={`/event/${event.id}`}>
-                                <Button variant="outline" size="sm">
-                                    <MessageSquare className="h-4 w-4 mr-2" />
-                                    View Chat
-                                </Button>
-                            </Link>
+                           <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                View Chat
+                           </Button>
                         )}
                     </div>
                 </div>
@@ -335,5 +336,13 @@ export default function UserEventList({ userId }: UserEventListProps) {
         )}
       </div>
     </div>
+    
+    <ChatDialog 
+      isOpen={!!selectedEventForChat}
+      onClose={() => setSelectedEventForChat(null)}
+      event={selectedEventForChat}
+    />
+    </>
   );
 }
+

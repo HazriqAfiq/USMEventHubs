@@ -242,7 +242,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
   const renderContent = () => {
     if (hasAccess === null) {
       return (
-        <div className="h-[40rem] flex flex-col items-center justify-center text-sm text-neutral-400">
+        <div className="h-full flex flex-col items-center justify-center text-sm text-neutral-400">
           <Loader2 className="h-6 w-6 animate-spin mb-4" />
           <p>Checking chat access...</p>
         </div>
@@ -251,68 +251,73 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
 
     if (hasAccess === false) {
       return (
-        <div className="h-[40rem] flex flex-col items-center justify-center text-center text-sm text-neutral-400">
+        <div className="h-full flex flex-col items-center justify-center text-center text-sm text-neutral-400">
           <p className='font-semibold'>Access Denied</p>
           <p className='mt-1 max-w-xs'>Your registration might still be processing. Please wait a moment or try refreshing the page if this persists.</p>
         </div>
       );
     }
+    
+    const pinnedMessages = messages.filter(m => m.pinned);
+    const regularMessages = messages.filter(m => !m.pinned);
 
     return (
-      <>
-        <div className="h-[40rem] overflow-y-auto mb-4 px-2" style={{ scrollbarGutter: 'stable' }}>
-          {messages.length === 0 ? (
+      <div className="flex flex-col h-full">
+         {(user?.uid === organizerId || isSuperAdmin) && (
+             <div className="flex-shrink-0 px-1 py-2 flex justify-end">
+                <button
+                  onClick={() => setShowClearDialog(true)}
+                  disabled={isClearing}
+                  className="bg-red-600/10 hover:bg-red-600/20 text-red-400 px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5"
+                >
+                  <Trash2 className='h-3.5 w-3.5' />
+                  {isClearing ? 'Clearing...' : 'Clear Chat'}
+                </button>
+             </div>
+          )}
+          
+        {pinnedMessages.length > 0 && (
+          <div className="flex-shrink-0 p-1">
+             <div className="p-4 space-y-3 rounded-lg backdrop-blur-sm bg-black/20 border border-white/10">
+              {pinnedMessages.map(m => (
+                <ChatMessage
+                  key={`pinned-${m.id}`}
+                  message={m}
+                  isOwn={user?.uid === m.senderId}
+                  isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
+                  profile={profiles[m.senderId]}
+                  onTogglePin={togglePin}
+                  isSuperAdmin={isSuperAdmin}
+                  onDelete={handleDeleteMessage}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="flex-grow overflow-y-auto px-1 mt-2" style={{ scrollbarGutter: 'stable' }}>
+          {regularMessages.length === 0 && pinnedMessages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-neutral-400">No messages yet — be the first to say something.</div>
           ) : (
-            <>
-              {(() => {
-                const pinned = messages.filter((mm) => mm.pinned);
-                const others = messages.filter((mm) => !mm.pinned);
-                return (
-                  <>
-                    {pinned.length > 0 && (
-                      <div className="sticky top-0 z-10 space-y-3 mb-4 pb-3 border-b border-neutral-700 backdrop-blur-sm">
-                        {pinned.map((m) => (
-                          <ChatMessage
-                            key={`pinned-${m.id}`}
-                            message={m}
-                            isOwn={user?.uid === m.senderId}
-                            isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
-                            profile={profiles[m.senderId]}
-                            onTogglePin={togglePin}
-                            isSuperAdmin={isSuperAdmin}
-                            onDelete={handleDeleteMessage}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {others.length > 0 && (
-                      <div className="space-y-3">
-                        {others.map((m) => (
-                          <ChatMessage
-                            key={m.id}
-                            message={m}
-                            isOwn={user?.uid === m.senderId}
-                            isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
-                            profile={profiles[m.senderId]}
-                            onTogglePin={togglePin}
-                            isSuperAdmin={isSuperAdmin}
-                            onDelete={handleDeleteMessage}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    <div ref={bottomRef} />
-                  </>
-                );
-              })()}
-            </>
+            <div className="space-y-3">
+              {regularMessages.map(m => (
+                <ChatMessage
+                  key={m.id}
+                  message={m}
+                  isOwn={user?.uid === m.senderId}
+                  isEventOrganizer={m.senderId === organizerId || m.isOrganizer}
+                  profile={profiles[m.senderId]}
+                  onTogglePin={togglePin}
+                  isSuperAdmin={isSuperAdmin}
+                  onDelete={handleDeleteMessage}
+                />
+              ))}
+            </div>
           )}
+          <div ref={bottomRef} />
         </div>
 
-        <div className="mt-2">
+        <div className="flex-shrink-0 mt-2">
           <div className="flex items-center gap-3">
             <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message..." className="flex-1 h-11 min-h-[44px] resize-none rounded-md bg-neutral-800 text-white placeholder:text-neutral-400" />
             <button onClick={handleSend} aria-label="Send" className="bg-violet-500 hover:bg-violet-600 p-3 rounded-lg h-11 w-11 flex items-center justify-center">
@@ -320,56 +325,38 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
             </button>
           </div>
         </div>
-      </>
+        
+         <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Clear Chat</DialogTitle>
+                </DialogHeader>
+                <div className="text-sm text-muted-foreground">Are you sure you want to delete all messages for this event? This action cannot be undone.</div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={() => handleClearChat()} disabled={isClearing} className="ml-2">{isClearing ? 'Clearing...' : 'Yes, delete all'}</Button>
+                </DialogFooter>
+              </DialogContent>
+          </Dialog>
+      </div>
     );
   }
 
   return (
-      <div className="bg-neutral-900/90 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10">
-        {/* Wallpaper Background */}
+      <div className="bg-neutral-900/90 rounded-2xl p-0 text-white shadow-lg relative overflow-hidden border border-white/10 h-full flex flex-col">
         <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: "url('/images/WALL.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            opacity: 1, // Set to 100%
+            opacity: 1,
           }}
         />
-        {/* No overlay */}
 
-        {/* Content */}
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Event Chat</h3>
-            {(user?.uid === organizerId || isSuperAdmin) && (
-              <>
-                <button
-                  onClick={() => setShowClearDialog(true)}
-                  disabled={isClearing}
-                  className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm flex items-center gap-1.5"
-                >
-                  <Trash2 className='h-3.5 w-3.5' />
-                  {isClearing ? 'Clearing...' : 'Clear Chat'}
-                </button>
-
-                <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Confirm Clear Chat</DialogTitle>
-                    </DialogHeader>
-                    <div className="text-sm text-muted-foreground">Are you sure you want to delete all messages for this event? This action cannot be undone.</div>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                      </DialogClose>
-                      <Button onClick={() => handleClearChat()} disabled={isClearing} className="ml-2">{isClearing ? 'Clearing...' : 'Yes, delete all'}</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </>
-            )}
-          </div>
+        <div className="relative z-10 p-4 flex-grow flex flex-col h-full overflow-hidden">
           {renderContent()}
         </div>
       </div>

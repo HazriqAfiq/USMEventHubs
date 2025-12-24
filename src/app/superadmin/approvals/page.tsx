@@ -146,11 +146,16 @@ export default function EventApprovalsPage() {
         isApprovedOnce: true 
       });
 
-      const registeredUserIds = await getRegisteredUserIds(event.id);
+      // If the event was an update, notify registered users.
       if (originalStatus === 'pending-update') {
-        await sendNotificationToUsers(registeredUserIds, `The details for "${event.title}" have been updated.`, `/event/${event.id}`);
-      } else {
-        await sendNotificationToUsers(registeredUserIds, `A new event you might be interested in, "${event.title}", is now live!`, `/event/${event.id}`);
+        const registeredUserIds = await getRegisteredUserIds(event.id);
+        if (registeredUserIds.length > 0) {
+          await sendNotificationToUsers(
+            registeredUserIds, 
+            `The details for "${event.title}" have been updated. Please check for changes.`, 
+            `/event/${event.id}`
+          );
+        }
       }
       
       toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });

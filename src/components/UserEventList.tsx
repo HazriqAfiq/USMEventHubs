@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
 import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle, FilePenLine } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle, FilePenLine, Building } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -29,6 +29,8 @@ type MonthlyEventCount = {
   total: number;
 };
 
+const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
+
 
 export default function UserEventList({ userId }: UserEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -39,6 +41,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [chartMonthFilter, setChartMonthFilter] = useState<Date | null>(null);
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
+  const [selectedCampusFilter, setSelectedCampusFilter] = useState<string>(campuses[0]);
 
   useEffect(() => {
     if (!userId) {
@@ -98,12 +101,25 @@ export default function UserEventList({ userId }: UserEventListProps) {
     return null;
   }
 
-  const { filteredEvents, upcomingCount, pastCount, totalEventsCount, monthlyData, availableYears, availableMonths } = useMemo(() => {
+  const { 
+    filteredEvents, 
+    upcomingCount, 
+    pastCount, 
+    totalEventsCount, 
+    monthlyData, 
+    availableYears, 
+    availableMonths,
+    campusEventCount,
+  } = useMemo(() => {
     const now = new Date();
     
     let baseFiltered = events;
-
-    // Filter by Time first (upcoming/past)
+    
+    // If the time filter is NOT 'all', then we filter by year first
+    if (timeFilter !== 'all') {
+        baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
+    }
+    
     if (timeFilter === 'upcoming') {
         baseFiltered = baseFiltered.filter(event => {
             const eventEndDate = getEventEndTime(event);
@@ -115,14 +131,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
             return eventEndDate ? eventEndDate < now : true;
         });
     }
-    // If 'all', use all events before year/month filtering.
 
-    // If not 'all' time, then filter by year
-    if (timeFilter !== 'all') {
-        baseFiltered = baseFiltered.filter(e => e.date && isSameYear(e.date.toDate(), new Date(selectedYear, 0, 1)));
-    }
-    
-    // Calculate stats based on the selected year, regardless of time filter
     const yearForStats = selectedYear;
     const eventsInYearForStats = events.filter(e => e.date && isSameYear(e.date.toDate(), new Date(yearForStats, 0, 1)));
     let upcomingInYear = 0;
@@ -135,8 +144,9 @@ export default function UserEventList({ userId }: UserEventListProps) {
         }
     });
 
+    const campusEventCount = events.filter(e => e.conductingCampus === selectedCampusFilter).length;
 
-    // Filter by Month (from chart click or dropdown)
+
     if (chartMonthFilter) {
       const interval = { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) };
       baseFiltered = baseFiltered.filter(event => event.date && isWithinInterval(event.date.toDate(), interval));
@@ -149,7 +159,6 @@ export default function UserEventList({ userId }: UserEventListProps) {
       });
     }
 
-    // Sort the final list
     baseFiltered.sort((a, b) => {
       switch (sortOption) {
         case 'date-asc':
@@ -202,16 +211,15 @@ export default function UserEventList({ userId }: UserEventListProps) {
       monthlyData,
       availableYears,
       availableMonths,
+      campusEventCount,
     };
-  }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter]);
+  }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter, selectedCampusFilter]);
 
   if (loading) {
     return (
       <div className="mt-6 space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
-            <Skeleton className="h-28"/>
-            <Skeleton className="h-28"/>
-            <Skeleton className="h-28"/>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28"/>)}
         </div>
          <div className="mt-8">
             <Skeleton className="h-[350px] w-full" />
@@ -254,13 +262,14 @@ export default function UserEventList({ userId }: UserEventListProps) {
   }
   
   const getYearForStats = () => {
+    if (timeFilter === 'all') return 'All Time';
     return selectedYear;
   }
 
   return (
     <>
     <div className="mt-6 space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Upcoming in {getYearForStats()}</CardTitle>
@@ -290,6 +299,26 @@ export default function UserEventList({ userId }: UserEventListProps) {
                 <div className="text-2xl font-bold">{totalEventsCount}</div>
                 <p className="text-xs text-muted-foreground">All events you have ever registered for.</p>
               </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Events by Campus</CardTitle>
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold">{campusEventCount}</div>
+                      <Select value={selectedCampusFilter} onValueChange={setSelectedCampusFilter}>
+                        <SelectTrigger className="w-[150px] text-xs">
+                          <SelectValue placeholder="Select Campus"/>
+                        </SelectTrigger>
+                        <SelectContent>
+                           {campuses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Events joined from {selectedCampusFilter}.</p>
+                </CardContent>
             </Card>
         </div>
 
@@ -437,6 +466,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+
 
 
 

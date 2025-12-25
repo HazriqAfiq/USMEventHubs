@@ -57,7 +57,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventExists, setEventExists] = useState(true);
-  const { user, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -109,8 +109,8 @@ export default function EventDetailPage() {
       if (docSnap.exists()) {
         const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-        // If user is not an admin and the event is not approved, treat as non-existent
-        if (eventData.status !== 'approved' && !isOrganizer && !isSuperAdmin) {
+        // If user is not an admin/organizer and the event is not approved, treat as non-existent
+        if (eventData.status !== 'approved' && !isAdmin && !isOrganizer && !isSuperAdmin) {
             setEventExists(false);
             setEvent(null);
         } else {
@@ -129,11 +129,11 @@ export default function EventDetailPage() {
 
     return () => unsubscribe();
 
-  }, [eventId, isOrganizer, isSuperAdmin]);
+  }, [eventId, isAdmin, isOrganizer, isSuperAdmin]);
 
   useEffect(() => {
     // Increment view count logic
-    if (eventId && user && !isOrganizer && !viewCountIncremented.current) {
+    if (eventId && user && !isOrganizer && !isAdmin && !viewCountIncremented.current) {
       const docRef = doc(db, 'events', eventId);
       updateDoc(docRef, { viewCount: increment(1) })
         .catch((serverError) => {
@@ -148,7 +148,7 @@ export default function EventDetailPage() {
       // Set the ref to true to prevent further increments on this mount
       viewCountIncremented.current = true;
     }
-  }, [eventId, user, isOrganizer]);
+  }, [eventId, user, isOrganizer, isAdmin]);
 
    useEffect(() => {
     if (user && eventId) {
@@ -224,8 +224,8 @@ export default function EventDetailPage() {
       return;
     }
     
-    if (isOrganizer) {
-      toast({ title: 'Organizer Action Not Allowed', description: 'Organizers cannot register for events.' });
+    if (isOrganizer || isAdmin || isSuperAdmin) {
+      toast({ title: 'Admin/Organizer Action Not Allowed', description: 'Admins and Organizers cannot register for events.' });
       return;
     }
 
@@ -251,8 +251,8 @@ export default function EventDetailPage() {
     
     if (event.status !== 'approved') return false;
 
-    // Organizer can always see the chat (past or present)
-    if (isEventOrganizer || isSuperAdmin) {
+    // Organizer, Admin, or Superadmin can always see the chat (past or present)
+    if (isEventOrganizer || isSuperAdmin || isAdmin) {
       return true;
     }
     
@@ -262,7 +262,7 @@ export default function EventDetailPage() {
     }
     
     return false;
-  }, [user, event, isEventOrganizer, isRegistered, isEventOver, isSuperAdmin]);
+  }, [user, event, isEventOrganizer, isRegistered, isEventOver, isSuperAdmin, isAdmin]);
 
   if (loading || authLoading) {
     return (
@@ -306,7 +306,7 @@ export default function EventDetailPage() {
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Events
       </Button>
-       {event.status !== 'approved' && (isOrganizer || isSuperAdmin) && (
+       {event.status !== 'approved' && (isOrganizer || isSuperAdmin || isAdmin) && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Admin Preview</AlertTitle>
@@ -348,7 +348,7 @@ export default function EventDetailPage() {
               </>
             )}
           </Carousel>
-          {(isEventOrganizer || isSuperAdmin) && (
+          {(isEventOrganizer || isSuperAdmin || isAdmin) && (
             <Button asChild className="absolute top-4 right-4 z-10" variant="secondary">
               <Link href={`/organizer/edit/${event.id}`}>
                 <FilePenLine className="mr-2 h-4 w-4" />
@@ -414,7 +414,7 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {!isOrganizer && user && event.status === 'approved' && (
+          {!isOrganizer && !isAdmin && user && event.status === 'approved' && (
             isRegistered ? (
               <Card className="bg-green-500/10 border-green-500/50">
                 <CardHeader>

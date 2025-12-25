@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users, CheckSquare, CalendarDays } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users, CheckSquare, CalendarDays, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -22,7 +22,7 @@ import { NotificationBell } from './NotificationBell';
 
 
 export function Header() {
-  const { user, userProfile, isOrganizer, isSuperAdmin, loading } = useAuth();
+  const { user, userProfile, isOrganizer, isSuperAdmin, isAdmin, loading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -95,6 +95,11 @@ export function Header() {
                           <span>Manage Events</span>
                         </DropdownMenuItem>
                       </>
+                    ) : isAdmin ? (
+                       <DropdownMenuItem onClick={() => router.push('/admin')}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Admin Dashboard</span>
+                      </DropdownMenuItem>
                     ) : isOrganizer ? (
                       <DropdownMenuItem onClick={() => router.push('/organizer')}>
                         <UserCircle className="mr-2 h-4 w-4" />

@@ -185,7 +185,7 @@ const updateReasons = [
 export default function EventForm({ event, isEditable = true }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile, isOrganizer, isSuperAdmin } = useAuth();
+  const { user, userProfile, isOrganizer, isSuperAdmin, isAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
@@ -238,13 +238,14 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
   const canEdit = useMemo(() => {
     if (!isEditable) return false;
     if (isSuperAdmin) return true;
+    if (isAdmin && event && userProfile?.campus === event.conductingCampus) return true;
     if (isOrganizer && event) {
-      // Organizers can edit their own events, regardless of status (except past events)
+      // Organizers can edit their own events
       return true;
     }
-    if (isOrganizer && !isEditMode) return true;
+    if ((isOrganizer || isAdmin) && !isEditMode) return true; // Can create new
     return false;
-  }, [isEditable, isSuperAdmin, isOrganizer, event, isEditMode]);
+  }, [isEditable, isSuperAdmin, isAdmin, isOrganizer, event, isEditMode, userProfile]);
   
   // Set conducting campus when user profile loads for a new form
   useEffect(() => {
@@ -331,7 +332,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
                 }
                 eventData.rejectionReason = ''; // Always clear rejection reason on resubmit.
              }
-             if (isSuperAdmin) {
+             if (isSuperAdmin || isAdmin) {
                 eventData.status = 'approved';
                 eventData.rejectionReason = '';
                 eventData.updateReason = '';
@@ -351,13 +352,16 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             if (isSuperAdmin) {
                 toast({ title: 'Event Updated!', description: `"${data.title}" has been saved.` });
                 router.push('/superadmin/events');
+            } else if (isAdmin) {
+                 toast({ title: 'Event Updated!', description: `"${data.title}" has been saved.` });
+                 router.push('/admin');
             } else {
                 toast({ title: 'Event Updated!', description: `"${data.title}" has been submitted for re-approval.` });
                 router.push('/organizer');
             }
         } else {
             if (!userProfile.campus) {
-              throw new Error("Organizer's campus is not set. Cannot create event.");
+              throw new Error("User's campus is not set. Cannot create event.");
             }
             const collectionRef = collection(db, 'events');
             await addDoc(collectionRef, { 
@@ -366,8 +370,8 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               conductingCampus: userProfile.campus,
               createdAt: serverTimestamp(), 
               organizerId: user.uid,
-              status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve for superadmins
-              isApprovedOnce: isSuperAdmin ? true : false,
+              status: (isSuperAdmin || isAdmin) ? 'approved' : 'pending', // Auto-approve for admins
+              isApprovedOnce: (isSuperAdmin || isAdmin) ? true : false,
             }).catch((serverError) => {
                const permissionError = new FirestorePermissionError({
                   path: collectionRef.path,
@@ -378,7 +382,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
               throw serverError;
             });
 
-            toast({ title: isSuperAdmin ? 'Event Created & Published!' : 'Event Submitted!', description: isSuperAdmin ? `"${data.title}" is now live.` : `"${data.title}" has been submitted for approval.` });
+            toast({ title: (isSuperAdmin || isAdmin) ? 'Event Created & Published!' : 'Event Submitted!', description: (isSuperAdmin || isAdmin) ? `"${data.title}" is now live.` : `"${data.title}" has been submitted for approval.` });
             handleReset();
         }
     } catch (error: any) {
@@ -474,7 +478,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
 
   const getButtonText = () => {
     if (isSubmitting) return 'Submitting...';
-    if (isSuperAdmin) {
+    if (isSuperAdmin || isAdmin) {
       return isEditMode ? 'Save Changes' : 'Create & Publish Event';
     }
     return 'Submit for Approval';

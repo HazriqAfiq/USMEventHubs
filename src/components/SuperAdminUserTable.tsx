@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
-import { Trash2, UserX, XCircle, ShieldCheck } from 'lucide-react';
+import { Trash2, UserX, XCircle, ShieldCheck, Shield } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +52,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
   const { toast } = useToast();
   const { user: currentUser, isSuperAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'superadmin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'admin' | 'superadmin'>('all');
   const [localCampusFilter, setLocalCampusFilter] = useState<'all' | string>(campusFilter || 'all');
 
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     });
   }, [users, searchQuery, roleFilter, localCampusFilter]);
 
-  const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student' | 'superadmin') => {
+  const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student' | 'admin' | 'superadmin') => {
     if (!isSuperAdmin) {
       toast({ variant: 'destructive', title: 'Permission Denied' });
       return;
@@ -129,7 +130,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         batch.update(userDocRef, { campus: newCampus });
 
         // 2. If the user is an organizer, update all their events
-        if (userToUpdate.role === 'organizer') {
+        if (userToUpdate.role === 'organizer' || userToUpdate.role === 'admin') {
             const eventsRef = collection(db, 'events');
             const q = query(eventsRef, where('organizerId', '==', userId));
             const eventsSnapshot = await getDocs(q);
@@ -149,7 +150,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
             }
 
         } else {
-           // If not an organizer, just commit the user update
+           // If not an organizer/admin, just commit the user update
            await batch.commit();
            toast({ title: 'Campus Updated', description: `User's campus has been changed to ${newCampus}.` });
         }
@@ -191,8 +192,8 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'You cannot delete your own account.' });
         return;
     }
-     if (userToDelete.role === 'superadmin') {
-        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Superadmin accounts cannot be deleted.' });
+     if (userToDelete.role === 'superadmin' || userToDelete.role === 'admin') {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Admin and Superadmin accounts cannot be deleted.' });
         return;
     }
     // Deleting the user from Firestore. Deleting from Firebase Auth is a server-side operation.
@@ -253,6 +254,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                       <SelectItem value="all">All Roles</SelectItem>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="organizer">Organizer</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="superadmin">Super Admin</SelectItem>
                   </SelectContent>
               </Select>
@@ -303,7 +305,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                     </div>
                   </TableCell>
                   <TableCell>
-                     {user.uid !== currentUser?.uid && user.role !== 'superadmin' ? (
+                     {user.role !== 'superadmin' ? (
                       <Select
                         value={user.campus}
                         onValueChange={(newCampus) => handleCampusChange(user.uid, newCampus)}
@@ -322,7 +324,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'organizer' || user.role === 'superadmin' ? 'default' : 'secondary'}>
+                    <Badge variant={user.role === 'organizer' || user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>
                       {user.role}
                     </Badge>
                   </TableCell>
@@ -336,7 +338,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                          <span className="text-sm text-muted-foreground">
                            This is you
                          </span>
-                    ) : user.role === 'superadmin' ? (
+                    ) : user.role === 'superadmin' || user.role === 'admin' ? (
                         <span className="text-sm text-muted-foreground">No actions</span>
                     ) : (
                       <DropdownMenu>
@@ -357,6 +359,10 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'organizer')}>
                                     Set as Organizer
+                                </DropdownMenuItem>
+                                 <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'admin')}>
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Set as Admin
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'superadmin')}>
                                     <ShieldCheck className="mr-2 h-4 w-4" />
@@ -404,5 +410,3 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     </Card>
   );
 }
-
-    

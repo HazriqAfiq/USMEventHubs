@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,19 +14,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
 export default function OrganizerPage() {
-  const { user, isOrganizer, isSuperAdmin, loading } = useAuth();
+  const { user, isOrganizer, isAdmin, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
   const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!loading && !isOrganizer) {
-      if(isSuperAdmin) {
+      if (isSuperAdmin) {
         router.push('/superadmin');
+      } else if (isAdmin) {
+        router.push('/admin');
       } else {
         router.push('/');
       }
     }
-  }, [isOrganizer, isSuperAdmin, loading, router]);
+  }, [isOrganizer, isAdmin, isSuperAdmin, loading, router]);
 
   // Show skeleton loader while checking auth state
   if (loading) {

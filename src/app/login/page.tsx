@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -64,7 +65,7 @@ export default function LoginPage() {
           toast({
             variant: 'destructive',
             title: 'Account Disabled',
-            description: 'Your account has been disabled. Please contact a superadmin for assistance.',
+            description: 'Your account has been disabled. Please contact an admin for assistance.',
           });
           setIsLoading(false);
           return;
@@ -77,6 +78,8 @@ export default function LoginPage() {
         
         if (userData.role === 'superadmin') {
           router.push('/superadmin');
+        } else if (userData.role === 'admin') {
+          router.push('/admin');
         } else if (userData.role === 'organizer') {
           router.push('/organizer');
         } else {

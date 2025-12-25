@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
@@ -13,6 +14,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   isOrganizer: boolean;
   isSuperAdmin: boolean;
+  isAdmin: boolean;
   loading: boolean;
 }
 
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   isOrganizer: false,
   isSuperAdmin: false,
+  isAdmin: false,
   loading: true,
 });
 
@@ -29,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,10 +48,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setUserProfile(profile);
               setIsOrganizer(profile.role === 'organizer');
               setIsSuperAdmin(profile.role === 'superadmin');
+              setIsAdmin(profile.role === 'admin');
             } else {
               setUserProfile(null);
               setIsOrganizer(false);
               setIsSuperAdmin(false);
+              setIsAdmin(false);
             }
             setLoading(false);
         }, () => {
@@ -55,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserProfile(null);
           setIsOrganizer(false);
           setIsSuperAdmin(false);
+          setIsAdmin(false);
           setLoading(false);
         });
 
@@ -65,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(null);
         setIsOrganizer(false);
         setIsSuperAdmin(false);
+        setIsAdmin(false);
         setLoading(false);
       }
     });
@@ -72,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  const value = { user, userProfile, loading, isOrganizer, isSuperAdmin };
+  const value = { user, userProfile, loading, isOrganizer, isSuperAdmin, isAdmin };
 
   return (
     <AuthContext.Provider value={value}>

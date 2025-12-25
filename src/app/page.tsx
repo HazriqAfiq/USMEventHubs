@@ -26,16 +26,20 @@ export default function Home() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [now, setNow] = useState(new Date());
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
-  const { user, userProfile, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, isOrganizer, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
-    // Redirect superadmin to their dashboard
+    // Redirect admins to their dashboards
     if (!authLoading && isSuperAdmin) {
       router.replace('/superadmin');
+      return;
+    }
+    if (!authLoading && isAdmin) {
+      router.replace('/admin');
       return;
     }
     
@@ -44,7 +48,7 @@ export default function Home() {
     if (welcomeDismissed === 'true') {
       setShowWelcome(false);
     }
-  }, [authLoading, isSuperAdmin, router]);
+  }, [authLoading, isSuperAdmin, isAdmin, router]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -62,10 +66,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || !user || isSuperAdmin) return;
+    if (authLoading || !user || isSuperAdmin || isAdmin) return;
 
-    // Only fetch events that are 'approved'. The orderBy clause was removed to prevent an index error.
-    // Sorting will now be handled on the client side.
+    // Only fetch events that are 'approved'.
     const q = query(
       collection(db, 'events'), 
       where('status', '==', 'approved')
@@ -87,7 +90,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, isSuperAdmin]);
+  }, [user, authLoading, isSuperAdmin, isAdmin]);
 
   // Hide splash screen after a delay
   useEffect(() => {
@@ -114,9 +117,9 @@ export default function Home() {
       return false;
     });
     
-    // Then, filter by eligibility
-    if (isOrganizer || isSuperAdmin) {
-      return activeEvents; // Organizers and Superadmins can see all active events.
+    // Admins and Organizers can see all active events.
+    if (isOrganizer || isSuperAdmin || isAdmin) {
+      return activeEvents;
     }
     
     // Students only see events they are eligible for.
@@ -128,7 +131,7 @@ export default function Home() {
       // Otherwise, check if the user's campus is in the list.
       return event.eligibleCampuses.includes(userProfile?.campus || '');
     });
-  }, [events, now, isOrganizer, isSuperAdmin, userProfile]);
+  }, [events, now, isOrganizer, isAdmin, isSuperAdmin, userProfile]);
   
 
   // Featured events are derived from the eligible list.
@@ -148,8 +151,6 @@ export default function Home() {
         typeFilter === 'all' ||
         typeFilter === event.eventType;
       
-      // If a campus is selected, filter by the event's conducting campus.
-      // If no campus is selected, show all eligible events.
       const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
       
       return priceMatch && typeMatch && campusMatch;
@@ -163,8 +164,8 @@ export default function Home() {
   };
 
 
-  if (authLoading || !user || isSuperAdmin) {
-    // Show a skeleton loader while checking for auth, redirecting, or if superadmin.
+  if (authLoading || !user || isSuperAdmin || isAdmin) {
+    // Show a skeleton loader while checking for auth, redirecting, etc.
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">

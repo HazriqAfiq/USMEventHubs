@@ -54,5 +54,6 @@ export interface AppNotification {
     href: string;
     createdAt: Timestamp;
     read: boolean;
+    eventId?: string;
     updateReason?: string;
 }

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -125,10 +126,7 @@ export default function AdminApprovalList({ preselectedStatus }: AdminApprovalLi
         const registeredUserIds = await getRegisteredUserIds(event.id);
         if (registeredUserIds.length > 0) {
           const notificationMessage = `Event Updated: "${event.title}". Reason: ${updateReason || 'Details updated'}.`;
-          // The `organizerId` here is a bit of a misnomer in the function signature
-          // but is used for security rule validation on the backend to check if the sender has rights.
-          // We pass the ADMIN's UID to be validated against the event's campus.
-          await sendNotificationToUsers(registeredUserIds, notificationMessage, `/event/${event.id}`, user.uid, updateReason);
+          await sendNotificationToUsers(registeredUserIds, notificationMessage, `/event/${event.id}`, event.id);
         }
       }
       
@@ -155,12 +153,12 @@ export default function AdminApprovalList({ preselectedStatus }: AdminApprovalLi
       const eventRef = doc(db, 'events', selectedEventForAction.id);
       if (selectedEventForAction.status === 'pending-deletion') {
          await updateDoc(eventRef, { status: 'approved', deletionReason: '' });
-         await sendNotificationToUsers(await getRegisteredUserIds(selectedEventForAction.id), `A request to cancel "${selectedEventForAction.title}" was denied.`, `/event/${selectedEventForAction.id}`);
+         await sendNotificationToUsers(await getRegisteredUserIds(selectedEventForAction.id), `A request to cancel "${selectedEventForAction.title}" was denied.`, `/event/${selectedEventForAction.id}`, selectedEventForAction.id);
          toast({ title: 'Deletion Request Rejected', description: 'The event remains approved.' });
       } else {
         await updateDoc(eventRef, { status: 'rejected', rejectionReason: rejectionReason.trim(), updateReason: '' });
         if (selectedEventForAction.status === 'pending-update') {
-            await sendNotificationToUsers(await getRegisteredUserIds(selectedEventForAction.id), `An update for "${selectedEventForAction.title}" was not approved.`, `/event/${selectedEventForAction.id}`, null, selectedEventForAction.updateReason);
+            await sendNotificationToUsers(await getRegisteredUserIds(selectedEventForAction.id), `An update for "${selectedEventForAction.title}" was not approved.`, `/event/${selectedEventForAction.id}`, selectedEventForAction.id, selectedEventForAction.updateReason);
         }
         toast({ title: 'Event Rejected' });
       }
@@ -179,7 +177,7 @@ export default function AdminApprovalList({ preselectedStatus }: AdminApprovalLi
         try { await deleteObject(ref(storage, event.imageUrl)); } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event image:", e); }
       }
       await deleteDoc(doc(db, 'events', event.id));
-      await sendNotificationToUsers(await getRegisteredUserIds(event.id), `The event "${event.title}" has been cancelled and removed.`, `/`);
+      await sendNotificationToUsers(await getRegisteredUserIds(event.id), `The event "${event.title}" has been cancelled and removed.`, `/`, event.id);
       toast({ title: 'Deletion Approved' });
       closeDetailView();
     } catch (error: any) {

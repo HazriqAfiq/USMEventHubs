@@ -8,6 +8,7 @@ import { collection, writeBatch, serverTimestamp, doc, getDocs, query, where } f
  * @param userIds - An array of user UIDs to send the notification to.
  * @param message - The notification message.
  * @param href - The URL the notification should link to.
+ * @param eventId - The ID of the event this notification is related to.
  * @param organizerId - The UID of the organizer triggering the notification.
  * @param updateReason - The reason for the event update, if applicable.
  */
@@ -15,6 +16,7 @@ export async function sendNotificationToUsers(
     userIds: string[], 
     message: string, 
     href: string,
+    eventId: string, // Added eventId
     organizerId?: string | null,
     updateReason?: string
 ) {
@@ -29,7 +31,8 @@ export async function sendNotificationToUsers(
             href,
             createdAt: serverTimestamp(),
             read: false,
-            organizerId: organizerId || null, // Include organizerId for security rule validation
+            eventId: eventId, // Include eventId for security rule validation
+            organizerId: organizerId || null,
         };
         if (updateReason) {
             notificationData.updateReason = updateReason;

@@ -1,4 +1,5 @@
 
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -250,7 +251,11 @@ service cloud.firestore {
         // Allow Superadmins, Admins, OR Organizers to create notifications
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) || 
-            (isCampusAdmin(request.auth.uid, getUser(userId).data.campus)) ||
+            (
+              isAdmin(request.auth.uid) && 
+              request.resource.data.eventId != null &&
+              getEvent(request.resource.data.eventId).data.conductingCampus == getUser(request.auth.uid).data.campus
+            ) ||
             (isOrganizer(request.auth.uid) && (
                 // Organizer can notify a superadmin about an event update
                 isSuperAdmin(userId) ||

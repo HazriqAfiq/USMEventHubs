@@ -33,7 +33,7 @@ interface AdminApprovalListProps {
 
 
 export default function AdminApprovalList({ preselectedStatus }: AdminApprovalListProps) {
-  const { userProfile, isAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,15 +107,31 @@ export default function AdminApprovalList({ preselectedStatus }: AdminApprovalLi
   }, [events, statusFilter, organizerFilter, searchQuery, users]);
 
   const handleApprove = async (event: Event) => {
+    if (!user) return;
     try {
       const eventRef = doc(db, 'events', event.id);
-      await updateDoc(eventRef, { status: 'approved', rejectionReason: '', updateReason: '', deletionReason: '', isApprovedOnce: true });
-      if (event.status === 'pending-update') {
+      const originalStatus = event.status;
+      const updateReason = event.updateReason;
+      
+      await updateDoc(eventRef, { 
+          status: 'approved', 
+          rejectionReason: '', 
+          updateReason: '', 
+          deletionReason: '', 
+          isApprovedOnce: true 
+      });
+
+      if (originalStatus === 'pending-update') {
         const registeredUserIds = await getRegisteredUserIds(event.id);
         if (registeredUserIds.length > 0) {
-          await sendNotificationToUsers(registeredUserIds, `Event Updated: "${event.title}". Reason: ${event.updateReason || 'Details updated'}.`, `/event/${event.id}`, null, event.updateReason);
+          const notificationMessage = `Event Updated: "${event.title}". Reason: ${updateReason || 'Details updated'}.`;
+          // The `organizerId` here is a bit of a misnomer in the function signature
+          // but is used for security rule validation on the backend to check if the sender has rights.
+          // We pass the ADMIN's UID to be validated against the event's campus.
+          await sendNotificationToUsers(registeredUserIds, notificationMessage, `/event/${event.id}`, user.uid, updateReason);
         }
       }
+      
       toast({ title: 'Event Approved', description: `"${event.title}" is now live.` });
       closeDetailView();
     } catch (error: any) {

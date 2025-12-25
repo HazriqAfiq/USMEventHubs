@@ -38,6 +38,10 @@ service cloud.firestore {
     function isStudent(userId) {
       return getUserRole(userId) == 'student';
     }
+    
+    function getEvent(eventId) {
+        return get(/databases/$(database)/documents/events/$(eventId));
+    }
 
     // Default deny all
     match /{document=**} {
@@ -243,14 +247,15 @@ service cloud.firestore {
         // A user can manage their own notifications
         allow read, write, delete: if request.auth.uid == userId;
 
-        // Allow Superadmins OR the event organizer to create notifications.
+        // Allow Superadmins, Admins, OR Organizers to create notifications
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) || 
+            (isCampusAdmin(request.auth.uid, getUser(userId).data.campus)) ||
             (isOrganizer(request.auth.uid) && (
-                // Organizer can notify participants about an event they are registered for
-                (request.resource.data.organizerId == request.auth.uid) ||
                 // Organizer can notify a superadmin about an event update
-                isSuperAdmin(userId)
+                isSuperAdmin(userId) ||
+                // Organizer can notify participants about an event they are registered for
+                (request.resource.data.organizerId == request.auth.uid)
             ))
         )
         // Ensure new notification data has required fields

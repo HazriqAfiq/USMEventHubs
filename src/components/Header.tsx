@@ -96,10 +96,24 @@ export function Header() {
                         </DropdownMenuItem>
                       </>
                     ) : isAdmin ? (
-                       <DropdownMenuItem onClick={() => router.push('/admin')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin Dashboard</span>
-                      </DropdownMenuItem>
+                       <>
+                        <DropdownMenuItem onClick={() => router.push('/admin')}>
+                          <Shield className="mr-2 h-4 w-4" />
+                          <span>Admin Dashboard</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/admin/users')}>
+                          <Users className="mr-2 h-4 w-4" />
+                          <span>Manage Users</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/admin/approvals')}>
+                          <CheckSquare className="mr-2 h-4 w-4" />
+                          <span>Event Approvals</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/admin/events')}>
+                          <CalendarDays className="mr-2 h-4 w-4" />
+                          <span>Manage Events</span>
+                        </DropdownMenuItem>
+                       </>
                     ) : isOrganizer ? (
                       <DropdownMenuItem onClick={() => router.push('/organizer')}>
                         <UserCircle className="mr-2 h-4 w-4" />

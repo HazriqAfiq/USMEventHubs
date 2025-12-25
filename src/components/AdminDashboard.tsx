@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -221,7 +222,6 @@ export default function AdminDashboard() {
             }}
             organizerId={selectedOrganizer.id}
             organizerName={selectedOrganizer.name}
-            year={selectedYear}
         />
       )}
     </>

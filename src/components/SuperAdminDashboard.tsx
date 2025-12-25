@@ -600,7 +600,6 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
             }}
             organizerId={selectedOrganizer.id}
             organizerName={selectedOrganizer.name}
-            year={selectedYear}
         />
     )}
     </>

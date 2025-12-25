@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -22,10 +23,9 @@ interface OrganizerEventsDialogProps {
   onClose: () => void;
   organizerId: string;
   organizerName: string;
-  year: number;
 }
 
-export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, organizerName, year }: OrganizerEventsDialogProps) {
+export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, organizerName }: OrganizerEventsDialogProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
@@ -44,7 +44,7 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
       const fetchedEvents: Event[] = [];
       snapshot.forEach(doc => {
         const eventData = { id: doc.id, ...doc.data() } as Event;
-        if (eventData.date && isSameYear(eventData.date.toDate(), new Date(year, 0, 1))) {
+        if (eventData.date) {
            fetchedEvents.push(eventData);
         }
       });
@@ -57,7 +57,7 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
     });
 
     return () => unsubscribe();
-  }, [isOpen, organizerId, year]);
+  }, [isOpen, organizerId]);
   
   const getEventEndTime = (event: Event): Date | null => {
     if (event.date && event.endTime) {
@@ -74,7 +74,6 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
 
     let baseFiltered = events;
 
-    // First, filter by time (upcoming/past) if not 'all'
     if (timeFilter === 'upcoming') {
         baseFiltered = events.filter(event => {
             const eventEndDate = getEventEndTime(event);
@@ -87,7 +86,6 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
         });
     }
 
-    // Then, filter by month if a specific month is selected
     if (monthFilter !== 'all') {
         const selectedMonthDate = new Date(monthFilter);
         const interval = {
@@ -97,7 +95,6 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
         baseFiltered = baseFiltered.filter(event => isWithinInterval(event.date.toDate(), interval));
     }
 
-    // Generate available months from all events in the current year for this organizer
     const monthSet = new Set<string>();
     events.forEach(event => {
       if(event.date) {
@@ -112,7 +109,6 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
   }, [events, timeFilter, monthFilter]);
   
   useEffect(() => {
-    // Reset month filter when time filter changes to keep things simple
     setMonthFilter('all');
   }, [timeFilter]);
 
@@ -121,9 +117,9 @@ export default function OrganizerEventsDialog({ isOpen, onClose, organizerId, or
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Events by {organizerName} ({year})</DialogTitle>
+          <DialogTitle>Events by {organizerName}</DialogTitle>
           <DialogDescription>
-            A list of all events created by this organizer in {year}.
+            A list of all events created by this organizer.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center my-4">

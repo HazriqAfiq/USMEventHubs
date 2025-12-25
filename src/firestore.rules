@@ -189,12 +189,15 @@ service cloud.firestore {
                         (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576))
                       ) ||
                       ( // Superadmin updates
-                        isSuperAdmin(request.auth.uid)
+                        isSuperAdmin(request.auth.uid) && 
+                        // Prevent a superadmin from being disabled or having their role changed by another superadmin.
+                        !(resource.data.role == 'superadmin' && (request.resource.data.disabled == true || request.resource.data.role != 'superadmin'))
                       )
                     );
 
       // Only superadmins can delete user documents. A user cannot delete their own document.
-      allow delete: if request.auth != null && isSuperAdmin(request.auth.uid);
+      // A superadmin also cannot be deleted.
+      allow delete: if request.auth != null && isSuperAdmin(request.auth.uid) && resource.data.role != 'superadmin';
 
        // Define rules for the 'notifications' subcollection
       match /notifications/{notificationId} {
@@ -205,8 +208,6 @@ service cloud.firestore {
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) || 
             (isOrganizer(request.auth.uid) && (
-                // Organizer can notify a superadmin about an event update
-                isSuperAdmin(userId) && request.resource.data.organizerId == request.auth.uid ||
                 // Organizer can notify participants about an event they are registered for
                 (request.resource.data.organizerId == request.auth.uid)
             ))
@@ -221,3 +222,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
-import { Trash2, UserX, XCircle } from 'lucide-react';
+import { Trash2, UserX, XCircle, ShieldCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,7 +99,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     });
   }, [users, searchQuery, roleFilter, localCampusFilter]);
 
-  const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student') => {
+  const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student' | 'superadmin') => {
     if (!isSuperAdmin) {
       toast({ variant: 'destructive', title: 'Permission Denied' });
       return;
@@ -168,6 +168,10 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'You cannot disable your own account.' });
         return;
     }
+     if (userToUpdate.role === 'superadmin') {
+      toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Superadmin accounts cannot be disabled.' });
+      return;
+    }
     const userDocRef = doc(db, 'users', userToUpdate.uid);
     const newDisabledStatus = !userToUpdate.disabled;
     try {
@@ -185,6 +189,10 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     }
     if (userToDelete.uid === currentUser?.uid) {
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'You cannot delete your own account.' });
+        return;
+    }
+     if (userToDelete.role === 'superadmin') {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Superadmin accounts cannot be deleted.' });
         return;
     }
     // Deleting the user from Firestore. Deleting from Firebase Auth is a server-side operation.
@@ -295,7 +303,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                     </div>
                   </TableCell>
                   <TableCell>
-                     {user.uid !== currentUser?.uid ? (
+                     {user.uid !== currentUser?.uid && user.role !== 'superadmin' ? (
                       <Select
                         value={user.campus}
                         onValueChange={(newCampus) => handleCampusChange(user.uid, newCampus)}
@@ -324,8 +332,13 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {user.uid !== currentUser?.uid ? (
-                      <>
+                    {user.uid === currentUser?.uid ? (
+                         <span className="text-sm text-muted-foreground">
+                           This is you
+                         </span>
+                    ) : user.role === 'superadmin' ? (
+                        <span className="text-sm text-muted-foreground">No actions</span>
+                    ) : (
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">Actions</Button>
@@ -333,22 +346,22 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                           <DropdownMenuContent>
                               <DropdownMenuLabel>Manage User</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              {user.role !== 'superadmin' && (
-                                <>
-                                    <DropdownMenuItem onClick={() => handleToggleDisable(user)}>
-                                        <UserX className="mr-2 h-4 w-4" />
-                                        <span>{user.disabled ? 'Enable' : 'Disable'} Account</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'student')}>
-                                        Set as Student
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'organizer')}>
-                                        Set as Organizer
-                                    </DropdownMenuItem>
-                                </>
-                              )}
+                                <DropdownMenuItem onClick={() => handleToggleDisable(user)}>
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    <span>{user.disabled ? 'Enable' : 'Disable'} Account</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'student')}>
+                                    Set as Student
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'organizer')}>
+                                    Set as Organizer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRoleChange(user.uid, 'superadmin')}>
+                                    <ShieldCheck className="mr-2 h-4 w-4" />
+                                    Set as Super Admin
+                                </DropdownMenuItem>
                               <DropdownMenuSeparator />
                                <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -374,11 +387,6 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                                 </AlertDialog>
                           </DropdownMenuContent>
                       </DropdownMenu>
-                      </>
-                    ) : (
-                         <span className="text-sm text-muted-foreground">
-                           This is you
-                         </span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -396,3 +404,5 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     </Card>
   );
 }
+
+    

@@ -165,7 +165,35 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8 mt-8">
-        <Card><CardHeader><CardTitle className="flex items-center"><PieChartIcon className="mr-2 h-5 w-5" />User Role Distribution</CardTitle><p className="text-sm text-muted-foreground">Students vs. Organizers in your campus.</p></CardHeader><CardContent><ResponsiveContainer width="100%" height={350}><PieChart><Pie data={dashboardData.roleData} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={120} dataKey="value">{dashboardData.roleData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Legend /><Tooltip contentStyle={{background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)"}} /></PieChart></ResponsiveContainer></CardContent></Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <PieChartIcon className="mr-2 h-5 w-5" />User Role Distribution
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Students vs. Organizers in your campus. Click to view users.</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie 
+                  data={dashboardData.roleData} 
+                  cx="50%" 
+                  cy="50%" 
+                  labelLine={false} 
+                  label={renderCustomizedLabel} 
+                  outerRadius={120} 
+                  dataKey="value"
+                  onClick={() => router.push('/admin/users')}
+                  className="cursor-pointer"
+                >
+                  {dashboardData.roleData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Legend />
+                <Tooltip contentStyle={{background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)"}} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
         <Card><CardHeader><CardTitle className="flex items-center"><PieChartIcon className="mr-2 h-5 w-5" />Event Status Distribution</CardTitle><p className="text-sm text-muted-foreground">Breakdown of all event statuses on your campus.</p></CardHeader><CardContent><ResponsiveContainer width="100%" height={350}><PieChart><Pie data={dashboardData.eventStatusData} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={120} dataKey="value" nameKey="name" onClick={handleStatusPieClick} className="cursor-pointer">{dashboardData.eventStatusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Legend /><Tooltip contentStyle={{background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)"}} /></PieChart></ResponsiveContainer></CardContent></Card>
         <Card><CardHeader><div className="flex justify-between items-center"><div><CardTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" />Approved Events per Organizer ({selectedYear})</CardTitle><p className="text-sm text-muted-foreground">Events created by organizers in your campus.</p></div>{availableYears.length > 0 && <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}><SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger><SelectContent>{availableYears.map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select>}</div></CardHeader><CardContent><ResponsiveContainer width="100%" height={350}><BarChart data={dashboardData.organizerEventData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} /><YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/><Tooltip contentStyle={{background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)"}} /><Bar dataKey="count" name="Events" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
         <Card><CardHeader><div className="flex justify-between items-center"><div><CardTitle>Campus-Wide Approved Event Creation</CardTitle><p className="text-sm text-muted-foreground">Events created per month in your campus.</p></div>{availableYears.length > 0 && <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}><SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger><SelectContent>{availableYears.map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select>}</div></CardHeader><CardContent><ResponsiveContainer width="100%" height={350}><BarChart data={dashboardData.monthlyEventData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} /><YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} /><Tooltip contentStyle={{background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)"}} /><Bar dataKey="events" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>

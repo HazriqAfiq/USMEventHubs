@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminDashboard from '@/components/AdminDashboard';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function AdminPage() {
   const { user, userProfile, isAdmin, isSuperAdmin, loading } = useAuth();

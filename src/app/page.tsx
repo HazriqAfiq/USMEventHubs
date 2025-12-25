@@ -17,15 +17,16 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { WelcomePage } from '@/components/WelcomePage';
 import { FeaturedEventsCarousel } from '@/components/FeaturedEventsCarousel';
 import { ScrollAnimation } from '@/components/ScrollAnimation';
-import { addMinutes } from 'date-fns';
+import { addMinutes, isSameDay } from 'date-fns';
 import { CampusFilter } from '@/components/CampusFilter';
 import { GlobalBanner } from '@/components/GlobalBanner';
+import { AdvancedEventFilters } from '@/components/AdvancedEventFilters';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [now, setNow] = useState(new Date());
-  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter } = useEventFilters();
+  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter, date: dateFilter, timeOfDay: timeOfDayFilter } = useEventFilters();
   const { user, userProfile, isOrganizer, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const router = useRouter();
@@ -152,10 +153,24 @@ export default function Home() {
         typeFilter === event.eventType;
       
       const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
+
+      const dateMatch = !dateFilter || (event.date && isSameDay(event.date.toDate(), dateFilter));
+
+      const timeOfDayMatch = (() => {
+        if (timeOfDayFilter === 'all') return true;
+        if (!event.startTime) return false;
+
+        const [startHour] = event.startTime.split(':').map(Number);
+        if (timeOfDayFilter === 'morning' && startHour >= 5 && startHour < 12) return true;
+        if (timeOfDayFilter === 'afternoon' && startHour >= 12 && startHour < 17) return true;
+        if (timeOfDayFilter === 'evening' && startHour >= 17 && startHour < 24) return true;
+        
+        return false;
+      })();
       
-      return priceMatch && typeMatch && campusMatch;
+      return priceMatch && typeMatch && campusMatch && dateMatch && timeOfDayMatch;
     });
-  }, [eligibleEvents, priceFilter, typeFilter, selectedCampus]);
+  }, [eligibleEvents, priceFilter, typeFilter, selectedCampus, dateFilter, timeOfDayFilter]);
 
 
   const handleGetStarted = () => {
@@ -228,7 +243,7 @@ export default function Home() {
         <ScrollAnimation delay={400}>
           <div className="flex justify-center mb-8">
             <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
+               <div className="flex items-center gap-2">
                 <ToggleGroup
                   type="single"
                   size="sm"
@@ -256,6 +271,7 @@ export default function Home() {
                   <ToggleGroupItem value="physical" aria-label="Physical events"><Users className="h-4 w-4 mr-1" />Physical</ToggleGroupItem>
                 </ToggleGroup>
               </div>
+               <AdvancedEventFilters />
             </div>
           </div>
         </ScrollAnimation>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,10 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminDashboard from '@/components/AdminDashboard';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import AdminEventList from '@/components/AdminEventList';
 
 export default function AdminPage() {
   const { user, userProfile, isAdmin, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
+  const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin && !isSuperAdmin) {
@@ -50,8 +52,18 @@ export default function AdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Management tools for the <span className="font-bold text-primary">{userProfile?.campus}</span>.
           </p>
-          <AdminDashboard />
+          <AdminDashboard onMonthClick={setMonthFilter} />
         </div>
+
+        {monthFilter && (
+            <>
+                <Separator />
+                <div>
+                  <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Filtered Events</h2>
+                  <AdminEventList monthFilter={monthFilter} onClearMonthFilter={() => setMonthFilter(null)} />
+                </div>
+            </>
+        )}
         
         <Separator />
 

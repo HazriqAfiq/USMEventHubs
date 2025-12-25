@@ -7,7 +7,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { getMonth, getYear, format, isSameYear } from 'date-fns';
+import { getMonth, getYear, format, isSameYear, parse } from 'date-fns';
 import { Users, Calendar, ShieldCheck, FileClock, PieChartIcon, UserCheck } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
@@ -19,6 +19,10 @@ import OrganizerEventsDialog from './OrganizerEventsDialog';
 type MonthlyCount = { name: string; events: number; };
 type StatusCount = { name: string; value: number; };
 type OrganizerEventCount = { organizerId: string; name: string; count: number; };
+
+interface AdminDashboardProps {
+  onMonthClick: (date: Date) => void;
+}
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, payload }: any) => {
@@ -33,7 +37,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onMonthClick }: AdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,11 +172,9 @@ export default function AdminDashboard() {
 
   const handleMonthBarClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
-      const monthIndex = data.activeTooltipIndex;
-      if (monthIndex !== undefined) {
-        const monthYearString = format(new Date(selectedYear, monthIndex), 'yyyy-MM');
-        router.push(`/admin/events?month=${monthYearString}`);
-      }
+      const monthName = data.activePayload[0].payload.name;
+      const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
+      onMonthClick(clickedDate);
     }
   };
 

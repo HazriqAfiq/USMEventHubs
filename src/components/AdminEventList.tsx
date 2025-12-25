@@ -36,7 +36,12 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AdminEventList() {
+interface AdminEventListProps {
+  monthFilter?: Date | null;
+  onClearMonthFilter?: () => void;
+}
+
+export default function AdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: AdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
@@ -47,8 +52,6 @@ export default function AdminEventList() {
   const [sortOption, setSortOption] = useState('date-desc');
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const monthQuery = searchParams.get('month');
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -121,7 +124,7 @@ export default function AdminEventList() {
         const statusFilterMatch =
           statusFilter === 'all' || event.status === statusFilter;
         
-        const monthFilterMatch = !monthQuery || (event.date && format(event.date.toDate(), 'yyyy-MM') === monthQuery);
+        const monthFilterMatch = !chartMonthFilter || (event.date && isWithinInterval(event.date.toDate(), { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) }));
         
         return timeFilterMatch && searchFilterMatch && statusFilterMatch && monthFilterMatch;
       });
@@ -141,7 +144,7 @@ export default function AdminEventList() {
     });
 
     return sortedEvents;
-  }, [events, filter, searchQuery, statusFilter, sortOption, participantCounts, monthQuery]);
+  }, [events, filter, searchQuery, statusFilter, sortOption, participantCounts, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     try {
@@ -205,9 +208,9 @@ export default function AdminEventList() {
   };
 
   const handleClearMonthFilter = () => {
-    const newParams = new URLSearchParams(searchParams.toString());
-    newParams.delete('month');
-    router.push(`/admin/events?${newParams.toString()}`);
+    if (onClearMonthFilter) {
+      onClearMonthFilter();
+    }
   }
 
   if (loading || authLoading) {
@@ -266,10 +269,10 @@ export default function AdminEventList() {
             </Select>
           </div>
       </div>
-      {monthQuery && (
+      {chartMonthFilter && (
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">
-              Showing events for: <strong>{format(parse(monthQuery, 'yyyy-MM', new Date()), 'MMMM yyyy')}</strong>
+              Showing events for: <strong>{format(chartMonthFilter, 'MMMM yyyy')}</strong>
             </p>
             <Button variant="ghost" size="sm" onClick={handleClearMonthFilter}>
               <XCircle className="mr-2 h-4 w-4" />

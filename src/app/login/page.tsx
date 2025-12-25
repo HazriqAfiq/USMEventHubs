@@ -124,6 +124,19 @@ export default function LoginPage() {
         });
         return;
     }
+
+    const validEmailDomains = ['@usm.my', '@student.usm.my'];
+    const isEmailValid = validEmailDomains.some(domain => registerEmail.endsWith(domain));
+
+    if (!isEmailValid) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Email Domain',
+            description: 'Registration is only open to emails ending with "@usm.my" or "@student.usm.my".',
+        });
+        return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -353,7 +366,7 @@ export default function LoginPage() {
                     <Input
                         id="register-email"
                         type="email"
-                        placeholder="student@example.com"
+                        placeholder="student@usm.my"
                         required
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}

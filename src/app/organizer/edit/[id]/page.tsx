@@ -23,7 +23,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 
 export default function EditEventPage() {
-  const { user, isOrganizer, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, isAdmin, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
@@ -58,7 +58,7 @@ export default function EditEventPage() {
       return;
     }
 
-    if (!isOrganizer && !isSuperAdmin) {
+    if (!isOrganizer && !isSuperAdmin && !isAdmin) {
       setHasPermission(false);
       setLoading(false);
       return;
@@ -71,8 +71,12 @@ export default function EditEventPage() {
       if (docSnap.exists()) {
         const eventData = { id: docSnap.id, ...docSnap.data() } as Event;
 
-        // Superadmins can see any event. Organizers can only see their own.
-        if (isSuperAdmin || (isOrganizer && eventData.organizerId === user.uid)) {
+        // Permission check
+        const canView = isSuperAdmin || 
+                        (isOrganizer && eventData.organizerId === user.uid) ||
+                        (isAdmin && userProfile?.campus === eventData.conductingCampus);
+
+        if (canView) {
           setEvent(eventData);
           setHasPermission(true);
           
@@ -116,7 +120,7 @@ export default function EditEventPage() {
 
     return () => unsubscribe();
 
-  }, [eventId, authLoading, isOrganizer, isSuperAdmin, user, router]);
+  }, [eventId, authLoading, isOrganizer, isSuperAdmin, isAdmin, user, userProfile, router]);
 
   useEffect(() => {
     if (!loading && !hasPermission) {
@@ -126,11 +130,14 @@ export default function EditEventPage() {
           description: 'You do not have permission to view this event. Redirecting...',
       });
       const timer = setTimeout(() => {
-        router.push(isSuperAdmin ? '/superadmin' : '/organizer');
+        if (isSuperAdmin) router.push('/superadmin');
+        else if (isAdmin) router.push('/admin');
+        else if (isOrganizer) router.push('/organizer');
+        else router.push('/');
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [hasPermission, loading, router, isSuperAdmin, toast]);
+  }, [hasPermission, loading, router, isSuperAdmin, isAdmin, isOrganizer, toast]);
 
   const handleGenerateReport = () => {
     if (!registrations.length || !event) return;

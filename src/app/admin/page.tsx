@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Shield, Users, CalendarDays } from 'lucide-react';
+import { Terminal, Shield, Users, CalendarDays, CheckSquare, ArrowRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AdminUserTable from '@/components/AdminUserTable';
-import AdminEventList from '@/components/AdminEventList';
+import AdminDashboard from '@/components/AdminDashboard';
+import Link from 'next/link';
 
 export default function AdminPage() {
   const { user, userProfile, isAdmin, isSuperAdmin, loading } = useAuth();
@@ -20,7 +20,7 @@ export default function AdminPage() {
     if (!loading && !isAdmin && !isSuperAdmin) {
       router.push('/');
     } else if (!loading && isSuperAdmin) {
-      router.push('/superadmin'); // Superadmins should use their own more powerful dashboard
+      router.push('/superadmin'); // Superadmins use their own more powerful dashboard
     }
   }, [isAdmin, isSuperAdmin, loading, router]);
 
@@ -49,33 +49,58 @@ export default function AdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Management tools for the <span className="font-bold text-primary">{userProfile?.campus}</span>.
           </p>
+          <AdminDashboard />
         </div>
         
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5"/>Manage Campus Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground mb-4">
-                    View, disable, or assign roles to users within your campus.
-                </p>
-                <AdminUserTable />
-            </CardContent>
-        </Card>
-        
         <Separator />
-        
-        <Card>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+           <Card>
             <CardHeader>
-                <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5"/>Manage Campus Events</CardTitle>
+              <CardTitle className="flex items-center"><CheckSquare className="mr-2 h-5 w-5"/>Event Approvals</CardTitle>
             </CardHeader>
             <CardContent>
-                 <p className="text-muted-foreground mb-4">
-                    Review, edit, or delete events conducted by your campus.
-                </p>
-                <AdminEventList />
+              <p className="text-muted-foreground mb-4">
+                Review and approve or reject new events from your campus.
+              </p>
+              <Button asChild>
+                <Link href="/admin/approvals">
+                  Go to Approvals <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+              </Button>
             </CardContent>
-        </Card>
+           </Card>
+           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5"/>Manage Campus Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                View, disable, or assign roles to users within your campus.
+              </p>
+              <Button asChild>
+                <Link href="/admin/users">
+                  Go to User Management <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+              </Button>
+            </CardContent>
+           </Card>
+           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5"/>Manage Campus Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Review, edit, or delete events conducted by your campus.
+              </p>
+              <Button asChild>
+                <Link href="/admin/events">
+                  Go to Event Management <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+              </Button>
+            </CardContent>
+           </Card>
+        </div>
 
       </div>
     </div>

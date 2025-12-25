@@ -302,9 +302,9 @@ export default function EventDetailPage() {
   return (
     <>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-       <Button variant="ghost" onClick={() => router.push('/')} className="mb-4 text-white hover:text-white/80">
+       <Button variant="ghost" onClick={() => router.back()} className="mb-4 text-white hover:text-white/80">
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Events
+        Back
       </Button>
        {event.status !== 'approved' && (isOrganizer || isSuperAdmin || isAdmin) && (
           <Alert variant="destructive" className="mb-4">

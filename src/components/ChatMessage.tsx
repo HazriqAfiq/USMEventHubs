@@ -3,7 +3,7 @@
 
 import React from "react";
 import { formatDistanceToNow } from 'date-fns';
-import { Crown, Pin, Trash2, ShieldCheck } from 'lucide-react';
+import { Crown, Pin, Trash2, ShieldCheck, Shield } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,12 +25,16 @@ interface Props {
   profile?: UserProfile;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
   isSuperAdmin?: boolean;
+  isAdmin?: boolean;
   onDelete?: (id: string) => void;
 }
 
-export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin, isSuperAdmin, onDelete }: Props) {
+export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin, isSuperAdmin, isAdmin, onDelete }: Props) {
   const timeAgo = message.createdAt?.toDate ? formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true }) : '';
   const senderIsSuperAdmin = profile?.role === 'superadmin';
+  const senderIsAdmin = profile?.role === 'admin';
+  
+  const canDelete = isSuperAdmin || isAdmin;
 
   return (
     <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}> 
@@ -45,12 +49,12 @@ export default function ChatMessage({ message, isOwn, isEventOrganizer, profile,
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {(isEventOrganizer || isSuperAdmin) && (
+          {(isEventOrganizer || isSuperAdmin || isAdmin) && (
             <button onClick={() => onTogglePin?.(message.id, !!message.pinned)} className="ml-2 text-xs text-neutral-200 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
               {message.pinned ? 'Unpin' : 'Pin'}
             </button>
           )}
-           {isSuperAdmin && (
+           {canDelete && (
              <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <button className="text-xs text-red-400 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
@@ -75,6 +79,10 @@ export default function ChatMessage({ message, isOwn, isEventOrganizer, profile,
              <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-pink-600 text-white font-medium">
               <ShieldCheck className="h-3 w-3" /> Superadmin
             </div>
+           ) : senderIsAdmin ? (
+              <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-sky-600 text-white font-medium">
+                <Shield className="h-3 w-3" /> Admin
+              </div>
            ) : message.isOrganizer && (
             <div className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-purple-700 text-white font-medium">
               <Crown className="h-3 w-3" /> Organizer

@@ -21,7 +21,7 @@ interface Props {
 }
 
 export default function ChatRoom({ eventId, organizerId }: Props) {
-  const { user, userProfile, isSuperAdmin } = useAuth();
+  const { user, userProfile, isSuperAdmin, isAdmin } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -146,8 +146,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
   const handleClearChat = async () => {
     if (!user || !eventId) return;
-    if (user.uid !== organizerId && !isSuperAdmin) {
-      toast({ title: 'Unauthorized', description: 'Only the event organizer or a superadmin can clear the chat.', variant: 'destructive' });
+    if (user.uid !== organizerId && !isSuperAdmin && !isAdmin) {
+      toast({ title: 'Unauthorized', description: 'Only the event organizer or an admin can clear the chat.', variant: 'destructive' });
       return;
     }
 
@@ -184,8 +184,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-     if (!user || !eventId || !isSuperAdmin) {
-        toast({ title: 'Unauthorized', description: 'Only a superadmin can delete individual messages.', variant: 'destructive' });
+     if (!user || !eventId || (!isSuperAdmin && !isAdmin)) {
+        toast({ title: 'Unauthorized', description: 'Only an admin can delete individual messages.', variant: 'destructive' });
         return;
      }
 
@@ -206,8 +206,8 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 const togglePin = async (messageId: string, currentPinned: boolean | undefined) => {
     if (!user || !eventId) return;
 
-    if (user.uid !== organizerId && !isSuperAdmin) {
-        toast({ title: 'Unauthorized', description: 'Only the event organizer can pin messages.', variant: 'destructive' });
+    if (user.uid !== organizerId && !isSuperAdmin && !isAdmin) {
+        toast({ title: 'Unauthorized', description: 'Only the event organizer or an admin can pin messages.', variant: 'destructive' });
         return;
     }
 
@@ -263,7 +263,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
 
     return (
       <div className="flex flex-col h-full">
-         {(user?.uid === organizerId || isSuperAdmin) && (
+         {(user?.uid === organizerId || isSuperAdmin || isAdmin) && (
              <div className="flex-shrink-0 px-1 py-2 flex justify-end">
                 <button
                   onClick={() => setShowClearDialog(true)}
@@ -288,6 +288,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
                   profile={profiles[m.senderId]}
                   onTogglePin={togglePin}
                   isSuperAdmin={isSuperAdmin}
+                  isAdmin={isAdmin}
                   onDelete={handleDeleteMessage}
                 />
               ))}
@@ -309,6 +310,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
                   profile={profiles[m.senderId]}
                   onTogglePin={togglePin}
                   isSuperAdmin={isSuperAdmin}
+                  isAdmin={isAdmin}
                   onDelete={handleDeleteMessage}
                 />
               ))}

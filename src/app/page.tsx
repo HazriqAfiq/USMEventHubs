@@ -26,7 +26,7 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [now, setNow] = useState(new Date());
-  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter, date: dateFilter, timeOfDay: timeOfDayFilter } = useEventFilters();
+  const { priceFilter, setPriceFilter, typeFilter, setTypeFilter, dates: dateFilter, timeOfDay: timeOfDayFilter } = useEventFilters();
   const { user, userProfile, isOrganizer, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
   const router = useRouter();
@@ -154,7 +154,7 @@ export default function Home() {
       
       const campusMatch = !selectedCampus || event.conductingCampus === selectedCampus;
 
-      const dateMatch = !dateFilter || (event.date && isSameDay(event.date.toDate(), dateFilter));
+      const dateMatch = !dateFilter || dateFilter.length === 0 || (event.date && dateFilter.some(filterDate => isSameDay(event.date.toDate(), filterDate)));
 
       const timeOfDayMatch = (() => {
         if (timeOfDayFilter === 'all') return true;

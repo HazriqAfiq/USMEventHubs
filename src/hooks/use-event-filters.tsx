@@ -12,8 +12,8 @@ interface EventFilterContextType {
   setPriceFilter: (value: PriceFilter) => void;
   typeFilter: TypeFilter;
   setTypeFilter: (value: TypeFilter) => void;
-  date: Date | undefined;
-  setDate: (date: Date | undefined) => void;
+  dates: Date[] | undefined;
+  setDates: (date: Date[] | undefined) => void;
   timeOfDay: TimeOfDayFilter;
   setTimeOfDay: (value: TimeOfDayFilter) => void;
 }
@@ -23,11 +23,11 @@ const EventFilterContext = createContext<EventFilterContextType | undefined>(und
 export const EventFilterProvider = ({ children }: { children: ReactNode }) => {
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [date, setDate] = useState<Date | undefined>();
+  const [dates, setDates] = useState<Date[] | undefined>();
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDayFilter>('all');
 
 
-  const value = { priceFilter, setPriceFilter, typeFilter, setTypeFilter, date, setDate, timeOfDay, setTimeOfDay };
+  const value = { priceFilter, setPriceFilter, typeFilter, setTypeFilter, dates, setDates, timeOfDay, setTimeOfDay };
 
   return (
     <EventFilterContext.Provider value={value}>

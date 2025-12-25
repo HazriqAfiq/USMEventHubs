@@ -7,16 +7,21 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { useEventFilters } from '@/hooks/use-event-filters';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export function AdvancedEventFilters() {
-  const { date, setDate, timeOfDay, setTimeOfDay } = useEventFilters();
+  const { dates, setDates, timeOfDay, setTimeOfDay } = useEventFilters();
 
   const handleClear = () => {
-    setDate(undefined);
+    setDates(undefined);
     setTimeOfDay('all');
   };
+  
+  const displayDateText = () => {
+    if (!dates || dates.length === 0) return <span>Pick dates</span>;
+    if (dates.length === 1) return <span>{dates[0].toLocaleDateString()}</span>;
+    return <span>{dates.length} dates selected</span>;
+  }
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -27,18 +32,18 @@ export function AdvancedEventFilters() {
             size="sm"
             className={cn(
               'w-full sm:w-[240px] justify-start text-left font-normal',
-              !date && 'text-muted-foreground'
+              !dates?.length && 'text-muted-foreground'
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, 'PPP') : <span>Pick a date</span>}
+            {displayDateText()}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(day) => setDate(day)}
+            mode="multiple"
+            selected={dates}
+            onSelect={setDates}
             initialFocus
           />
         </PopoverContent>
@@ -58,7 +63,7 @@ export function AdvancedEventFilters() {
         <ToggleGroupItem value="evening" aria-label="Evening">Evening</ToggleGroupItem>
       </ToggleGroup>
       
-      {(date || timeOfDay !== 'all') && (
+      {(dates?.length || timeOfDay !== 'all') && (
         <Button variant="ghost" size="sm" onClick={handleClear} className="text-muted-foreground hover:text-foreground">
           <X className="mr-2 h-4 w-4" />
           Clear

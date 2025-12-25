@@ -24,7 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
-import type { Event } from '@/types';
+import type { Event, UserProfile } from '@/types';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from './ui/input';
@@ -49,6 +49,7 @@ interface SuperAdminEventListProps {
 
 export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: SuperAdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -58,6 +59,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [campusFilter, setCampusFilter] = useState('all');
+  const [organizerFilter, setOrganizerFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
   const [statusFilter, setStatusFilter] = useState(statusParam || 'all');
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
@@ -73,12 +75,12 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
     }
     
     const eventsRef = collection(db, 'events');
-    const q = query(eventsRef);
+    const eventsQuery = query(eventsRef);
+    const usersQuery = query(collection(db, 'users'));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubEvents = onSnapshot(eventsQuery, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
-        // Defensive check for data integrity
         if (doc.data() && doc.data().date) {
             eventsData.push({ id: doc.id, ...doc.data() } as Event);
         }
@@ -94,7 +96,14 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
+      setUsers(snapshot.docs.map(doc => doc.data() as UserProfile));
+    });
+
+    return () => {
+      unsubEvents();
+      unsubUsers();
+    };
   }, [authLoading, isSuperAdmin]);
   
   useEffect(() => {
@@ -107,13 +116,16 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
           [event.id]: snapshot.size
         }));
       }, (error) => {
-        // This can happen if an event is deleted. We just ignore the error.
-        // console.error(`Error fetching registrations for event ${event.id}:`, error);
       });
       unsubscribers.push(unsubscribe);
     });
     return () => unsubscribers.forEach(unsub => unsub());
   }, [events]);
+
+  const organizers = useMemo(() => {
+    const organizerIds = new Set(events.map(e => e.organizerId));
+    return users.filter(u => u.role === 'organizer' && organizerIds.has(u.uid));
+  }, [events, users]);
 
 
   const filteredEvents = useMemo(() => {
@@ -144,12 +156,15 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
         const campusFilterMatch =
           campusFilter === 'all' || event.conductingCampus === campusFilter;
         
+        const organizerFilterMatch =
+          organizerFilter === 'all' || event.organizerId === organizerFilter;
+        
         const statusFilterMatch =
           statusFilter === 'all' || event.status === statusFilter;
 
         const monthFilterMatch = !chartMonthFilter || (event.date && isWithinInterval(event.date.toDate(), { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) }));
         
-        return timeFilterMatch && searchFilterMatch && campusFilterMatch && statusFilterMatch && monthFilterMatch;
+        return timeFilterMatch && searchFilterMatch && campusFilterMatch && statusFilterMatch && monthFilterMatch && organizerFilterMatch;
       });
 
     // Sorting logic
@@ -168,7 +183,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
     });
 
     return sortedEvents;
-  }, [events, filter, searchQuery, campusFilter, sortOption, statusFilter, participantCounts, chartMonthFilter]);
+  }, [events, filter, searchQuery, campusFilter, organizerFilter, sortOption, statusFilter, participantCounts, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     if (!isSuperAdmin) {
@@ -321,6 +336,17 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
                         <SelectItem key={campus} value={campus}>{campus}</SelectItem>
                     ))}
                 </SelectContent>
+            </Select>
+            <Select value={organizerFilter} onValueChange={setOrganizerFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Filter by organizer"/>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Organizers</SelectItem>
+                {organizers.map(org => (
+                  <SelectItem key={org.uid} value={org.uid}>{org.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <Select value={sortOption} onValueChange={setSortOption}>
                 <SelectTrigger className="w-full sm:w-[180px]">

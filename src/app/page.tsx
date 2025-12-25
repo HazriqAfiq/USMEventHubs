@@ -163,7 +163,7 @@ export default function Home() {
         const [startHour] = event.startTime.split(':').map(Number);
         if (timeOfDayFilter === 'morning' && startHour >= 5 && startHour < 12) return true;
         if (timeOfDayFilter === 'afternoon' && startHour >= 12 && startHour < 17) return true;
-        if (timeOfDayFilter === 'evening' && startHour >= 17 && startHour < 24) return true;
+        if (timeOfDayFilter === 'night' && startHour >= 17 && startHour < 24) return true;
         
         return false;
       })();

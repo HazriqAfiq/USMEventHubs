@@ -60,7 +60,7 @@ export function AdvancedEventFilters() {
         <ToggleGroupItem value="all" aria-label="All day">All Day</ToggleGroupItem>
         <ToggleGroupItem value="morning" aria-label="Morning">Morning</ToggleGroupItem>
         <ToggleGroupItem value="afternoon" aria-label="Afternoon">Afternoon</ToggleGroupItem>
-        <ToggleGroupItem value="evening" aria-label="Evening">Evening</ToggleGroupItem>
+        <ToggleGroupItem value="night" aria-label="Night">Night</ToggleGroupItem>
       </ToggleGroup>
       
       {(dates?.length || timeOfDay !== 'all') && (

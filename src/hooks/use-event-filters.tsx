@@ -5,7 +5,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 type PriceFilter = 'all' | 'free' | 'paid';
 type TypeFilter = 'all' | 'online' | 'physical';
-type TimeOfDayFilter = 'all' | 'morning' | 'afternoon' | 'evening';
+type TimeOfDayFilter = 'all' | 'morning' | 'afternoon' | 'night';
 
 interface EventFilterContextType {
   priceFilter: PriceFilter;

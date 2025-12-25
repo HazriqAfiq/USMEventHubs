@@ -192,8 +192,8 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
         toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'You cannot delete your own account.' });
         return;
     }
-     if (userToDelete.role === 'superadmin' || userToDelete.role === 'admin') {
-        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Admin and Superadmin accounts cannot be deleted.' });
+     if (userToDelete.role === 'superadmin') {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Superadmin accounts cannot be deleted.' });
         return;
     }
     // Deleting the user from Firestore. Deleting from Firebase Auth is a server-side operation.
@@ -338,7 +338,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                          <span className="text-sm text-muted-foreground">
                            This is you
                          </span>
-                    ) : user.role === 'superadmin' || user.role === 'admin' ? (
+                    ) : user.role === 'superadmin' ? (
                         <span className="text-sm text-muted-foreground">No actions</span>
                     ) : (
                       <DropdownMenu>

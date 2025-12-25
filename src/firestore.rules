@@ -227,8 +227,9 @@ service cloud.firestore {
                       ) ||
                       ( // Superadmin updates
                         isSuperAdmin(request.auth.uid) && 
-                        // Prevent a superadmin from being disabled or having their role changed by another superadmin.
-                        !(resource.data.role == 'superadmin' && (request.resource.data.disabled == true || request.resource.data.role != 'superadmin'))
+                        // Prevent a superadmin from disabling or demoting another superadmin.
+                        !(resource.data.role == 'superadmin' && request.resource.data.role != 'superadmin') &&
+                        !(resource.data.role == 'superadmin' && request.resource.data.disabled == true)
                       ) ||
                       ( // Campus Admin updates
                         isCampusAdmin(request.auth.uid, resource.data.campus) &&

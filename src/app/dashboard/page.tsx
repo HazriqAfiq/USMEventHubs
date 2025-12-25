@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect } from 'react';
@@ -10,15 +11,15 @@ import { Terminal, User } from 'lucide-react';
 import UserEventList from '@/components/UserEventList';
 
 export default function DashboardPage() {
-  const { user, isOrganizer, isSuperAdmin, loading } = useAuth();
+  const { user, isOrganizer, isSuperAdmin, isAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If not loading and user is not logged in, or if user is an organizer, redirect to homepage.
-    if (!loading && (!user || isOrganizer || isSuperAdmin)) {
+    // If not loading and user is not logged in, or if user has an admin/organizer role, redirect.
+    if (!loading && (!user || isOrganizer || isSuperAdmin || isAdmin)) {
       router.push('/');
     }
-  }, [user, isOrganizer, isSuperAdmin, loading, router]);
+  }, [user, isOrganizer, isSuperAdmin, isAdmin, loading, router]);
 
   if (loading) {
     return (
@@ -40,8 +41,8 @@ export default function DashboardPage() {
     );
   }
 
-  // If user is not logged in or is an organizer, show a message while redirecting.
-  if (!user || isOrganizer || isSuperAdmin) {
+  // If user is not logged in or has an elevated role, show a message while redirecting.
+  if (!user || isOrganizer || isSuperAdmin || isAdmin) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
         <Alert variant="destructive" className="max-w-md mx-auto">

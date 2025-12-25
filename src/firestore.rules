@@ -1,17 +1,33 @@
 
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to get a user document
+    function getUser(userId) {
+      return get(/databases/$(database)/documents/users/$(userId));
+    }
+
     // Helper function to get user's role from the 'users' collection
     function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+      return getUser(userId).data.role;
     }
     
     // Helper function to check if user is an organizer
     function isOrganizer(userId) {
       return getUserRole(userId) == 'organizer';
+    }
+
+    // Helper function to check if user is an admin
+    function isAdmin(userId) {
+      return getUserRole(userId) == 'admin';
+    }
+    
+    // Helper function to check if user is an admin of a specific campus
+    function isCampusAdmin(userId, campus) {
+        return isAdmin(userId) && getUser(userId).data.campus == campus;
     }
 
     // Helper function to check if user is a superadmin
@@ -22,6 +38,10 @@ service cloud.firestore {
     // Helper function to check if a user is a student
     function isStudent(userId) {
       return getUserRole(userId) == 'student';
+    }
+    
+    function getEvent(eventId) {
+        return get(/databases/$(database)/documents/events/$(eventId));
     }
 
     // Default deny all
@@ -40,22 +60,24 @@ service cloud.firestore {
     // Define rules for the 'events' collection
     match /events/{eventId} {
       // Anyone can read event details IF the event is approved
-      // Organizers and Superadmins can read any event, regardless of status (for editing/previewing)
+      // Admins, Organizers and Superadmins can read any event, regardless of status
       allow get: if (resource.data.status == 'approved') || 
-                   (request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid)));
+                   (request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid) || isAdmin(request.auth.uid)));
 
       // Allow listing events. Client-side queries handle filtering by 'approved' status for regular users.
-      // Organizers and Superadmins have broader list access handled by their specific page queries.
+      // Admins, Organizers and Superadmins have broader list access handled by their specific page queries.
       allow list: if request.auth != null;
 
 
       // Creation of events
-      allow create: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid))
+      allow create: if request.auth != null && (isOrganizer(request.auth.uid) || isSuperAdmin(request.auth.uid) || isAdmin(request.auth.uid))
                     && request.resource.data.organizerId == request.auth.uid
                     && request.resource.data.imageUrl is string
                     && (
                       (isOrganizer(request.auth.uid) && request.resource.data.status == 'pending') ||
-                      (isSuperAdmin(request.auth.uid) && request.resource.data.status == 'approved')
+                      (isSuperAdmin(request.auth.uid) && request.resource.data.status == 'approved') ||
+                      // Admins can create events, they start as 'approved' but are campus-locked
+                      (isAdmin(request.auth.uid) && request.resource.data.status == 'approved' && request.resource.data.conductingCampus == getUser(request.auth.uid).data.campus)
                     )
                     // New events must not have the isApprovedOnce flag set to true
                     && (request.resource.data.isApprovedOnce == false || request.resource.data.isApprovedOnce == null);
@@ -94,17 +116,25 @@ service cloud.firestore {
         ) ||
         ( // Rule for Superadmin updates - can update anything, including status changes.
             isSuperAdmin(request.auth.uid)
+        ) ||
+        ( // Rule for Admin updates - can update events within their own campus.
+          isCampusAdmin(request.auth.uid, resource.data.conductingCampus)
         )
       );
       
-      // Organizers can delete their own events (if not approved), Superadmins can delete any event.
-      allow delete: if request.auth != null && (isSuperAdmin(request.auth.uid) || (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid && resource.data.status != 'approved' && resource.data.status != 'pending-deletion'));
+      // Organizers can delete their own events (if not approved). Admins can delete within their campus. Superadmins can delete any event.
+      allow delete: if request.auth != null && (
+        isSuperAdmin(request.auth.uid) || 
+        isCampusAdmin(request.auth.uid, resource.data.conductingCampus) ||
+        (isOrganizer(request.auth.uid) && resource.data.organizerId == request.auth.uid && resource.data.status != 'approved' && resource.data.status != 'pending-deletion')
+      );
       
       // Rules for listing the 'registrations' subcollection
       match /registrations/{document=**} {
-        // Organizers and Superadmins can list all registrations for any event.
+        // Organizers, Admins and Superadmins can list all registrations for any event.
         allow list: if request.auth != null && (
-            (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) || 
+            (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid) ||
+            isCampusAdmin(request.auth.uid, get(/databases/$(database)/documents/events/$(eventId)).data.conductingCampus) ||
             isSuperAdmin(request.auth.uid)
         );
       }
@@ -127,6 +157,7 @@ service cloud.firestore {
         allow read: if request.auth != null && get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved' && (
           isOrganizer(request.auth.uid) ||
           isSuperAdmin(request.auth.uid) ||
+          isAdmin(request.auth.uid) ||
           exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
         );
 
@@ -138,12 +169,14 @@ service cloud.firestore {
           && (
             isOrganizer(request.auth.uid) ||
             isSuperAdmin(request.auth.uid) ||
+            isAdmin(request.auth.uid) ||
             exists(/databases/$(database)/documents/events/$(eventId)/registrations/$(request.auth.uid))
           );
 
         // Allow the event organizer or superadmins to toggle the `pinned` flag only.
         allow update: if request.auth != null && (
           isSuperAdmin(request.auth.uid) ||
+          isAdmin(request.auth.uid) ||
           // organizer of the parent event can pin/unpin
           get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
         )
@@ -154,6 +187,7 @@ service cloud.firestore {
         // Allow delete by superadmin or the original sender
         allow delete: if request.auth != null && (
           isSuperAdmin(request.auth.uid) || 
+          isAdmin(request.auth.uid) ||
           resource.data.senderId == request.auth.uid
         );
       }
@@ -173,12 +207,15 @@ service cloud.firestore {
                     && request.resource.data.disabled == false;
 
       // Allow any authenticated user to read profiles.
-      // Profile data is not sensitive and is required for chat display etc.
+      // Admins can list users within their campus.
       // Superadmins can list all users.
       allow get: if request.auth != null;
-      allow list: if request.auth != null && isSuperAdmin(request.auth.uid);
+      allow list: if request.auth != null && (
+        isSuperAdmin(request.auth.uid) || isAdmin(request.auth.uid)
+      );
 
       // A user can update their own 'name' or 'photoURL'. 
+      // Admins can update users within their campus (but not other admins/superadmins)
       // Superadmins can change any field, including roles and disabled status.
       allow update: if request.auth != null && (
                       ( // User's own updates
@@ -190,24 +227,39 @@ service cloud.firestore {
                       ) ||
                       ( // Superadmin updates
                         isSuperAdmin(request.auth.uid) && 
-                        // Prevent a superadmin from being disabled or having their role changed by another superadmin.
-                        !(resource.data.role == 'superadmin' && (request.resource.data.disabled == true || request.resource.data.role != 'superadmin'))
+                        // Prevent a superadmin from disabling or demoting another superadmin.
+                        !(resource.data.role == 'superadmin' && request.resource.data.role != 'superadmin') &&
+                        !(resource.data.role == 'superadmin' && request.resource.data.disabled == true)
+                      ) ||
+                      ( // Campus Admin updates
+                        isCampusAdmin(request.auth.uid, resource.data.campus) &&
+                        // Campus admins cannot edit other admins or superadmins
+                        resource.data.role != 'admin' && resource.data.role != 'superadmin'
                       )
                     );
 
-      // Only superadmins can delete user documents. A user cannot delete their own document.
-      // A superadmin also cannot be deleted.
-      allow delete: if request.auth != null && isSuperAdmin(request.auth.uid) && resource.data.role != 'superadmin';
+      // Admins can delete users in their campus (not other admins/superadmins). Superadmins can delete any user except other superadmins.
+      allow delete: if request.auth != null && (
+        (isSuperAdmin(request.auth.uid) && resource.data.role != 'superadmin') ||
+        (isCampusAdmin(request.auth.uid, resource.data.campus) && resource.data.role != 'admin' && resource.data.role != 'superadmin')
+      );
 
        // Define rules for the 'notifications' subcollection
       match /notifications/{notificationId} {
         // A user can manage their own notifications
         allow read, write, delete: if request.auth.uid == userId;
 
-        // Allow Superadmins OR the event organizer to create notifications.
+        // Allow Superadmins, Admins, OR Organizers to create notifications
         allow create: if request.auth != null && (
             isSuperAdmin(request.auth.uid) || 
+            (
+              isAdmin(request.auth.uid) && 
+              request.resource.data.eventId != null &&
+              getEvent(request.resource.data.eventId).data.conductingCampus == getUser(request.auth.uid).data.campus
+            ) ||
             (isOrganizer(request.auth.uid) && (
+                // Organizer can notify a superadmin about an event update
+                isSuperAdmin(userId) ||
                 // Organizer can notify participants about an event they are registered for
                 (request.resource.data.organizerId == request.auth.uid)
             ))
@@ -222,5 +274,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

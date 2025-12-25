@@ -41,7 +41,7 @@ export interface Event {
 export interface UserProfile {
   uid: string;
   email: string | null;
-  role: 'organizer' | 'student' | 'superadmin';
+  role: 'organizer' | 'student' | 'superadmin' | 'admin';
   name?: string;
   photoURL?: string | null;
   campus?: string;
@@ -54,5 +54,6 @@ export interface AppNotification {
     href: string;
     createdAt: Timestamp;
     read: boolean;
+    eventId?: string;
     updateReason?: string;
 }

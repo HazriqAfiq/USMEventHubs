@@ -7,9 +7,9 @@ import { collection, onSnapshot, query, doc, deleteDoc, where } from 'firebase/f
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
-import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle, XCircle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, X, History, AlertTriangle, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,61 +24,48 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { Card } from './ui/card';
-import type { Event, UserProfile } from '@/types';
+import type { Event } from '@/types';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import EventDetailDialog from './EventDetailDialog';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
-import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-
-const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
-
-interface SuperAdminEventListProps {
+interface AdminEventListProps {
   monthFilter?: Date | null;
   onClearMonthFilter?: () => void;
 }
 
-
-export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: SuperAdminEventListProps) {
+export default function AdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: AdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const statusParam = searchParams.get('status');
-
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [campusFilter, setCampusFilter] = useState('all');
-  const [organizerFilter, setOrganizerFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
-  const [statusFilter, setStatusFilter] = useState(statusParam || 'all');
-  const { user, isSuperAdmin, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
+  const router = useRouter();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
-    if (authLoading || !isSuperAdmin) {
+    if (authLoading || !userProfile?.campus) {
         if (!authLoading) setLoading(false);
         return;
     }
     
     const eventsRef = collection(db, 'events');
-    const eventsQuery = query(eventsRef);
-    const usersQuery = query(collection(db, 'users'));
+    const q = query(eventsRef, where('conductingCampus', '==', userProfile.campus));
 
-    const unsubEvents = onSnapshot(eventsQuery, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const eventsData: Event[] = [];
       querySnapshot.forEach((doc) => {
         if (doc.data() && doc.data().date) {
@@ -87,24 +74,13 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
       });
       setEvents(eventsData);
       setLoading(false);
-    }, (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: eventsRef.path,
-        operation: 'list',
-      }, serverError);
-      errorEmitter.emit('permission-error', permissionError);
+    }, (error) => {
+      console.error("Error fetching campus events: ", error);
       setLoading(false);
     });
 
-    const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-      setUsers(snapshot.docs.map(doc => doc.data() as UserProfile));
-    });
-
-    return () => {
-      unsubEvents();
-      unsubUsers();
-    };
-  }, [authLoading, isSuperAdmin]);
+    return () => unsubscribe();
+  }, [authLoading, userProfile]);
   
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
@@ -115,17 +91,11 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
           ...prevCounts,
           [event.id]: snapshot.size
         }));
-      }, (error) => {
       });
       unsubscribers.push(unsubscribe);
     });
     return () => unsubscribers.forEach(unsub => unsub());
   }, [events]);
-
-  const organizers = useMemo(() => {
-    const organizerIds = new Set(events.map(e => e.organizerId));
-    return users.filter(u => u.role === 'organizer' && organizerIds.has(u.uid));
-  }, [events, users]);
 
 
   const filteredEvents = useMemo(() => {
@@ -141,8 +111,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
         return null;
     }
 
-    let sortedEvents = [...events]
-      .filter(event => {
+    let sortedEvents = [...events].filter(event => {
         const timeFilterMatch =
           filter === 'all' ||
           (filter === 'upcoming' && (getEventEndTime(event) ?? new Date(0)) >= now) ||
@@ -150,24 +119,16 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
 
         const searchFilterMatch =
           !searchQuery ||
-          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          event.id.toLowerCase().includes(searchQuery.toLowerCase());
-        
-        const campusFilterMatch =
-          campusFilter === 'all' || event.conductingCampus === campusFilter;
-        
-        const organizerFilterMatch =
-          organizerFilter === 'all' || event.organizerId === organizerFilter;
+          event.title.toLowerCase().includes(searchQuery.toLowerCase());
         
         const statusFilterMatch =
           statusFilter === 'all' || event.status === statusFilter;
-
+        
         const monthFilterMatch = !chartMonthFilter || (event.date && isWithinInterval(event.date.toDate(), { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) }));
         
-        return timeFilterMatch && searchFilterMatch && campusFilterMatch && statusFilterMatch && monthFilterMatch && organizerFilterMatch;
+        return timeFilterMatch && searchFilterMatch && statusFilterMatch && monthFilterMatch;
       });
 
-    // Sorting logic
     sortedEvents.sort((a, b) => {
       switch (sortOption) {
         case 'date-asc':
@@ -183,38 +144,18 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
     });
 
     return sortedEvents;
-  }, [events, filter, searchQuery, campusFilter, organizerFilter, sortOption, statusFilter, participantCounts, chartMonthFilter]);
+  }, [events, filter, searchQuery, statusFilter, sortOption, participantCounts, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
-    if (!isSuperAdmin) {
-      toast({ variant: 'destructive', title: 'Permission Denied' });
-      return;
-    }
     try {
       if (eventToDelete.imageUrl) {
-        try {
-          const imageRef = ref(storage, eventToDelete.imageUrl);
-          await deleteObject(imageRef);
-        } catch (storageError: any) {
-          if (storageError.code !== 'storage/object-not-found') {
-             console.error("Error deleting event image: ", storageError);
-          }
-        }
+        try { await deleteObject(ref(storage, eventToDelete.imageUrl)); } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting image", e); }
       }
       if (eventToDelete.qrCodeUrl) {
-         try {
-          const qrRef = ref(storage, eventToDelete.qrCodeUrl);
-          await deleteObject(qrRef);
-        } catch (storageError: any) {
-           if (storageError.code !== 'storage/object-not-found') {
-            console.error("Error deleting QR code image: ", storageError);
-           }
-        }
+         try { await deleteObject(ref(storage, eventToDelete.qrCodeUrl)); } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting QR", e); }
       }
        if (eventToDelete.videoUrl) {
-         try {
-          await deleteObject(ref(storage, eventToDelete.videoUrl));
-        } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting event video:", e); }
+         try { await deleteObject(ref(storage, eventToDelete.videoUrl)); } catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting video", e); }
       }
 
       await deleteDoc(doc(db, 'events', eventToDelete.id));
@@ -229,7 +170,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
       toast({
         variant: 'destructive',
         title: 'Deletion Failed',
-        description: 'Could not remove the event from the database.',
+        description: 'Could not remove the event.',
       });
     }
   };
@@ -240,62 +181,54 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
   };
   
   const StatusBadge = ({ event }: { event: Event }) => {
-    const isPending = ['pending', 'pending-update', 'pending-deletion'].includes(event.status);
-
     const statusConfig: { [key in Event['status']]: { label: string; icon: React.ElementType; className: string; tooltip: string } } = {
-      approved: { label: 'Approved', icon: CheckCircle2, className: 'bg-green-500/20 text-green-400 border-green-500/30', tooltip: 'This event is live and visible.' },
-      pending: { label: 'Pending', icon: Clock, className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', tooltip: 'This event is awaiting approval.' },
-      'pending-update': { label: 'Updated', icon: History, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30', tooltip: 'This event update is awaiting approval.' },
-      'pending-deletion': { label: 'Deletion', icon: AlertTriangle, className: 'bg-orange-500/20 text-orange-400 border-orange-500/30', tooltip: 'This deletion request is awaiting approval.' },
-      rejected: { label: 'Rejected', icon: X, className: 'bg-red-500/20 text-red-400 border-red-500/30', tooltip: event.rejectionReason ? `Reason: ${event.rejectionReason}` : 'This event has been rejected.' }
+      approved: { label: 'Approved', icon: CheckCircle2, className: 'bg-green-500/20 text-green-400 border-green-500/30', tooltip: 'This event is live.' },
+      pending: { label: 'Pending', icon: Clock, className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', tooltip: 'Awaiting superadmin approval.' },
+      'pending-update': { label: 'Updated', icon: History, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30', tooltip: 'Update awaiting superadmin approval.' },
+      'pending-deletion': { label: 'Deletion', icon: AlertTriangle, className: 'bg-orange-500/20 text-orange-400 border-orange-500/30', tooltip: 'Deletion awaiting superadmin approval.' },
+      rejected: { label: 'Rejected', icon: X, className: 'bg-red-500/20 text-red-400 border-red-500/30', tooltip: event.rejectionReason ? `Reason: ${event.rejectionReason}` : 'Rejected by superadmin.' }
     };
     
     const config = statusConfig[event.status];
     if (!config) return null;
 
-    const badge = (
-      <Badge className={cn('capitalize', config.className, isPending && 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-background')} onClick={isPending ? () => router.push('/superadmin/approvals') : undefined}>
-          <config.icon className="mr-1.5 h-3 w-3" />
-          {config.label}
-      </Badge>
-    );
-
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>{badge}</TooltipTrigger>
-          <TooltipContent>
-            <p>{isPending ? `Click to go to approvals page` : config.tooltip}</p>
-          </TooltipContent>
+          <TooltipTrigger>
+             <Badge className={cn('capitalize', config.className)}>
+                <config.icon className="mr-1.5 h-3 w-3" />
+                {config.label}
+              </Badge>
+          </TooltipTrigger>
+          <TooltipContent><p>{config.tooltip}</p></TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   };
 
+  const handleClearMonthFilter = () => {
+    if (onClearMonthFilter) {
+      onClearMonthFilter();
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="mt-6 space-y-4">
         <Skeleton className="h-10 w-full" />
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
-        ))}
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
       </div>
     );
   }
 
-  const handleClearMonthFilter = () => {
-    if (onClearMonthFilter) {
-        onClearMonthFilter();
-    }
-  }
-
   return (
     <>
-    <div className="mt-6 space-y-4">
+    <div className="space-y-4">
        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="flex-grow w-full md:w-auto">
             <Input
-              placeholder="Search by event title or ID..."
+              placeholder="Search events..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full"
@@ -303,10 +236,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <ToggleGroup
-                type="single"
-                variant="outline"
-                value={filter}
-                onValueChange={(value) => { if (value) setFilter(value as any); }}
+                type="single" variant="outline" value={filter} onValueChange={(value) => { if (value) setFilter(value as any); }}
                 className="w-full sm:w-auto"
             >
                 <ToggleGroupItem value="all" className="w-full">All</ToggleGroupItem>
@@ -325,28 +255,6 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
                     <SelectItem value="pending-deletion">Pending Deletion</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
-            </Select>
-             <Select value={campusFilter} onValueChange={setCampusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by campus" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Campuses</SelectItem>
-                    {campuses.map(campus => (
-                        <SelectItem key={campus} value={campus}>{campus}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Select value={organizerFilter} onValueChange={setOrganizerFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filter by organizer"/>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Organizers</SelectItem>
-                {organizers.map(org => (
-                  <SelectItem key={org.uid} value={org.uid}>{org.name}</SelectItem>
-                ))}
-              </SelectContent>
             </Select>
             <Select value={sortOption} onValueChange={setSortOption}>
                 <SelectTrigger className="w-full sm:w-[180px]">
@@ -371,11 +279,11 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
               Clear Filter
             </Button>
           </div>
-      )}
+        )}
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          No events found for the selected criteria.
+          No events found for your campus matching the selected criteria.
         </Card>
       ) : (
         filteredEvents.map((event) => (
@@ -385,53 +293,30 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
             </div>
             <div className="flex-grow overflow-hidden">
               <h3 className="font-bold truncate">{event.title}</h3>
-              <p className="text-xs text-muted-foreground">ID: {event.id}</p>
               <div className="flex items-center flex-wrap gap-x-4 text-sm text-muted-foreground mt-1">
                 <span>{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</span>
-                <span className='flex items-center'>
-                    <Users className="mr-1.5 h-4 w-4" />
-                    {participantCounts[event.id] ?? 0}
-                </span>
-                 <span className='flex items-center'>
-                    <Eye className="mr-1.5 h-4 w-4" />
-                    {event.viewCount ?? 0}
-                </span>
+                <span className='flex items-center'><Users className="mr-1.5 h-4 w-4" />{participantCounts[event.id] ?? 0}</span>
+                <span className='flex items-center'><Eye className="mr-1.5 h-4 w-4" />{event.viewCount ?? 0}</span>
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <StatusBadge event={event} />
-                <Badge variant="secondary">{event.conductingCampus}</Badge>
               </div>
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
-               <Button asChild variant="outline" size="icon">
-                  <Link href={`/event/${event.id}`}>
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="sr-only">View Chat</span>
-                  </Link>
-               </Button>
-                <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
-                  <FilePenLine className="h-4 w-4" />
-                  <span className="sr-only">Edit Event</span>
-                </Button>
+               <Button asChild variant="outline" size="icon"><Link href={`/event/${event.id}`}><MessageSquare className="h-4 w-4" /></Link></Button>
+               <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}><FilePenLine className="h-4 w-4" /></Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Event</span>
-                  </Button>
+                  <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the event "{event.title}".
-                    </AlertDialogDescription>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently delete "{event.title}". This action cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(event)}>
-                      Continue
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDelete(event)}>Continue</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -445,7 +330,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
             event={selectedEvent}
             isOpen={isDialogOpen}
             onClose={() => setIsDialogOpen(false)}
-            isEditable={true} // Superadmin can always edit
+            isEditable={true}
         />
     )}
     </>

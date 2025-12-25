@@ -207,7 +207,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
       }
     }
     
-    const availableMonths = Array.from(monthSet).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const allMonths = Array.from(new Set(events.map(e => format(e.date.toDate(), 'yyyy-MM'))))
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     return {
       filteredEvents: baseFiltered,
@@ -216,7 +217,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
       totalEventsCount: events.length,
       monthlyData,
       availableYears,
-      availableMonths,
+      availableMonths: allMonths,
       campusEventCount,
     };
   }, [events, timeFilter, monthFilter, sortOption, selectedYear, chartMonthFilter, campusCountFilter, campusFilter]);

@@ -33,6 +33,7 @@ import EventDetailDialog from './EventDetailDialog';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { useRouter } from 'next/navigation';
 
 export default function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -44,6 +45,7 @@ export default function AdminEventList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
   const { userProfile, loading: authLoading } = useAuth();
+  const router = useRouter();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -277,7 +279,7 @@ export default function AdminEventList() {
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
                <Button asChild variant="outline" size="icon"><Link href={`/event/${event.id}`}><MessageSquare className="h-4 w-4" /></Link></Button>
-               <Button variant="outline" size="icon" onClick={() => router.push(`/organizer/edit/${event.id}`)}><FilePenLine className="h-4 w-4" /></Button>
+               <Button asChild variant="outline" size="icon"><Link href={`/organizer/edit/${event.id}`}><FilePenLine className="h-4 w-4" /></Link></Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>

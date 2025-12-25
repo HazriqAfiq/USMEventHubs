@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -6,9 +7,9 @@ import { collection, onSnapshot, query, doc, deleteDoc, where } from 'firebase/f
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, X, History, AlertTriangle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, X, History, AlertTriangle, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +34,7 @@ import EventDetailDialog from './EventDetailDialog';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -46,6 +47,8 @@ export default function AdminEventList() {
   const [sortOption, setSortOption] = useState('date-desc');
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const monthQuery = searchParams.get('month');
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -118,7 +121,9 @@ export default function AdminEventList() {
         const statusFilterMatch =
           statusFilter === 'all' || event.status === statusFilter;
         
-        return timeFilterMatch && searchFilterMatch && statusFilterMatch;
+        const monthFilterMatch = !monthQuery || (event.date && format(event.date.toDate(), 'yyyy-MM') === monthQuery);
+        
+        return timeFilterMatch && searchFilterMatch && statusFilterMatch && monthFilterMatch;
       });
 
     sortedEvents.sort((a, b) => {
@@ -136,7 +141,7 @@ export default function AdminEventList() {
     });
 
     return sortedEvents;
-  }, [events, filter, searchQuery, statusFilter, sortOption, participantCounts]);
+  }, [events, filter, searchQuery, statusFilter, sortOption, participantCounts, monthQuery]);
 
   const handleDelete = async (eventToDelete: Event) => {
     try {
@@ -199,6 +204,12 @@ export default function AdminEventList() {
     );
   };
 
+  const handleClearMonthFilter = () => {
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.delete('month');
+    router.push(`/admin/events?${newParams.toString()}`);
+  }
+
   if (loading || authLoading) {
     return (
       <div className="mt-6 space-y-4">
@@ -255,6 +266,17 @@ export default function AdminEventList() {
             </Select>
           </div>
       </div>
+      {monthQuery && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Showing events for: <strong>{format(parse(monthQuery, 'yyyy-MM', new Date()), 'MMMM yyyy')}</strong>
+            </p>
+            <Button variant="ghost" size="sm" onClick={handleClearMonthFilter}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear Filter
+            </Button>
+          </div>
+        )}
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">

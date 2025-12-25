@@ -3,13 +3,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, where, isWithinInterval, startOfMonth, endOfMonth } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import EventDetailDialog from './EventDetailDialog';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import Link from 'next/link';
@@ -41,15 +41,25 @@ import Link from 'next/link';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
-export default function SuperAdminEventList() {
+interface SuperAdminEventListProps {
+  monthFilter?: Date | null;
+  onClearMonthFilter?: () => void;
+}
+
+
+export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onClearMonthFilter }: SuperAdminEventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [participantCounts, setParticipantCounts] = useState<{[key: string]: number}>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get('status');
+
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [campusFilter, setCampusFilter] = useState('all');
   const [sortOption, setSortOption] = useState('date-desc');
+  const [statusFilter, setStatusFilter] = useState(statusParam || 'all');
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -121,12 +131,12 @@ export default function SuperAdminEventList() {
 
     let sortedEvents = [...events]
       .filter(event => {
-        const timeFilter =
+        const timeFilterMatch =
           filter === 'all' ||
           (filter === 'upcoming' && (getEventEndTime(event) ?? new Date(0)) >= now) ||
           (filter === 'past' && (getEventEndTime(event) ?? new Date(0)) < now);
 
-        const searchFilter =
+        const searchFilterMatch =
           !searchQuery ||
           event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           event.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -134,7 +144,12 @@ export default function SuperAdminEventList() {
         const campusFilterMatch =
           campusFilter === 'all' || event.conductingCampus === campusFilter;
         
-        return timeFilter && searchFilter && campusFilterMatch;
+        const statusFilterMatch =
+          statusFilter === 'all' || event.status === statusFilter;
+
+        const monthFilterMatch = !chartMonthFilter || (event.date && isWithinInterval(event.date.toDate(), { start: startOfMonth(chartMonthFilter), end: endOfMonth(chartMonthFilter) }));
+        
+        return timeFilterMatch && searchFilterMatch && campusFilterMatch && statusFilterMatch && monthFilterMatch;
       });
 
     // Sorting logic
@@ -153,7 +168,7 @@ export default function SuperAdminEventList() {
     });
 
     return sortedEvents;
-  }, [events, filter, searchQuery, campusFilter, sortOption, participantCounts]);
+  }, [events, filter, searchQuery, campusFilter, sortOption, statusFilter, participantCounts, chartMonthFilter]);
 
   const handleDelete = async (eventToDelete: Event) => {
     if (!isSuperAdmin) {
@@ -253,6 +268,12 @@ export default function SuperAdminEventList() {
     );
   }
 
+  const handleClearMonthFilter = () => {
+    if (onClearMonthFilter) {
+        onClearMonthFilter();
+    }
+  }
+
   return (
     <>
     <div className="mt-6 space-y-4">
@@ -277,6 +298,19 @@ export default function SuperAdminEventList() {
                 <ToggleGroupItem value="upcoming" className="w-full">Upcoming</ToggleGroupItem>
                 <ToggleGroupItem value="past" className="w-full">Past</ToggleGroupItem>
             </ToggleGroup>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="pending-update">Pending Update</SelectItem>
+                    <SelectItem value="pending-deletion">Pending Deletion</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+            </Select>
              <Select value={campusFilter} onValueChange={setCampusFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by campus" />
@@ -301,6 +335,17 @@ export default function SuperAdminEventList() {
             </Select>
           </div>
       </div>
+      {chartMonthFilter && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Showing events for: <strong>{format(chartMonthFilter, 'MMMM yyyy')}</strong>
+            </p>
+            <Button variant="ghost" size="sm" onClick={handleClearMonthFilter}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear Filter
+            </Button>
+          </div>
+      )}
 
       {filteredEvents.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">

@@ -7,7 +7,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { getMonth, getYear, format, isSameYear } from 'date-fns';
+import { getMonth, getYear, format, isSameYear, parse } from 'date-fns';
 import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon, UserCheck, FileClock } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import type { Event, UserProfile } from '@/types';
@@ -36,6 +36,7 @@ type OrganizerEventCount = {
 
 interface SuperAdminDashboardProps {
   onCampusClick: (campus: string | null) => void;
+  onMonthClick: (date: Date) => void;
 }
 
 
@@ -55,7 +56,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboardProps) {
+export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,6 +262,14 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
     }
   };
   
+  const handleMonthBarClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const monthName = data.activePayload[0].payload.name;
+      const clickedDate = parse(monthName, 'MMM', new Date(selectedYear, 0));
+      onMonthClick(clickedDate);
+    }
+  };
+
   const handleStatusPieClick = (data: any) => {
     const status = data.name.toLowerCase().replace(/ /g, '-');
     switch (status) {
@@ -573,7 +582,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={monthlyEventData}>
+                <BarChart data={monthlyEventData} onClick={handleMonthBarClick}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -584,7 +593,7 @@ export default function SuperAdminDashboard({ onCampusClick }: SuperAdminDashboa
                         borderRadius: "var(--radius)",
                     }}
                     />
-                    <Bar dataKey="events" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="events" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                 </BarChart>
                 </ResponsiveContainer>
             </CardContent>

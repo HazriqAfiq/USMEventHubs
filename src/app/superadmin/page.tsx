@@ -14,10 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import GlobalBannerForm from '@/components/GlobalBannerForm';
+import SuperAdminEventList from '@/components/SuperAdminEventList';
 
 export default function SuperAdminPage() {
   const { user, isSuperAdmin, loading } = useAuth();
   const router = useRouter();
+  const [monthFilter, setMonthFilter] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!loading && !isSuperAdmin) {
@@ -72,8 +74,19 @@ export default function SuperAdminPage() {
           <p className="text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Site-wide analytics and management tools.
           </p>
-           <SuperAdminDashboard onCampusClick={handleCampusClick} />
+           <SuperAdminDashboard onCampusClick={handleCampusClick} onMonthClick={setMonthFilter} />
         </div>
+
+        {monthFilter && (
+             <>
+                <Separator />
+                <div>
+                  <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Filtered Events</h2>
+                  <SuperAdminEventList monthFilter={monthFilter} onClearMonthFilter={() => setMonthFilter(null)} />
+                </div>
+            </>
+        )}
+
         <Separator />
         <div>
           <h2 className="text-2xl font-bold font-headline text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">Global Broadcast Banner</h2>

@@ -304,7 +304,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
                <Button asChild variant="outline" size="icon"><Link href={`/event/${event.id}`}><MessageSquare className="h-4 w-4" /></Link></Button>
-               <Button asChild variant="outline" size="icon"><Link href={`/organizer/edit/${event.id}`}><FilePenLine className="h-4 w-4" /></Link></Button>
+               <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}><FilePenLine className="h-4 w-4" /></Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>

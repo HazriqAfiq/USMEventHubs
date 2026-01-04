@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Event } from '@/types';
 import { useEventFilters } from '@/hooks/use-event-filters';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { DollarSign, Laptop, Users } from 'lucide-react';
+import { DollarSign, Laptop, Users, Building } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -22,6 +22,8 @@ import { CampusFilter } from '@/components/CampusFilter';
 import { GlobalBanner } from '@/components/GlobalBanner';
 import { AdvancedEventFilters } from '@/components/AdvancedEventFilters';
 import { GlowingSearchBar } from '@/components/GlowingSearchBar';
+import { Button } from '@/components/ui/button';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -30,6 +32,7 @@ export default function Home() {
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter, dates: dateFilter, timeOfDay: timeOfDayFilter } = useEventFilters();
   const { user, userProfile, isOrganizer, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
+  const [isCampusFilterVisible, setIsCampusFilterVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
@@ -247,20 +250,6 @@ export default function Home() {
             />
         </ScrollAnimation>
 
-        {/* Campus Filter */}
-        <ScrollAnimation delay={300}>
-          <div className="mb-12">
-             <h2 className="text-3xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
-              Filter by Campus
-            </h2>
-            <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-              Select a campus to see events happening there.
-            </p>
-            <CampusFilter selectedCampus={selectedCampus} onSelectCampus={setSelectedCampus} />
-          </div>
-        </ScrollAnimation>
-
-
         <ScrollAnimation delay={400}>
           <div className="flex justify-center mb-8">
             <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-card/80 backdrop-blur-sm">
@@ -293,9 +282,47 @@ export default function Home() {
                 </ToggleGroup>
               </div>
                <AdvancedEventFilters />
+               <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCampusFilterVisible(prev => !prev)}
+                >
+                  <Building className="mr-2 h-4 w-4" />
+                  Filter by Campus
+                </Button>
             </div>
           </div>
         </ScrollAnimation>
+
+        {/* Campus Filter Section */}
+        <AnimatePresence>
+          {isCampusFilterVisible && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.5, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <ScrollAnimation delay={300}>
+                <div className="mb-12">
+                   <h2 className="text-3xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+                    Filter by Campus
+                  </h2>
+                  <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+                    Select a campus to see events happening there.
+                  </p>
+                  <CampusFilter 
+                    selectedCampus={selectedCampus} 
+                    onSelectCampus={setSelectedCampus} 
+                    onClearFilter={() => setSelectedCampus(null)}
+                  />
+                </div>
+              </ScrollAnimation>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
 
         {loadingEvents ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

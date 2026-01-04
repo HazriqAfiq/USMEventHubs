@@ -91,13 +91,22 @@ export default function LoginPage() {
      
     } catch (error: any) {
       console.error('Login error:', error);
-      let errorMessage = 'There was a problem with your login request.';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-        errorMessage = 'Invalid email or password. Please try again.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Please enter a valid email address.';
-      } else {
-        errorMessage = error.message;
+      let errorMessage = 'An unknown error occurred. Please try again.';
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email address.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-credential':
+           errorMessage = 'The credentials provided are invalid.';
+           break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        default:
+          errorMessage = error.message;
       }
       toast({
         variant: 'destructive',

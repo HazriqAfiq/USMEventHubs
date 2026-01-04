@@ -210,6 +210,11 @@ service cloud.firestore {
                       (
                         // Case 2: A superadmin creating any user
                         request.auth != null && isSuperAdmin(request.auth.uid)
+                      ) ||
+                      (
+                        // Case 3: A campus admin creating a student or organizer in their campus
+                        request.auth != null && isCampusAdmin(request.auth.uid, request.resource.data.campus) &&
+                        (request.resource.data.role == 'student' || request.resource.data.role == 'organizer')
                       );
 
       // Allow any authenticated user to read profiles.

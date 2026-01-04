@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
-import { Trash2, UserX, Shield } from 'lucide-react';
+import { Trash2, UserX, Shield, UserPlus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,9 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import CreateUserForm from './CreateUserForm';
+
 
 export default function AdminUserTable() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -44,6 +48,7 @@ export default function AdminUserTable() {
   const { user: currentUser, userProfile: adminProfile, isAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student'>('all');
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading || !isAdmin || !adminProfile?.campus) {
@@ -130,16 +135,35 @@ export default function AdminUserTable() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-sm"
             />
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="organizer">Organizer</SelectItem>
-                </SelectContent>
-            </Select>
+            <div className="flex gap-2 w-full sm:w-auto">
+               <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
+                <DialogTrigger asChild>
+                   <Button>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Create User
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New User</DialogTitle>
+                    <DialogDescription>
+                      Create a new account for your campus. The campus will be set to {adminProfile?.campus}.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CreateUserForm onSuccess={() => setIsCreateUserOpen(false)} />
+                </DialogContent>
+              </Dialog>
+              <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="organizer">Organizer</SelectItem>
+                  </SelectContent>
+              </Select>
+            </div>
         </div>
 
         <Table>

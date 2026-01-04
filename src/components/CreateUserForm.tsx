@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,15 +24,17 @@ import { createUserWithEmailAndPassword, signInWithCredential, EmailAuthProvider
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { initializeApp, getApp, deleteApp } from 'firebase/app';
+import { useAuth } from '@/hooks/use-auth';
 
-const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
-const roles = ["student", "organizer", "admin"];
+const allCampuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
+const allRoles = ["student", "organizer", "admin"];
+const adminAllowedRoles = ["student", "organizer"];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  role: z.enum(["student", "organizer", "admin"], { required_error: "Please select a role." }),
+  role: z.enum(["student", "organizer", "admin", "superadmin"], { required_error: "Please select a role." }),
   campus: z.string().min(1, { message: "Please select a campus." }),
 });
 
@@ -43,8 +46,13 @@ interface CreateUserFormProps {
 
 export default function CreateUserForm({ onSuccess }: CreateUserFormProps) {
   const { toast } = useToast();
+  const { isSuperAdmin, userProfile: adminProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  const selectableRoles = isSuperAdmin ? allRoles : adminAllowedRoles;
+  const canChangeCampus = isSuperAdmin;
+  const defaultCampus = adminProfile?.campus || '';
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(formSchema),
@@ -53,7 +61,7 @@ export default function CreateUserForm({ onSuccess }: CreateUserFormProps) {
       email: '',
       password: '',
       role: undefined,
-      campus: undefined,
+      campus: canChangeCampus ? undefined : defaultCampus,
     },
   });
 
@@ -198,7 +206,7 @@ export default function CreateUserForm({ onSuccess }: CreateUserFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {roles.map(role => (
+                    {selectableRoles.map(role => (
                       <SelectItem key={role} value={role} className="capitalize">
                         {role}
                       </SelectItem>
@@ -215,14 +223,14 @@ export default function CreateUserForm({ onSuccess }: CreateUserFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Campus</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || !canChangeCampus}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a campus" />
+                      <SelectValue placeholder={canChangeCampus ? "Select a campus" : defaultCampus} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {campuses.map(campus => (
+                    {allCampuses.map(campus => (
                       <SelectItem key={campus} value={campus}>
                         {campus}
                       </SelectItem>

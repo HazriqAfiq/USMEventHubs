@@ -21,6 +21,7 @@ import { addMinutes, isSameDay } from 'date-fns';
 import { CampusFilter } from '@/components/CampusFilter';
 import { GlobalBanner } from '@/components/GlobalBanner';
 import { AdvancedEventFilters } from '@/components/AdvancedEventFilters';
+import { GlowingSearchBar } from '@/components/GlowingSearchBar';
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -29,6 +30,7 @@ export default function Home() {
   const { priceFilter, setPriceFilter, typeFilter, setTypeFilter, dates: dateFilter, timeOfDay: timeOfDayFilter } = useEventFilters();
   const { user, userProfile, isOrganizer, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedCampus, setSelectedCampus] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
@@ -168,9 +170,14 @@ export default function Home() {
         return false;
       })();
       
-      return priceMatch && typeMatch && campusMatch && dateMatch && timeOfDayMatch;
+      const searchMatch = !searchQuery ||
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return priceMatch && typeMatch && campusMatch && dateMatch && timeOfDayMatch && searchMatch;
     });
-  }, [eligibleEvents, priceFilter, typeFilter, selectedCampus, dateFilter, timeOfDayFilter]);
+  }, [eligibleEvents, priceFilter, typeFilter, selectedCampus, dateFilter, timeOfDayFilter, searchQuery]);
 
 
   const handleGetStarted = () => {
@@ -225,6 +232,20 @@ export default function Home() {
             <FeaturedEventsCarousel events={featuredEvents} />
           </ScrollAnimation>
         )}
+        
+        <ScrollAnimation delay={300}>
+            <h2 className="text-3xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
+              Find Your Next Event
+            </h2>
+            <p className="text-lg text-center text-white/80 mb-8 max-w-2xl mx-auto [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+              Search, filter, and discover events happening across all campuses.
+            </p>
+           <GlowingSearchBar 
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by title, description, or location..."
+            />
+        </ScrollAnimation>
 
         {/* Campus Filter */}
         <ScrollAnimation delay={300}>

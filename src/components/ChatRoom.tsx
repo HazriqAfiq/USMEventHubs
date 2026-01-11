@@ -184,26 +184,6 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    if (!user || !eventId) return;
-
-    const messageToDelete = messages.find(m => m.id === messageId);
-    if (!messageToDelete) return;
-
-    const senderProfile = profiles[messageToDelete.senderId];
-    const senderRole = senderProfile?.role || 'student';
-
-    // Client-side permission check for quick feedback
-    let canDelete = false;
-    if (isSuperAdmin) canDelete = true;
-    else if (isAdmin && (senderRole === 'organizer' || senderRole === 'student')) canDelete = true;
-    else if (user.uid === organizerId && senderRole === 'student') canDelete = true;
-    else if (user.uid === messageToDelete.senderId) canDelete = true;
-
-    if (!canDelete) {
-        toast({ title: 'Unauthorized', description: 'You do not have permission to delete this message.', variant: 'destructive' });
-        return;
-    }
-
      const messageRef = doc(db, 'events', eventId, 'messages', messageId);
      try {
         await deleteDoc(messageRef);
@@ -299,6 +279,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
                   key={`pinned-${m.id}`}
                   message={m}
                   profile={profiles[m.senderId]}
+                  eventOrganizerId={organizerId}
                   onTogglePin={togglePin}
                   onDelete={handleDeleteMessage}
                 />
@@ -317,6 +298,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
                   key={m.id}
                   message={m}
                   profile={profiles[m.senderId]}
+                  eventOrganizerId={organizerId}
                   onTogglePin={togglePin}
                   onDelete={handleDeleteMessage}
                 />

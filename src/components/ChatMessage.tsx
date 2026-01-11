@@ -22,11 +22,12 @@ import { useAuth } from "@/hooks/use-auth";
 interface Props {
   message: any;
   profile?: UserProfile;
+  eventOrganizerId?: string | null;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
   onDelete?: (id: string) => void;
 }
 
-export default function ChatMessage({ message, profile, onTogglePin, onDelete }: Props) {
+export default function ChatMessage({ message, profile, eventOrganizerId, onTogglePin, onDelete }: Props) {
   const { user, isSuperAdmin, isAdmin, isOrganizer } = useAuth();
   
   const isOwn = user?.uid === message.senderId;
@@ -38,21 +39,25 @@ export default function ChatMessage({ message, profile, onTogglePin, onDelete }:
   const senderIsStudent = profile?.role === 'student';
 
   const canDelete = () => {
-    if (!user) return false;
-    if (isOwn) return true; // Users can always delete their own messages
-    if (isSuperAdmin) return true; // Superadmins can delete any message
-    if (isAdmin) {
-      // Admins can delete organizer and student messages, but not other admin/superadmin messages
-      return senderIsOrganizer || senderIsStudent;
+    if (!user || !profile) return false;
+    if (isOwn) return true; // Any user can delete their own message.
+
+    if (isSuperAdmin) {
+        // Superadmins can delete any message except another superadmin's.
+        return profile.role !== 'superadmin';
     }
-    if (isOrganizer) {
-        // Organizers of the event can delete student messages
-      return senderIsStudent;
+    if (isAdmin) {
+        // Admins can delete messages from organizers and students.
+        return profile.role === 'organizer' || profile.role === 'student';
+    }
+    if (isOrganizer && user.uid === eventOrganizerId) {
+        // Event organizers can only delete messages from students.
+        return profile.role === 'student';
     }
     return false;
   };
   
-  const canPin = isSuperAdmin || isAdmin || isOrganizer;
+  const canPin = isSuperAdmin || isAdmin || (isOrganizer && user?.uid === eventOrganizerId);
 
   return (
     <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}> 

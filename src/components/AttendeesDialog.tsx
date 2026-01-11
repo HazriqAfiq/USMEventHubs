@@ -187,7 +187,6 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                             <TableCell>
                                <div className="flex items-center gap-3">
                                   <Avatar>
-                                    <AvatarImage src={profile?.photoURL || undefined} />
                                     <AvatarFallback>{getInitials(reg.name)}</AvatarFallback>
                                   </Avatar>
                                   <span>{reg.name}</span>

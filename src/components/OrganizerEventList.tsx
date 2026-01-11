@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, isWithinInterval, getMonth, getYear } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History, AlertTriangle, Undo2 } from 'lucide-react';
+import { FilePenLine, Trash2, Users, XCircle, MessageSquare, Eye, Clock, CheckCircle2, X, History, AlertTriangle, Undo2, BarChart2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +42,7 @@ import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Textarea } from './ui/textarea';
+import EventAnalyticsDialog from './EventAnalyticsDialog';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -61,6 +62,9 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const [isRequestingDelete, setIsRequestingDelete] = useState(false);
   const [deletionReason, setDeletionReason] = useState("");
   const [eventToRequestDelete, setEventToRequestDelete] = useState<Event | null>(null);
+  
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -266,6 +270,11 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     }
   }
 
+    const handleAnalyticsClick = (event: Event) => {
+        setSelectedEventForAnalytics(event);
+        setIsAnalyticsOpen(true);
+    }
+
   
   useEffect(() => {
     // Reset month filter when main filter changes
@@ -337,192 +346,203 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   }
 
   return (
-    <div className="mt-6 space-y-4">
-       <div className="flex flex-col gap-4">
-        {!chartMonthFilter ? (
-          <>
-            <div className='flex flex-col sm:flex-row gap-4 justify-between items-center'>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                value={statusFilter}
-                onValueChange={(value) => {
-                  if (value) setStatusFilter(value as any);
-                }}
-              >
-                <ToggleGroupItem value="all">All Statuses</ToggleGroupItem>
-                <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
-                <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
-                <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
-                <ToggleGroupItem value="pending-deletion">Pending Deletion</ToggleGroupItem>
-              </ToggleGroup>
-              
-               <ToggleGroup
-                type="single"
-                variant="outline"
-                value={timeFilter}
-                onValueChange={(value) => {
-                  if (value) setTimeFilter(value as any);
-                }}
-              >
-                <ToggleGroupItem value="all">All Time</ToggleGroupItem>
-                <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-                <ToggleGroupItem value="past">Past</ToggleGroupItem>
-              </ToggleGroup>
+    <>
+        <div className="mt-6 space-y-4">
+        <div className="flex flex-col gap-4">
+            {!chartMonthFilter ? (
+            <>
+                <div className='flex flex-col sm:flex-row gap-4 justify-between items-center'>
+                <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    value={statusFilter}
+                    onValueChange={(value) => {
+                    if (value) setStatusFilter(value as any);
+                    }}
+                >
+                    <ToggleGroupItem value="all">All Statuses</ToggleGroupItem>
+                    <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
+                    <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
+                    <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
+                    <ToggleGroupItem value="pending-deletion">Pending Deletion</ToggleGroupItem>
+                </ToggleGroup>
+                
+                <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    value={timeFilter}
+                    onValueChange={(value) => {
+                    if (value) setTimeFilter(value as any);
+                    }}
+                >
+                    <ToggleGroupItem value="all">All Time</ToggleGroupItem>
+                    <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+                    <ToggleGroupItem value="past">Past</ToggleGroupItem>
+                </ToggleGroup>
 
-              {availableMonths.length > 0 && (
-                  <Select value={monthFilter} onValueChange={setMonthFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Filter by month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Months</SelectItem>
-                          {availableMonths.map(monthStr => (
-                              <SelectItem key={monthStr} value={monthStr}>
-                                  {format(new Date(monthStr), 'MMMM yyyy')}
-                              </SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              )}
+                {availableMonths.length > 0 && (
+                    <Select value={monthFilter} onValueChange={setMonthFilter}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Months</SelectItem>
+                            {availableMonths.map(monthStr => (
+                                <SelectItem key={monthStr} value={monthStr}>
+                                    {format(new Date(monthStr), 'MMMM yyyy')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+                </div>
+            </>
+            ) : (
+            <div className="w-full">
+                <Button variant="ghost" onClick={onClearMonthFilter}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Clear filter for {format(chartMonthFilter, 'MMMM yyyy')}
+                </Button>
             </div>
-          </>
+            )}
+        </div>
+
+        {filteredEvents.length === 0 ? (
+            <Card className="p-8 text-center text-muted-foreground">
+            No events found for the selected criteria.
+            </Card>
         ) : (
-          <div className="w-full">
-            <Button variant="ghost" onClick={onClearMonthFilter}>
-              <XCircle className="mr-2 h-4 w-4" />
-              Clear filter for {format(chartMonthFilter, 'MMMM yyyy')}
-            </Button>
-          </div>
-        )}
-      </div>
+            filteredEvents.map((event) => (
+            <Card key={event.id} className="flex items-center p-4 gap-4 transition-all hover:shadow-md">
+                <div className="relative h-16 w-16 md:h-20 md:w-28 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
+                </div>
+                <div className="flex-grow overflow-hidden">
+                <h3 className="font-bold truncate">{event.title}</h3>
+                <div className="flex items-center gap-x-4 text-sm text-muted-foreground">
+                    <span>{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</span>
+                    <span className='flex items-center'>
+                        <Users className="mr-1.5 h-4 w-4" />
+                        {participantCounts[event.id] ?? 0}
+                    </span>
+                    <span className='flex items-center'>
+                        <Eye className="mr-1.5 h-4 w-4" />
+                        {event.viewCount ?? 0}
+                    </span>
+                </div>
+                <div className="mt-2">
+                    <StatusBadge event={event} />
+                </div>
+                </div>
+                <div className='flex gap-2 flex-shrink-0'>
+                <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
+                <Link href={`/event/${event.id}`}>
+                    <Button variant="outline" size="icon" disabled={event.status !== 'approved'}>
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="sr-only">View Chat</span>
+                    </Button>
+                </Link>
+                <Link href={`/organizer/edit/${event.id}`}>
+                    <Button variant="outline" size="icon">
+                    <FilePenLine className="h-4 w-4" />
+                    <span className="sr-only">Edit Event</span>
+                    </Button>
+                </Link>
+                
+                {event.status === 'pending-update' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="icon" className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300">
+                            <Undo2 className="h-4 w-4" />
+                            <span className="sr-only">Cancel Update</span>
+                        </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel Update Request?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will revert your event to its last approved state and make it visible on the site again. Are you sure?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>No</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleCancelUpdate(event)}>Yes, Cancel Update</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
 
-      {filteredEvents.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">
-          No events found for the selected criteria.
-        </Card>
-      ) : (
-        filteredEvents.map((event) => (
-          <Card key={event.id} className="flex items-center p-4 gap-4 transition-all hover:shadow-md">
-            <div className="relative h-16 w-16 md:h-20 md:w-28 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-              <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
-            </div>
-            <div className="flex-grow overflow-hidden">
-              <h3 className="font-bold truncate">{event.title}</h3>
-              <div className="flex items-center gap-x-4 text-sm text-muted-foreground">
-                <span>{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</span>
-                <span className='flex items-center'>
-                    <Users className="mr-1.5 h-4 w-4" />
-                    {participantCounts[event.id] ?? 0}
-                </span>
-                 <span className='flex items-center'>
-                    <Eye className="mr-1.5 h-4 w-4" />
-                    {event.viewCount ?? 0}
-                </span>
-              </div>
-               <div className="mt-2">
-                <StatusBadge event={event} />
-              </div>
-            </div>
-            <div className='flex gap-2 flex-shrink-0'>
-               <Link href={`/event/${event.id}`}>
-                <Button variant="outline" size="icon" disabled={event.status !== 'approved'}>
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="sr-only">View Chat</span>
-                </Button>
-              </Link>
-              <Link href={`/organizer/edit/${event.id}`}>
-                <Button variant="outline" size="icon">
-                  <FilePenLine className="h-4 w-4" />
-                  <span className="sr-only">Edit Event</span>
-                </Button>
-              </Link>
-              
-              {event.status === 'pending-update' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="icon" className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300">
-                          <Undo2 className="h-4 w-4" />
-                          <span className="sr-only">Cancel Update</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
+                {event.status === 'approved' ? (
+                    <Dialog open={eventToRequestDelete?.id === event.id} onOpenChange={(isOpen) => {
+                        if (!isOpen) setEventToRequestDelete(null);
+                    }}>
+                        <DialogTrigger asChild>
+                            <Button variant="destructive" size="icon" onClick={() => setEventToRequestDelete(event)}>
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Request Deletion</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Request to Delete Event</DialogTitle>
+                                <DialogDescription>
+                                    To delete an approved event, you must provide a reason. This request will be sent to a superadmin for review.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Textarea
+                                    placeholder="e.g., Event has been cancelled due to unforeseen circumstances."
+                                    value={deletionReason}
+                                    onChange={(e) => setDeletionReason(e.target.value)}
+                                    disabled={isRequestingDelete}
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button variant="ghost" onClick={() => setEventToRequestDelete(null)}>Cancel</Button>
+                                <Button variant="destructive" onClick={handleRequestDelete} disabled={isRequestingDelete || !deletionReason.trim()}>
+                                    {isRequestingDelete ? 'Submitting...' : 'Submit Request'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                ) : (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon" disabled={event.status === 'pending-deletion' || event.status === 'pending-update'}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete Event</span>
+                        </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Cancel Update Request?</AlertDialogTitle>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will revert your event to its last approved state and make it visible on the site again. Are you sure?
+                            This will permanently delete the event "{event.title}" and its associated images. This action cannot be undone.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>No</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleCancelUpdate(event)}>Yes, Cancel Update</AlertDialogAction>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(event)}>
+                            Continue
+                            </AlertDialogAction>
                         </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-              )}
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
 
-              {event.status === 'approved' ? (
-                <Dialog open={eventToRequestDelete?.id === event.id} onOpenChange={(isOpen) => {
-                    if (!isOpen) setEventToRequestDelete(null);
-                }}>
-                    <DialogTrigger asChild>
-                        <Button variant="destructive" size="icon" onClick={() => setEventToRequestDelete(event)}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Request Deletion</span>
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Request to Delete Event</DialogTitle>
-                            <DialogDescription>
-                                To delete an approved event, you must provide a reason. This request will be sent to a superadmin for review.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4">
-                            <Textarea
-                                placeholder="e.g., Event has been cancelled due to unforeseen circumstances."
-                                value={deletionReason}
-                                onChange={(e) => setDeletionReason(e.target.value)}
-                                disabled={isRequestingDelete}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button variant="ghost" onClick={() => setEventToRequestDelete(null)}>Cancel</Button>
-                            <Button variant="destructive" onClick={handleRequestDelete} disabled={isRequestingDelete || !deletionReason.trim()}>
-                                {isRequestingDelete ? 'Submitting...' : 'Submit Request'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-              ) : (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="icon" disabled={event.status === 'pending-deletion' || event.status === 'pending-update'}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete Event</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete the event "{event.title}" and its associated images. This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(event)}>
-                          Continue
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-              )}
-
-            </div>
-          </Card>
-        ))
-      )}
-    </div>
+                </div>
+            </Card>
+            ))
+        )}
+        </div>
+        {selectedEventForAnalytics && (
+            <EventAnalyticsDialog
+                eventId={selectedEventForAnalytics.id}
+                eventName={selectedEventForAnalytics.title}
+                isOpen={isAnalyticsOpen}
+                onClose={() => setIsAnalyticsOpen(false)}
+            />
+        )}
+    </>
   );
 }

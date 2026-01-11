@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -43,6 +44,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/t
 import { Textarea } from './ui/textarea';
 import EventAnalyticsDialog from './EventAnalyticsDialog';
 import EventDetailDialog from './EventDetailDialog';
+import ChatDialog from './ChatDialog';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -67,6 +69,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedEventForEdit, setSelectedEventForEdit] = useState<Event | null>(null);
+  const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -165,11 +168,11 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
     // 4. Filter by Month (from dropdown)
     else if (monthFilter !== 'all') {
       const selectedMonthDate = new Date(monthFilter);
-      const interval = {
-          start: startOfMonth(selectedMonthDate),
-          end: endOfMonth(selectedMonthDate)
-      };
-      baseFilteredEvents = baseFilteredEvents.filter(event => isWithinInterval(event.date.toDate(), interval));
+      baseFilteredEvents = baseFilteredEvents.filter(event => {
+        if (!event.date) return false;
+        const eventDate = event.date.toDate();
+        return getMonth(eventDate) === getMonth(selectedMonthDate) && getYear(eventDate) === getYear(selectedMonthDate);
+      });
     }
     
     const monthSet = new Set<string>();
@@ -445,12 +448,10 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 </div>
                 <div className='flex gap-2 flex-shrink-0'>
                 <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
-                <Link href={`/event/${event.id}`}>
-                    <Button variant="outline" size="icon" disabled={event.status !== 'approved'}>
+                <Button variant="outline" size="icon" disabled={event.status !== 'approved'} onClick={() => setSelectedEventForChat(event)}>
                     <MessageSquare className="h-4 w-4" />
                     <span className="sr-only">View Chat</span>
-                    </Button>
-                </Link>
+                </Button>
                 <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
                   <FilePenLine className="h-4 w-4" />
                   <span className="sr-only">Edit Event</span>
@@ -558,6 +559,11 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 isEditable={!getEventEndTime(selectedEventForEdit) || getEventEndTime(selectedEventForEdit)! >= new Date()}
             />
         )}
+        <ChatDialog 
+          isOpen={!!selectedEventForChat}
+          onClose={() => setSelectedEventForChat(null)}
+          event={selectedEventForChat}
+        />
     </>
   );
 }

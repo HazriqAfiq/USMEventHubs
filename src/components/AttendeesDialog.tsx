@@ -22,8 +22,6 @@ import Image from 'next/image';
 import type { Registration, UserProfile } from '@/types';
 import { GlowingSearchBar } from './GlowingSearchBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { getInitials } from '@/lib/utils';
 
 interface AttendeesDialogProps {
   isOpen: boolean;
@@ -184,14 +182,7 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                            const profile = userProfiles[reg.id];
                            return(
                             <TableRow key={reg.id}>
-                            <TableCell>
-                               <div className="flex items-center gap-3">
-                                  <Avatar>
-                                    <AvatarFallback>{getInitials(reg.name)}</AvatarFallback>
-                                  </Avatar>
-                                  <span>{reg.name}</span>
-                                </div>
-                            </TableCell>
+                            <TableCell>{reg.name}</TableCell>
                             <TableCell>{reg.matricNo}</TableCell>
                             <TableCell>{reg.faculty}</TableCell>
                             <TableCell>{profile?.campus || 'N/A'}</TableCell>

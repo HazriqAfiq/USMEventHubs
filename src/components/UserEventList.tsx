@@ -442,30 +442,26 @@ export default function UserEventList({ userId }: UserEventListProps) {
         ) : (
             <div className="space-y-4">
             {filteredEvents.map((event) => (
-            <Card key={event.id} className="p-4">
-              <div className="flex flex-col sm:flex-row items-start gap-4">
-                <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-                    <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
-                </div>
-                <div className="flex-grow overflow-hidden">
-                    <h3 className="font-bold truncate">{event.title}</h3>
-                    <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
-                    <p className="text-sm text-muted-foreground">{event.location}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={`/event/${event.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Event
-                            </Link>
-                        </Button>
-                         {isEventUpcoming(event) && (
-                           <Button variant="outline" size="sm" onClick={() => setSelectedEventForChat(event)}>
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                View Chat
-                           </Button>
-                        )}
-                    </div>
-                </div>
+            <Card key={event.id} className="p-4 flex items-center gap-4">
+              <div className="relative h-16 w-24 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                  <Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} />
+              </div>
+              <div className="flex-grow overflow-hidden">
+                  <h3 className="font-bold truncate">{event.title}</h3>
+                  <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+                  <p className="text-sm text-muted-foreground">{event.location}</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                  <Button asChild variant="outline" size="icon">
+                      <Link href={`/event/${event.id}`}>
+                          <Eye className="h-4 w-4" />
+                      </Link>
+                  </Button>
+                   {isEventUpcoming(event) && (
+                     <Button variant="outline" size="icon" onClick={() => setSelectedEventForChat(event)}>
+                          <MessageSquare className="h-4 w-4" />
+                     </Button>
+                  )}
               </div>
             </Card>
             ))}
@@ -482,5 +478,6 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+
 
 

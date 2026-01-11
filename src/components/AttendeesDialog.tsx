@@ -102,17 +102,24 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
     if (filteredAttendees.length === 0) return;
 
     const headers = ['Name', 'Matric No', 'Faculty', 'Campus', 'Registered At'];
+    if (isPaidEvent) {
+      headers.push('Payment Proof URL');
+    }
     const csvContent = [
       headers.join(','),
       ...filteredAttendees.map(reg => {
         const profile = userProfiles[reg.id];
-        return [
+        const row = [
           `"${reg.name}"`,
           `"${reg.matricNo}"`,
           `"${reg.faculty}"`,
           `"${profile?.campus || 'N/A'}"`,
           `"${reg.registeredAt ? format(reg.registeredAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}"`
-        ].join(',');
+        ];
+        if (isPaidEvent) {
+          row.push(`"${reg.paymentProofUrl || 'N/A'}"`);
+        }
+        return row.join(',');
       })
     ].join('\n');
 
@@ -196,7 +203,7 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                                     <ImageDialogTrigger asChild>
                                         <Button variant="outline" size="sm">
                                             <Eye className="mr-2 h-4 w-4" />
-                                            View
+                                            View Proof
                                         </Button>
                                         </ImageDialogTrigger>
                                         <ImageDialogContent className="max-w-xl">

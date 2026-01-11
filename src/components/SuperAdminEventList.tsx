@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle, XCircle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, History, X, AlertTriangle, XCircle, BarChart2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import Link from 'next/link';
+import EventAnalyticsDialog from './EventAnalyticsDialog';
 
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
@@ -64,8 +65,12 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
   const [statusFilter, setStatusFilter] = useState(statusParam || 'all');
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -236,9 +241,14 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
   
   const handleEditClick = (event: Event) => {
     setSelectedEvent(event);
-    setIsDialogOpen(true);
+    setIsDetailDialogOpen(true);
   };
   
+  const handleAnalyticsClick = (event: Event) => {
+    setSelectedEventForAnalytics(event);
+    setIsAnalyticsOpen(true);
+  }
+
   const StatusBadge = ({ event }: { event: Event }) => {
     const isPending = ['pending', 'pending-update', 'pending-deletion'].includes(event.status);
 
@@ -403,6 +413,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
               </div>
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
+               <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
                <Button asChild variant="outline" size="icon">
                   <Link href={`/event/${event.id}`}>
                     <MessageSquare className="h-4 w-4" />
@@ -443,11 +454,20 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
     {selectedEvent && (
         <EventDetailDialog
             event={selectedEvent}
-            isOpen={isDialogOpen}
-            onClose={() => setIsDialogOpen(false)}
+            isOpen={isDetailDialogOpen}
+            onClose={() => setIsDetailDialogOpen(false)}
             isEditable={true} // Superadmin can always edit
         />
     )}
+    {selectedEventForAnalytics && (
+        <EventAnalyticsDialog
+            eventId={selectedEventForAnalytics.id}
+            eventName={selectedEventForAnalytics.title}
+            isOpen={isAnalyticsOpen}
+            onClose={() => setIsAnalyticsOpen(false)}
+        />
+     )}
     </>
   );
 }
+

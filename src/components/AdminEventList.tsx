@@ -9,7 +9,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
 import { format, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { Button } from './ui/button';
-import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, X, History, AlertTriangle, XCircle } from 'lucide-react';
+import { FilePenLine, Trash2, Users, MessageSquare, Eye, CheckCircle2, Clock, X, History, AlertTriangle, XCircle, BarChart2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
+import EventAnalyticsDialog from './EventAnalyticsDialog';
 
 interface AdminEventListProps {
   monthFilter?: Date | null;
@@ -53,8 +54,12 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
+
 
   useEffect(() => {
     if (authLoading || !userProfile?.campus) {
@@ -177,8 +182,13 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
   
   const handleEditClick = (event: Event) => {
     setSelectedEvent(event);
-    setIsDialogOpen(true);
+    setIsDetailDialogOpen(true);
   };
+
+  const handleAnalyticsClick = (event: Event) => {
+    setSelectedEventForAnalytics(event);
+    setIsAnalyticsOpen(true);
+  }
   
   const StatusBadge = ({ event }: { event: Event }) => {
     const statusConfig: { [key in Event['status']]: { label: string; icon: React.ElementType; className: string; tooltip: string } } = {
@@ -303,6 +313,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
               </div>
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
+               <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
                <Button asChild variant="outline" size="icon"><Link href={`/event/${event.id}`}><MessageSquare className="h-4 w-4" /></Link></Button>
                <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}><FilePenLine className="h-4 w-4" /></Button>
               <AlertDialog>
@@ -328,11 +339,20 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
     {selectedEvent && (
         <EventDetailDialog
             event={selectedEvent}
-            isOpen={isDialogOpen}
-            onClose={() => setIsDialogOpen(false)}
+            isOpen={isDetailDialogOpen}
+            onClose={() => setIsDetailDialogOpen(false)}
             isEditable={true}
         />
     )}
+     {selectedEventForAnalytics && (
+        <EventAnalyticsDialog
+            eventId={selectedEventForAnalytics.id}
+            eventName={selectedEventForAnalytics.title}
+            isOpen={isAnalyticsOpen}
+            onClose={() => setIsAnalyticsOpen(false)}
+        />
+     )}
     </>
   );
 }
+

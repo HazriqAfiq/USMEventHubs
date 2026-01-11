@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from './ui/skeleton';
@@ -59,13 +58,14 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
         const fetchedRegistrations = regsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Registration));
         setRegistrations(fetchedRegistrations);
 
-        // 2. Fetch user profiles for all registered users
+        // 2. Fetch user profiles for each registered user individually
         const userIds = fetchedRegistrations.map(reg => reg.id);
         if (userIds.length > 0) {
-            const usersRef = collection(db, 'users');
-            const userQuery = query(usersRef, where('__name__', 'in', userIds));
-            const usersSnapshot = await getDocs(userQuery);
-            const fetchedProfiles = usersSnapshot.docs.map(doc => doc.data() as UserProfile);
+            const profilePromises = userIds.map(id => getDoc(doc(db, 'users', id)));
+            const profileSnapshots = await Promise.all(profilePromises);
+            const fetchedProfiles = profileSnapshots
+                .filter(snap => snap.exists())
+                .map(snap => snap.data() as UserProfile);
             setUserProfiles(fetchedProfiles);
         } else {
             setUserProfiles([]);

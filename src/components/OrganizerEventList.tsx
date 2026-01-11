@@ -549,6 +549,7 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 eventName={selectedEventForAnalytics.title}
                 isOpen={isAnalyticsOpen}
                 onClose={() => setIsAnalyticsOpen(false)}
+                isPaidEvent={!selectedEventForAnalytics.isFree}
             />
         )}
         {selectedEventForEdit && (

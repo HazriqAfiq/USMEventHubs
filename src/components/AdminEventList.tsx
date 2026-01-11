@@ -350,9 +350,11 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
             eventName={selectedEventForAnalytics.title}
             isOpen={isAnalyticsOpen}
             onClose={() => setIsAnalyticsOpen(false)}
+            isPaidEvent={!selectedEventForAnalytics.isFree}
         />
      )}
     </>
   );
 }
+
 

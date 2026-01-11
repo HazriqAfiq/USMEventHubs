@@ -20,6 +20,7 @@ interface EventAnalyticsDialogProps {
   onClose: () => void;
   eventId: string;
   eventName: string;
+  isPaidEvent: boolean;
 }
 
 type CampusDistribution = {
@@ -42,7 +43,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventName }: EventAnalyticsDialogProps) {
+export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventName, isPaidEvent }: EventAnalyticsDialogProps) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +182,7 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
         onClose={() => setIsAttendeesDialogOpen(false)}
         eventId={eventId}
         eventName={eventName}
-        isPaidEvent={false}
+        isPaidEvent={isPaidEvent}
       />
     </>
   );

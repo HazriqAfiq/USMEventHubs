@@ -465,9 +465,11 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
             eventName={selectedEventForAnalytics.title}
             isOpen={isAnalyticsOpen}
             onClose={() => setIsAnalyticsOpen(false)}
+            isPaidEvent={!selectedEventForAnalytics.isFree}
         />
      )}
     </>
   );
 }
+
 

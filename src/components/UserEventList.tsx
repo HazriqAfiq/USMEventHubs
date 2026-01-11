@@ -19,6 +19,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChatDialog from './ChatDialog';
+import EventDetailDialog from './EventDetailDialog';
 
 interface UserEventListProps {
   userId: string;
@@ -43,6 +44,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
   const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
   const [campusCountFilter, setCampusCountFilter] = useState<string>(campuses[0]);
   const [campusFilter, setCampusFilter] = useState<string>('all');
+  const [selectedEventForView, setSelectedEventForView] = useState<Event | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -101,6 +103,11 @@ export default function UserEventList({ userId }: UserEventListProps) {
     }
     return null;
   }
+  
+  const handleViewClick = (event: Event) => {
+    setSelectedEventForView(event);
+  };
+
 
   const { 
     filteredEvents, 
@@ -452,10 +459,8 @@ export default function UserEventList({ userId }: UserEventListProps) {
                   <p className="text-sm text-muted-foreground">{event.location}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                  <Button asChild variant="outline" size="icon">
-                      <Link href={`/event/${event.id}`}>
-                          <Eye className="h-4 w-4" />
-                      </Link>
+                  <Button variant="outline" size="icon" onClick={() => handleViewClick(event)}>
+                      <Eye className="h-4 w-4" />
                   </Button>
                    {isEventUpcoming(event) && (
                      <Button variant="outline" size="icon" onClick={() => setSelectedEventForChat(event)}>
@@ -475,9 +480,18 @@ export default function UserEventList({ userId }: UserEventListProps) {
       onClose={() => setSelectedEventForChat(null)}
       event={selectedEventForChat}
     />
+     {selectedEventForView && (
+        <EventDetailDialog
+            event={selectedEventForView}
+            isOpen={!!selectedEventForView}
+            onClose={() => setSelectedEventForView(null)}
+            isEditable={false} // Students can't edit
+        />
+    )}
     </>
   );
 }
+
 
 
 

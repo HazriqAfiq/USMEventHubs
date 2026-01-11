@@ -113,6 +113,7 @@ type EventFormValues = z.infer<typeof formSchema>;
 interface EventFormProps {
   event?: Event;
   isEditable?: boolean;
+  isInDialog?: boolean;
 }
 
 const getMalaysiaTimeNow = () => {
@@ -182,7 +183,7 @@ const updateReasons = [
     "Other",
 ];
 
-export default function EventForm({ event, isEditable = true }: EventFormProps) {
+export default function EventForm({ event, isEditable = true, isInDialog = false }: EventFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { user, userProfile, isOrganizer, isSuperAdmin, isAdmin } = useAuth();
@@ -829,7 +830,7 @@ export default function EventForm({ event, isEditable = true }: EventFormProps) 
             </div>
             <div className="flex justify-end gap-2 mt-8">
                 {!isEditMode && (<Button type="button" variant="outline" onClick={handleReset} disabled={isSubmitting}><Trash2 className="mr-2 h-4 w-4"/>Clear Form</Button>)}
-                {isEditMode && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
+                {isEditMode && !isInDialog && (<Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>)}
                 {canEdit && (
                   <Button type="submit" disabled={isSubmitting || isUploading || (isEditMode && !isDirty)}>
                     {getButtonText()}

@@ -8,6 +8,7 @@ import type { Event } from '@/types';
 import { Button } from './ui/button';
 import { Check, X } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { useRouter } from 'next/navigation';
 
 interface EventDetailDialogProps {
   isOpen: boolean;
@@ -19,6 +20,11 @@ interface EventDetailDialogProps {
 }
 
 export default function EventDetailDialog({ isOpen, onClose, event, isEditable = false, onApprove, onReject }: EventDetailDialogProps) {
+  const router = useRouter();
+  
+  const handleCancel = () => {
+    onClose();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -36,14 +42,14 @@ export default function EventDetailDialog({ isOpen, onClose, event, isEditable =
         </DialogHeader>
         <ScrollArea className="h-full">
             <div className="pr-6">
-                <EventForm event={event} isEditable={isEditable} />
+                <EventForm event={event} isEditable={isEditable} isInDialog={true} />
             </div>
         </ScrollArea>
         
         {/* Show approval buttons only if functions are provided */}
-        {onApprove && onReject && (
+        {onApprove && onReject ? (
             <DialogFooter className="pr-6">
-                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                 <div className='flex gap-2'>
                     <Button variant="destructive" onClick={() => onReject(event)}>
                         <X className="mr-2 h-4 w-4" /> Reject
@@ -53,6 +59,10 @@ export default function EventDetailDialog({ isOpen, onClose, event, isEditable =
                     </Button>
                 </div>
             </DialogFooter>
+        ) : (
+           <DialogFooter className="pr-6">
+             <Button variant="outline" onClick={handleCancel}>Close</Button>
+           </DialogFooter>
         )}
       </DialogContent>
     </Dialog>

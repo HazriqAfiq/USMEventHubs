@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -19,7 +17,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChatDialog from './ChatDialog';
-import EventDetailDialog from './EventDetailDialog';
+import StudentEventViewDialog from './StudentEventViewDialog';
 
 interface UserEventListProps {
   userId: string;
@@ -481,19 +479,12 @@ export default function UserEventList({ userId }: UserEventListProps) {
       event={selectedEventForChat}
     />
      {selectedEventForView && (
-        <EventDetailDialog
+        <StudentEventViewDialog
             event={selectedEventForView}
             isOpen={!!selectedEventForView}
             onClose={() => setSelectedEventForView(null)}
-            isEditable={false} // Students can't edit
         />
     )}
     </>
   );
 }
-
-
-
-
-
-

@@ -189,11 +189,19 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned'])
         && request.resource.data.pinned is bool;
 
-        // Allow delete by superadmin or the original sender
+        // Hierarchical Deletion Rules
         allow delete: if request.auth != null && (
-          isSuperAdmin(request.auth.uid) || 
-          isAdmin(request.auth.uid) ||
+          // Rule 1: Message sender can always delete their own message
           resource.data.senderId == request.auth.uid
+          ||
+          // Rule 2: Superadmins can delete any message
+          isSuperAdmin(request.auth.uid)
+          ||
+          // Rule 3: Admins can delete messages from organizers and students
+          (isAdmin(request.auth.uid) && getUserRole(resource.data.senderId) in ['organizer', 'student'])
+          ||
+          // Rule 4: Organizers can delete messages from students
+          (isOrganizer(request.auth.uid) && getUserRole(resource.data.senderId) == 'student')
         );
       }
     }

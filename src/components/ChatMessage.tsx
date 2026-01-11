@@ -17,24 +17,42 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from "./ui/button";
 import { UserProfile } from "@/types";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
   message: any;
-  isOwn?: boolean;
-  isEventOrganizer?: boolean;
   profile?: UserProfile;
   onTogglePin?: (id: string, current: boolean | undefined) => void;
-  isSuperAdmin?: boolean;
-  isAdmin?: boolean;
   onDelete?: (id: string) => void;
 }
 
-export default function ChatMessage({ message, isOwn, isEventOrganizer, profile, onTogglePin, isSuperAdmin, isAdmin, onDelete }: Props) {
+export default function ChatMessage({ message, profile, onTogglePin, onDelete }: Props) {
+  const { user, isSuperAdmin, isAdmin, isOrganizer } = useAuth();
+  
+  const isOwn = user?.uid === message.senderId;
+
   const timeAgo = message.createdAt?.toDate ? formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true }) : '';
   const senderIsSuperAdmin = profile?.role === 'superadmin';
   const senderIsAdmin = profile?.role === 'admin';
+  const senderIsOrganizer = profile?.role === 'organizer';
+  const senderIsStudent = profile?.role === 'student';
+
+  const canDelete = () => {
+    if (!user) return false;
+    if (isOwn) return true; // Users can always delete their own messages
+    if (isSuperAdmin) return true; // Superadmins can delete any message
+    if (isAdmin) {
+      // Admins can delete organizer and student messages, but not other admin/superadmin messages
+      return senderIsOrganizer || senderIsStudent;
+    }
+    if (isOrganizer) {
+        // Organizers of the event can delete student messages
+      return senderIsStudent;
+    }
+    return false;
+  };
   
-  const canDelete = isSuperAdmin || isAdmin;
+  const canPin = isSuperAdmin || isAdmin || isOrganizer;
 
   return (
     <div className={`flex items-end ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}> 
@@ -49,12 +67,12 @@ export default function ChatMessage({ message, isOwn, isEventOrganizer, profile,
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {(isEventOrganizer || isSuperAdmin || isAdmin) && (
+          {canPin && (
             <button onClick={() => onTogglePin?.(message.id, !!message.pinned)} className="ml-2 text-xs text-neutral-200 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
               {message.pinned ? 'Unpin' : 'Pin'}
             </button>
           )}
-           {canDelete && (
+           {canDelete() && (
              <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <button className="text-xs text-red-400 bg-transparent hover:opacity-80 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">

@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import Link from 'next/link';
 import EventAnalyticsDialog from './EventAnalyticsDialog';
+import ChatDialog from './ChatDialog';
 
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
@@ -70,6 +71,7 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
   
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
+  const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
   const router = useRouter();
 
@@ -414,11 +416,9 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
                <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
-               <Button asChild variant="outline" size="icon">
-                  <Link href={`/event/${event.id}`}>
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="sr-only">View Chat</span>
-                  </Link>
+               <Button variant="outline" size="icon" onClick={() => setSelectedEventForChat(event)}>
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="sr-only">View Chat</span>
                </Button>
                 <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
                   <FilePenLine className="h-4 w-4" />
@@ -468,8 +468,14 @@ export default function SuperAdminEventList({ monthFilter: chartMonthFilter, onC
             isPaidEvent={!selectedEventForAnalytics.isFree}
         />
      )}
+    <ChatDialog 
+      isOpen={!!selectedEventForChat}
+      onClose={() => setSelectedEventForChat(null)}
+      event={selectedEventForChat}
+    />
     </>
   );
 }
+
 
 

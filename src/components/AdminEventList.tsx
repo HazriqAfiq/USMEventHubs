@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EventAnalyticsDialog from './EventAnalyticsDialog';
+import ChatDialog from './ChatDialog';
 
 interface AdminEventListProps {
   monthFilter?: Date | null;
@@ -59,6 +60,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
 
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
+  const [selectedEventForChat, setSelectedEventForChat] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -314,7 +316,7 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
             </div>
             <div className='flex gap-2 flex-shrink-0 self-end sm:self-center'>
                <Button variant="outline" size="icon" onClick={() => handleAnalyticsClick(event)}><BarChart2 className="h-4 w-4" /></Button>
-               <Button asChild variant="outline" size="icon"><Link href={`/event/${event.id}`}><MessageSquare className="h-4 w-4" /></Link></Button>
+               <Button variant="outline" size="icon" onClick={() => setSelectedEventForChat(event)}><MessageSquare className="h-4 w-4" /></Button>
                <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}><FilePenLine className="h-4 w-4" /></Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -353,8 +355,14 @@ export default function AdminEventList({ monthFilter: chartMonthFilter, onClearM
             isPaidEvent={!selectedEventForAnalytics.isFree}
         />
      )}
+     <ChatDialog 
+      isOpen={!!selectedEventForChat}
+      onClose={() => setSelectedEventForChat(null)}
+      event={selectedEventForChat}
+     />
     </>
   );
 }
+
 
 

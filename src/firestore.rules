@@ -148,7 +148,12 @@ service cloud.firestore {
         allow delete: if request.auth.uid == registrationId;
         
         // A user can read their own registration document.
-        allow read: if request.auth != null && request.auth.uid == registrationId;
+        allow read: if request.auth != null && (
+          request.auth.uid == registrationId ||
+          isSuperAdmin(request.auth.uid) ||
+          isCampusAdmin(request.auth.uid, get(/databases/$(database)/documents/events/$(eventId)).data.conductingCampus) ||
+          (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid)
+        );
       }
       
       // Rules for event chat messages
@@ -222,7 +227,10 @@ service cloud.firestore {
       // Superadmins can list all users.
       allow get: if request.auth != null;
       allow list: if request.auth != null && (
-        isSuperAdmin(request.auth.uid) || isAdmin(request.auth.uid)
+        isSuperAdmin(request.auth.uid) || 
+        isAdmin(request.auth.uid) ||
+        // Allow list if query is constrained to a list of UIDs (for analytics)
+        request.query.keys().hasOnly(['__name__'])
       );
 
       // A user can update their own 'name' or 'photoURL'. 

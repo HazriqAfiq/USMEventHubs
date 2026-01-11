@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -43,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Textarea } from './ui/textarea';
 import EventAnalyticsDialog from './EventAnalyticsDialog';
+import EventDetailDialog from './EventDetailDialog';
 
 interface OrganizerEventListProps {
   monthFilter: Date | null;
@@ -65,6 +65,8 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
   
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [selectedEventForAnalytics, setSelectedEventForAnalytics] = useState<Event | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedEventForEdit, setSelectedEventForEdit] = useState<Event | null>(null);
 
 
   useEffect(() => {
@@ -274,6 +276,13 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
         setSelectedEventForAnalytics(event);
         setIsAnalyticsOpen(true);
     }
+    
+    const handleEditClick = (event: Event) => {
+      const isEventPast = getEventEndTime(event) ? getEventEndTime(event)! < new Date() : false;
+      setSelectedEventForEdit(event);
+      setIsDetailDialogOpen(true);
+    };
+
 
   
   useEffect(() => {
@@ -442,12 +451,10 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                     <span className="sr-only">View Chat</span>
                     </Button>
                 </Link>
-                <Link href={`/organizer/edit/${event.id}`}>
-                    <Button variant="outline" size="icon">
-                    <FilePenLine className="h-4 w-4" />
-                    <span className="sr-only">Edit Event</span>
-                    </Button>
-                </Link>
+                <Button variant="outline" size="icon" onClick={() => handleEditClick(event)}>
+                  <FilePenLine className="h-4 w-4" />
+                  <span className="sr-only">Edit Event</span>
+                </Button>
                 
                 {event.status === 'pending-update' && (
                     <AlertDialog>
@@ -543,6 +550,16 @@ export default function OrganizerEventList({ monthFilter: chartMonthFilter, onCl
                 onClose={() => setIsAnalyticsOpen(false)}
             />
         )}
+        {selectedEventForEdit && (
+            <EventDetailDialog
+                event={selectedEventForEdit}
+                isOpen={isDetailDialogOpen}
+                onClose={() => setIsDetailDialogOpen(false)}
+                isEditable={!getEventEndTime(selectedEventForEdit) || getEventEndTime(selectedEventForEdit)! >= new Date()}
+            />
+        )}
     </>
   );
 }
+
+    

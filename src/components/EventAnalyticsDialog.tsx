@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from './ui/skeleton';
@@ -56,8 +56,8 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
       try {
         // 1. Fetch all registration documents to get user IDs
         const regsRef = collection(db, 'events', eventId, 'registrations');
-        const regsSnapshot = await getDoc(doc(regsRef));
-        const fetchedRegistrations = regsSnapshot.exists() ? [{ id: regsSnapshot.id, ...regsSnapshot.data() } as Registration] : [];
+        const regsSnapshot = await getDocs(regsRef);
+        const fetchedRegistrations = regsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Registration));
         setRegistrations(fetchedRegistrations);
 
         // 2. Fetch user profiles for each registered user

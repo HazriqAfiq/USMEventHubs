@@ -21,7 +21,7 @@ interface Props {
 }
 
 export default function ChatRoom({ eventId, organizerId }: Props) {
-  const { user, userProfile, isSuperAdmin, isAdmin } = useAuth();
+  const { user, userProfile, isSuperAdmin, isAdmin, isOrganizer } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -146,7 +146,9 @@ export default function ChatRoom({ eventId, organizerId }: Props) {
 
   const handleClearChat = async () => {
     if (!user || !eventId) return;
-    if (user.uid !== organizerId && !isSuperAdmin && !isAdmin) {
+    const canClear = isSuperAdmin || isAdmin || (isOrganizer && user.uid === organizerId);
+
+    if (!canClear) {
       toast({ title: 'Unauthorized', description: 'Only the event organizer or an admin can clear the chat.', variant: 'destructive' });
       return;
     }
@@ -234,6 +236,8 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
     }
 };
 
+  const canClearChat = isSuperAdmin || isAdmin || (isOrganizer && user?.uid === organizerId);
+
   const renderContent = () => {
     if (hasAccess === null) {
       return (
@@ -258,7 +262,7 @@ const togglePin = async (messageId: string, currentPinned: boolean | undefined) 
 
     return (
       <div className="flex flex-col h-full">
-         {(user?.uid === organizerId || isSuperAdmin || isAdmin) && (
+         {canClearChat && (
              <div className="flex-shrink-0 px-1 py-2 flex justify-end">
                 <button
                   onClick={() => setShowClearDialog(true)}

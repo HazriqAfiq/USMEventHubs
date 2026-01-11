@@ -2,15 +2,16 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Users } from 'lucide-react';
+import { Users, FileSpreadsheet } from 'lucide-react';
 import type { Registration, UserProfile } from '@/types';
 import { Button } from './ui/button';
+import { useRouter } from 'next/navigation';
 
 interface EventAnalyticsDialogProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     if (!isOpen || !eventId) {
@@ -52,13 +54,13 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
 
     const fetchAnalyticsData = async () => {
       try {
-        // 1. Fetch all registrations for the event
+        // 1. Fetch all registration documents to get user IDs
         const regsRef = collection(db, 'events', eventId, 'registrations');
-        const regsSnapshot = await getDocs(regsRef);
-        const fetchedRegistrations = regsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Registration));
+        const regsSnapshot = await getDoc(doc(regsRef));
+        const fetchedRegistrations = regsSnapshot.exists() ? [{ id: regsSnapshot.id, ...regsSnapshot.data() } as Registration] : [];
         setRegistrations(fetchedRegistrations);
 
-        // 2. Fetch user profiles for each registered user individually
+        // 2. Fetch user profiles for each registered user
         const userIds = fetchedRegistrations.map(reg => reg.id);
         if (userIds.length > 0) {
             const profilePromises = userIds.map(id => getDoc(doc(db, 'users', id)));
@@ -93,6 +95,11 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
 
   }, [userProfiles]);
+  
+  const handleViewParticipants = () => {
+    onClose();
+    router.push(`/organizer/edit/${eventId}`);
+  };
 
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -157,7 +164,11 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
           </Card>
         </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0">
+            <Button onClick={handleViewParticipants}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                View All Participants
+            </Button>
             <Button onClick={onClose} variant="outline">Close</Button>
         </DialogFooter>
       </DialogContent>

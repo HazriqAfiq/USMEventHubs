@@ -56,6 +56,23 @@ service cloud.firestore {
       // Only superadmins can change site settings
       allow write: if request.auth != null && isSuperAdmin(request.auth.uid);
     }
+    
+    // Organizer Applications
+    match /organizer_applications/{applicationId} {
+        // A student can create their own application
+        allow create: if request.auth != null && 
+                        request.resource.data.userId == request.auth.uid &&
+                        isStudent(request.auth.uid);
+
+        // Admins and Superadmins can read all applications
+        allow read: if request.auth != null && (isAdmin(request.auth.uid) || isSuperAdmin(request.auth.uid));
+
+        // Admins and Superadmins can update the status of applications
+        allow update: if request.auth != null && 
+                         (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus)) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'rejectionReason']);
+    }
+
 
     // Define rules for the 'events' collection
     match /events/{eventId} {
@@ -240,15 +257,26 @@ service cloud.firestore {
       );
 
       // A user can update their own 'name' or 'photoURL'. 
+      // A user can also update their own role to 'pending-organizer'
       // Admins can update users within their campus (but not other admins/superadmins)
       // Superadmins can change any field, including roles and disabled status.
       allow update: if request.auth != null && (
                       ( // User's own updates
                         request.auth.uid == userId &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']) &&
-                        request.resource.data.name is string &&
-                        request.resource.data.name.size() > 0 &&
-                        (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576))
+                        (
+                          // Updating name/photo
+                          (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']) &&
+                            request.resource.data.name is string &&
+                            request.resource.data.name.size() > 0 &&
+                            (request.resource.data.photoURL == resource.data.photoURL || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1048576))
+                          ) ||
+                          // Updating role to pending
+                          (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
+                            resource.data.role == 'student' && request.resource.data.role == 'pending-organizer'
+                          )
+                        )
                       ) ||
                       ( // Superadmin updates
                         isSuperAdmin(request.auth.uid) && 

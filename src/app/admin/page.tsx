@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Shield, Users, CalendarDays, CheckSquare, ArrowRight } from 'lucide-react';
+import { Terminal, Shield, Users, CalendarDays, CheckSquare, ArrowRight, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminDashboard from '@/components/AdminDashboard';
@@ -83,6 +83,21 @@ export default function AdminPage() {
               </Button>
             </CardContent>
            </Card>
+           <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><UserPlus className="mr-2 h-5 w-5"/>Organizer Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground mb-4">
+                Review and approve users to become event organizers.
+                </p>
+                <Button asChild>
+                <Link href="/admin/organizers">
+                    Manage Requests <ArrowRight className="ml-2 h-4 w-4"/>
+                </Link>
+                </Button>
+            </CardContent>
+            </Card>
            <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5"/>Manage Campus Users</CardTitle>

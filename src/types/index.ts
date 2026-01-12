@@ -41,12 +41,28 @@ export interface Event {
 export interface UserProfile {
   uid: string;
   email: string | null;
-  role: 'organizer' | 'student' | 'superadmin' | 'admin';
+  role: 'organizer' | 'student' | 'superadmin' | 'admin' | 'pending-organizer';
   name?: string;
   photoURL?: string | null;
   campus?: string;
   disabled?: boolean;
 }
+
+export interface OrganizerApplication {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    organizationName: string;
+    organizationDesc: string;
+    socialLink?: string;
+    proofUrl: string;
+    campus: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: Timestamp;
+    rejectionReason?: string;
+}
+
 
 export interface AppNotification {
     id: string;

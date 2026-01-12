@@ -9,7 +9,7 @@ export interface Registration {
   faculty: string;
   registeredAt: Timestamp;
   paymentProofUrl?: string;
-  attended?: boolean;
+  attended: boolean;
 }
 
 export interface Event {

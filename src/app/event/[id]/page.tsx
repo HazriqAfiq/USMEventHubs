@@ -204,10 +204,11 @@ export default function EventDetailPage() {
 
     // 1. Reference to the registration document in the event's subcollection
     const eventRegRef = doc(db, 'events', event.id, 'registrations', user.uid);
-    const registrationData: any = {
+    const registrationData: Registration = {
         ...data,
         id: user.uid, // a.k.a registrationId
-        registeredAt: serverTimestamp(),
+        registeredAt: serverTimestamp() as Timestamp,
+        attended: true,
     };
     batch.set(eventRegRef, registrationData);
 

@@ -52,16 +52,20 @@ const formatTime = (timeString: string) => {
 };
 
 const formatDateRange = (start: Date, end: Date | undefined) => {
-  const startDate = format(toMalaysiaTime(start), 'MMM d, yyyy');
+  const startDate = toMalaysiaTime(start);
+  
   if (end) {
-    const endDate = format(toMalaysiaTime(end), 'MMM d, yyyy');
-    if (startDate === endDate) {
-      return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
+    const endDate = toMalaysiaTime(end);
+    if (format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) {
+      // Single-day event
+      return format(startDate, 'EEEE, MMM d, yyyy');
     }
-    return `${format(toMalaysiaTime(start), 'MMM d')} - ${format(toMalaysiaTime(end), 'MMM d, yyyy')}`;
+    // Multi-day event
+    return `${format(startDate, 'EEE, MMM d')} - ${format(endDate, 'EEE, MMM d, yyyy')}`;
   }
-  return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
-}
+  // No end date, treat as single day
+  return format(startDate, 'EEEE, MMM d, yyyy');
+};
 
 const truncateWords = (text: string, limit: number) => {
   if (!text) return '';

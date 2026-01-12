@@ -73,6 +73,11 @@ service cloud.firestore {
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'rejectionReason']);
     }
 
+    // Allow students to query for their own registrations across all events.
+    match /{path=**}/registrations/{userId} {
+      allow list: if request.auth.uid == userId;
+    }
+
 
     // Define rules for the 'events' collection
     match /events/{eventId} {

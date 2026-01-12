@@ -77,14 +77,15 @@ service cloud.firestore {
                          (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus)) &&
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'rejectionReason']);
         
-        // Admins and Superadmins can delete applications
+        // Admins and Superadmins can delete REJECTED applications
         allow delete: if request.auth != null &&
-                        (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus));
+                        (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus)) &&
+                        resource.data.status == 'rejected';
     }
 
     // Allow students to query for their own registrations across all events.
-    match /{path=**}/registrations/{userId} {
-      allow list: if request.auth.uid == userId;
+    match /{path=**}/registrations/{registrationId} {
+      allow list: if request.auth != null && request.query.where.id == request.auth.uid;
     }
 
 
@@ -341,5 +342,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

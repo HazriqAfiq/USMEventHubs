@@ -444,7 +444,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
         {filteredEvents.length === 0 ? (
             <Card className="p-8 text-center text-muted-foreground">
-              No events found for the selected criteria.
+              No registered events found for the selected criteria.
             </Card>
         ) : (
             <div className="space-y-4">
@@ -491,4 +491,3 @@ export default function UserEventList({ userId }: UserEventListProps) {
   );
 }
 
-    

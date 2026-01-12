@@ -44,6 +44,11 @@ export default function ProfilePage() {
             } else {
                 setRejectedApplication(null);
             }
+        }, (error) => {
+            // This permission error is expected if rules are not set up yet,
+            // but the UI should still function.
+            console.warn("Could not check for rejected applications, possibly due to Firestore rules.");
+            setRejectedApplication(null);
         });
 
         return () => unsubscribe();
@@ -132,3 +137,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    

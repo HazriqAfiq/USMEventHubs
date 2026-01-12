@@ -77,6 +77,10 @@ service cloud.firestore {
         allow update: if request.auth != null && 
                          (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus)) &&
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'rejectionReason']);
+        
+        // Admins and Superadmins can delete applications
+        allow delete: if request.auth != null &&
+                        (isSuperAdmin(request.auth.uid) || isCampusAdmin(request.auth.uid, resource.data.campus));
     }
 
     // Allow students to query for their own registrations across all events.

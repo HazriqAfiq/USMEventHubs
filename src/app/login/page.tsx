@@ -72,21 +72,35 @@ export default function LoginPage() {
           return;
         }
 
-        toast({
-          title: 'Login successful!',
-          description: 'Redirecting...',
-        });
-        
+        let welcomeMessage = 'Redirecting to your dashboard...';
+        let welcomeTitle = 'Login Successful!';
+
         if (userData.role === 'superadmin') {
+          welcomeTitle = 'Welcome Superadmin!';
+          welcomeMessage = 'Redirecting to the superadmin dashboard...';
           router.push('/superadmin');
         } else if (userData.role === 'admin') {
+          welcomeTitle = 'Welcome Admin!';
+          welcomeMessage = 'Redirecting to your admin dashboard...';
           router.push('/admin');
         } else if (userData.role === 'organizer') {
+          welcomeTitle = 'Welcome Organizer!';
+          welcomeMessage = 'Redirecting to your organizer dashboard...';
           router.push('/organizer');
         } else {
           router.push('/');
         }
+        
+        toast({
+          title: welcomeTitle,
+          description: welcomeMessage,
+        });
+
       } else {
+         toast({
+          title: 'Login Successful!',
+          description: 'Redirecting...',
+        });
          router.push('/');
       }
      

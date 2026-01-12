@@ -36,6 +36,14 @@ import { getRegisteredUserIds, sendNotificationToUsers } from '@/lib/notificatio
 
 type EventStatusFilter = 'pending' | 'pending-update' | 'pending-deletion' | 'all';
 
+const formatDateRange = (start: Date, end: Date | undefined) => {
+  const formatPattern = 'MMM d, yyyy';
+  if (end && format(start, 'yyyy-MM-dd') !== format(end, 'yyyy-MM-dd')) {
+    return `${format(start, formatPattern)} - ${format(end, formatPattern)}`;
+  }
+  return format(start, 'PPP');
+};
+
 export default function EventApprovalsPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -359,7 +367,9 @@ export default function EventApprovalsPage() {
                   <p className="text-sm text-muted-foreground">
                     By: {getOrganizerName(event.organizerId)}
                   </p>
-                  <p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {event.date ? formatDateRange(event.date.toDate(), event.endDate?.toDate()) : 'No date'}
+                  </p>
                    {(event.status === 'pending-update' && event.updateReason) && (
                      <p className="text-xs text-blue-400 mt-1">Update Reason: {event.updateReason}</p>
                    )}

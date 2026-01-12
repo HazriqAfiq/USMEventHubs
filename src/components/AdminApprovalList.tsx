@@ -32,6 +32,14 @@ interface AdminApprovalListProps {
   preselectedStatus?: string | null;
 }
 
+const formatDateRange = (start: Date, end: Date | undefined) => {
+  const formatPattern = 'MMM d, yyyy';
+  if (end && format(start, 'yyyy-MM-dd') !== format(end, 'yyyy-MM-dd')) {
+    return `${format(start, formatPattern)} - ${format(end, formatPattern)}`;
+  }
+  return format(start, 'PPP');
+};
+
 
 export default function AdminApprovalList({ preselectedStatus }: AdminApprovalListProps) {
   const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
@@ -225,7 +233,9 @@ export default function AdminApprovalList({ preselectedStatus }: AdminApprovalLi
           filteredEvents.map((event) => (
             <Card key={event.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md">
               <div className="relative h-24 w-full sm:w-32 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted"><Image src={event.imageUrl} alt={event.title} fill style={{ objectFit: 'cover' }} /></div>
-              <div className="flex-grow"><div className="flex items-center gap-2 mb-1">{getStatusBadge(event.status)}<h3 className="font-bold">{event.title}</h3></div><p className="text-sm text-muted-foreground">By: {getOrganizerName(event.organizerId)}</p><p className="text-sm text-muted-foreground">{event.date ? format(event.date.toDate(), 'PPP') : 'No date'}</p>{(event.status === 'pending-update' && event.updateReason) && (<p className="text-xs text-blue-400 mt-1">Reason: {event.updateReason}</p>)}{(event.status === 'pending-deletion' && event.deletionReason) && (<p className="text-xs text-orange-400 mt-1">Reason: {event.deletionReason}</p>)}<Button variant="link" className="text-sm text-primary h-auto p-0" onClick={() => openDetailView(event)}>View Details</Button></div>
+              <div className="flex-grow"><div className="flex items-center gap-2 mb-1">{getStatusBadge(event.status)}<h3 className="font-bold">{event.title}</h3></div><p className="text-sm text-muted-foreground">By: {getOrganizerName(event.organizerId)}</p>
+              <p className="text-sm text-muted-foreground">{event.date ? formatDateRange(event.date.toDate(), event.endDate?.toDate()) : 'No date'}</p>
+              {(event.status === 'pending-update' && event.updateReason) && (<p className="text-xs text-blue-400 mt-1">Reason: {event.updateReason}</p>)}{(event.status === 'pending-deletion' && event.deletionReason) && (<p className="text-xs text-orange-400 mt-1">Reason: {event.deletionReason}</p>)}<Button variant="link" className="text-sm text-primary h-auto p-0" onClick={() => openDetailView(event)}>View Details</Button></div>
               <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
                {event.status === 'pending-deletion' ? (<><Button variant="outline" size="sm" onClick={() => openRejectDialog(event)}><X className="mr-2 h-4 w-4" /> Reject</Button><Button variant="destructive" size="sm" onClick={() => handleApproveDeletion(event)}><Trash2 className="mr-2 h-4 w-4" /> Approve</Button></>) : (<><Button variant="outline" size="sm" onClick={() => handleApprove(event)}><Check className="mr-2 h-4 w-4 text-green-500" /> Approve</Button><Button variant="destructive" size="sm" onClick={() => openRejectDialog(event)}><X className="mr-2 h-4 w-4" /> Reject</Button></>)}
               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface GlowEffectProps {
   children: ReactNode;
@@ -36,23 +37,27 @@ export function GlowEffect({
 
   const glowClass = colorClasses[color];
   const intensityClass = intensityClasses[intensity];
+  const animationClass = active || (!hover && !active) ? 'animate-pulse' : '';
 
   return (
-    <div className={`relative group ${className}`}>
+    <div className={cn('relative group', className)}>
       {/* Animated glowing border effect */}
       <div
-        className={`
-          absolute -inset-0.5 
-          bg-gradient-to-r ${glowClass}
-          rounded-xl 
-          ${intensityClass}
-          transition-all duration-500 
-          ${hover ? 'opacity-0 group-hover:opacity-100 group-hover:blur-lg' : ''}
-          ${active ? 'opacity-100 blur-lg' : ''}
-          ${!hover && !active ? 'animate-pulse' : ''}
-        `}
+        className={cn(
+          'absolute -inset-0.5',
+          'bg-gradient-to-r',
+          glowClass,
+          'rounded-xl',
+          intensityClass,
+          'transition-all duration-500',
+          animationClass,
+          {
+            'opacity-0 group-hover:opacity-100 group-hover:blur-lg': hover && !active,
+            'opacity-100 blur-lg': active,
+          }
+        )}
         style={{
-          animation: !hover && !active ? 'glow 3s ease-in-out infinite' : undefined,
+          animation: active ? 'glow 3s ease-in-out infinite' : undefined,
         }}
       />
 

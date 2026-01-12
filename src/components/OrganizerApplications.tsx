@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { OrganizerApplication } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,8 +15,19 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Skeleton } from './ui/skeleton';
-import { Check, Eye, X, FileClock, XCircle, CheckCircle, FileText } from 'lucide-react';
+import { Check, Eye, X, FileClock, XCircle, CheckCircle, FileText, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from './ui/textarea';
 import Image from 'next/image';
 
@@ -102,8 +113,6 @@ export default function OrganizerApplications() {
     const userRef = doc(db, 'users', selectedApp.userId);
 
     batch.update(appRef, { status: 'rejected', rejectionReason: rejectionReason.trim() });
-    // Revert user role to student but keep them disabled, so they can't re-apply immediately
-    // or access the system if their initial account creation was part of this flow.
     batch.update(userRef, { role: 'student' });
     
     try {
@@ -115,6 +124,16 @@ export default function OrganizerApplications() {
       toast({ variant: 'destructive', title: 'Rejection Failed', description: error.message });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  const handleDelete = async (appToDelete: OrganizerApplication) => {
+    try {
+      await deleteDoc(doc(db, 'organizer_applications', appToDelete.id));
+      toast({ title: 'Application Deleted', description: 'The application has been permanently removed.'});
+    } catch (error: any) {
+      console.error("Error deleting application:", error);
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
     }
   };
 
@@ -187,6 +206,25 @@ export default function OrganizerApplications() {
                     <Button size="sm" onClick={() => handleApprove(app)}><Check className="mr-2 h-4 w-4 text-white"/>Approve</Button>
                     <Button variant="destructive" size="sm" onClick={() => { setSelectedApp(app); openRejectDialog();}}><X className="mr-2 h-4 w-4"/>Reject</Button>
                   </>
+                )}
+                {app.status === 'rejected' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4"/>Delete</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the application from "{app.userName}". This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(app)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </Card>

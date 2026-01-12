@@ -64,18 +64,25 @@ export default function UserEventList({ userId }: UserEventListProps) {
         
         const eventIds = snapshot.docs.map(doc => doc.id);
 
-        try {
-            const eventPromises = eventIds.map(id => getDoc(doc(db, 'events', id)));
-            const eventDocs = await Promise.all(eventPromises);
-            
-            const registeredEvents = eventDocs
-                .filter(doc => doc.exists() && doc.data().status === 'approved')
-                .map(doc => ({ id: doc!.id, ...doc!.data() } as Event));
-            
-            setEvents(registeredEvents);
-        } catch(e) {
-            console.error("Error fetching event details from registrations:", e);
-        } finally {
+        if (eventIds.length > 0) {
+            try {
+                const eventPromises = eventIds.map(id => getDoc(doc(db, 'events', id)));
+                const eventDocs = await Promise.all(eventPromises);
+                
+                const registeredEvents = eventDocs
+                    .filter(doc => doc.exists() && doc.data().status === 'approved')
+                    .map(doc => ({ id: doc!.id, ...doc!.data() } as Event));
+                
+                setEvents(registeredEvents);
+            } catch(e) {
+                console.error("Error fetching event details from registrations:", e);
+                // Optional: set an error state to show in the UI
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // This case handles when a user unregisters from all events
+            setEvents([]);
             setLoading(false);
         }
 
@@ -86,6 +93,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
             operation: 'list',
         }, error);
         errorEmitter.emit('permission-error', permissionError);
+        setEvents([]); // Clear events on error
         setLoading(false);
     });
 

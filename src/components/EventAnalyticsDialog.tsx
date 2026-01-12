@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from './ui/skeleton';
@@ -45,7 +45,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 
 export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventName, isPaidEvent }: EventAnalyticsDialogProps) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
   const [isAttendeesDialogOpen, setIsAttendeesDialogOpen] = useState(false);
   const router = useRouter();
@@ -56,47 +56,54 @@ export default function EventAnalyticsDialog({ isOpen, onClose, eventId, eventNa
     }
     setLoading(true);
 
-    const fetchAnalyticsData = async () => {
-      try {
-        const regsRef = collection(db, 'events', eventId, 'registrations');
-        const regsSnapshot = await getDocs(regsRef);
+    const regsRef = collection(db, 'events', eventId, 'registrations');
+    
+    const unsubscribe = onSnapshot(regsRef, async (regsSnapshot) => {
         const fetchedRegistrations = regsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Registration));
         setRegistrations(fetchedRegistrations);
 
-        const userIds = fetchedRegistrations.map(reg => reg.id);
-        if (userIds.length > 0) {
-            const profilePromises = userIds.map(id => getDoc(doc(db, 'users', id)));
+        const newUserIds = fetchedRegistrations
+            .map(reg => reg.id)
+            .filter(id => !userProfiles[id]);
+
+        if (newUserIds.length > 0) {
+            const profilePromises = newUserIds.map(id => getDoc(doc(db, 'users', id)));
             const profileSnapshots = await Promise.all(profilePromises);
-            const fetchedProfiles = profileSnapshots
-                .filter(snap => snap.exists())
-                .map(snap => snap.data() as UserProfile);
-            setUserProfiles(fetchedProfiles);
-        } else {
-            setUserProfiles([]);
+            
+            const newProfiles: Record<string, UserProfile> = {};
+            profileSnapshots.forEach(snap => {
+                if (snap.exists()) {
+                    newProfiles[snap.id] = snap.data() as UserProfile;
+                }
+            });
+            setUserProfiles(prev => ({...prev, ...newProfiles}));
         }
-
-      } catch (error) {
-        console.error("Error fetching event analytics:", error);
-      } finally {
+        
         setLoading(false);
-      }
-    };
 
-    fetchAnalyticsData();
+    }, (error) => {
+        console.error("Error fetching event analytics:", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [isOpen, eventId]);
 
   const campusDistribution: CampusDistribution[] = useMemo(() => {
-    if (userProfiles.length === 0) return [];
+    if (registrations.length === 0) return [];
     
     const counts: { [key: string]: number } = {};
-    userProfiles.forEach(profile => {
-      const campus = profile.campus || 'N/A';
-      counts[campus] = (counts[campus] || 0) + 1;
+    registrations.forEach(reg => {
+      const profile = userProfiles[reg.id];
+      if (profile) {
+        const campus = profile.campus || 'N/A';
+        counts[campus] = (counts[campus] || 0) + 1;
+      }
     });
 
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
 
-  }, [userProfiles]);
+  }, [registrations, userProfiles]);
   
   const handleViewParticipants = () => {
     onClose();

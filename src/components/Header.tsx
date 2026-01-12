@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users, CheckSquare, CalendarDays, Shield } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, LayoutDashboard, User, ShieldCheck, Users, CheckSquare, CalendarDays, Shield, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -104,6 +104,10 @@ export function Header() {
                         <DropdownMenuItem onClick={() => router.push('/admin/users')}>
                           <Users className="mr-2 h-4 w-4" />
                           <span>Manage Users</span>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => router.push('/admin/organizers')}>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          <span>Organizer Requests</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push('/admin/approvals')}>
                           <CheckSquare className="mr-2 h-4 w-4" />

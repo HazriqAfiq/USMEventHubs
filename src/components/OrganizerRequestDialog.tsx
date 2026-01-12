@@ -29,7 +29,6 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 const formSchema = z.object({
-  organizationName: z.string().min(3, { message: "Organization name must be at least 3 characters." }),
   organizationDesc: z.string().min(20, { message: "Description must be at least 20 characters." }),
   socialLink: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   proofUrl: z.string().min(1, { message: "Proof of legitimacy is required." }),
@@ -94,7 +93,6 @@ export default function OrganizerRequestDialog({ isOpen, onClose }: OrganizerReq
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      organizationName: '',
       organizationDesc: '',
       socialLink: '',
       proofUrl: '',
@@ -130,8 +128,8 @@ export default function OrganizerRequestDialog({ isOpen, onClose }: OrganizerReq
   };
 
   async function onSubmit(data: RequestFormValues) {
-    if (!user || !userProfile) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit a request.' });
+    if (!user || !userProfile || !userProfile.name) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in and have a name set in your profile.' });
       return;
     }
     setIsSubmitting(true);
@@ -141,6 +139,7 @@ export default function OrganizerRequestDialog({ isOpen, onClose }: OrganizerReq
             userId: user.uid,
             userName: userProfile.name,
             userEmail: userProfile.email,
+            organizationName: userProfile.name, // Use user's name as the org name
             ...data,
             campus: userProfile.campus,
             status: 'pending',
@@ -172,24 +171,11 @@ export default function OrganizerRequestDialog({ isOpen, onClose }: OrganizerReq
         <DialogHeader>
           <DialogTitle>Organizer Application</DialogTitle>
           <DialogDescription>
-            Fill out the details below to request to become an event organizer.
+            Fill out the details below to request to become an event organizer. Your full name will be used as the organization name.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="organizationName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Club / Organization Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., USM Tech Club" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
              <FormField
               control={form.control}
               name="organizationDesc"
@@ -197,7 +183,7 @@ export default function OrganizerRequestDialog({ isOpen, onClose }: OrganizerReq
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Tell us about your organization..." {...field} />
+                    <Textarea placeholder="Tell us about your organization or the events you plan to host..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

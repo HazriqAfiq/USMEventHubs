@@ -66,8 +66,7 @@ export default function OrganizerApplications() {
     return applications.filter(app => {
       const statusMatch = statusFilter === 'all' || app.status === statusFilter;
       const searchMatch = !searchQuery || 
-                          app.userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          app.organizationName.toLowerCase().includes(searchQuery.toLowerCase());
+                          app.userName.toLowerCase().includes(searchQuery.toLowerCase());
       const campusMatch = campusFilter === 'All Campuses' || app.campus === campusFilter;
       return statusMatch && searchMatch && campusMatch;
     });
@@ -148,7 +147,7 @@ export default function OrganizerApplications() {
     <>
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
-          <Input placeholder="Search by name or organization..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full md:flex-grow"/>
+          <Input placeholder="Search by applicant name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full md:flex-grow"/>
           {isSuperAdmin && (
             <Select value={campusFilter} onValueChange={setCampusFilter}>
                 <SelectTrigger className="w-full md:w-[250px]"><SelectValue /></SelectTrigger>
@@ -173,9 +172,9 @@ export default function OrganizerApplications() {
               <div className="flex-grow">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusBadge(app.status)}
-                  <h3 className="font-bold">{app.organizationName}</h3>
+                  <h3 className="font-bold">{app.userName}</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">Applicant: {app.userName}</p>
+                <p className="text-sm text-muted-foreground">Campus: {app.campus}</p>
                 <p className="text-sm text-muted-foreground">Submitted: {formatDistanceToNow(app.createdAt.toDate(), { addSuffix: true })}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
@@ -196,9 +195,9 @@ export default function OrganizerApplications() {
       <Dialog open={isDetailOpen} onOpenChange={handleCloseDetail}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Application: {selectedApp?.organizationName}</DialogTitle>
+            <DialogTitle>Application from: {selectedApp?.userName}</DialogTitle>
             <DialogDescription>
-              Submitted by {selectedApp?.userName} ({selectedApp?.userEmail})
+              Email: {selectedApp?.userEmail}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-6">

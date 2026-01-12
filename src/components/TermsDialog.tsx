@@ -28,7 +28,7 @@ export function TermsDialog({ isOpen, onClose }: TermsDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="space-y-4 text-sm text-muted-foreground text-justify">
             <p>Welcome to the USM Event Hub. By creating an account and using this platform, you agree to comply with and be bound by the following terms and conditions of use.</p>
             
             <h4 className="font-semibold text-foreground">1. Account Registration and Use</h4>
@@ -55,7 +55,7 @@ export function TermsDialog({ isOpen, onClose }: TermsDialogProps) {
             <h4 className="font-semibold text-foreground">8. Changes to Terms</h4>
             <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. We will provide notice of any changes by posting the new Terms on this page. Your continued use of the platform after any such changes constitutes your acceptance of the new Terms.</p>
             
-            <p>If you have any questions about these Terms, please contact us.</p>
+            <p>If you have any questions about these Terms, please contact us at <a href="mailto:usmeventhubs@gmail.com" className="text-primary hover:underline">usmeventhubs@gmail.com</a>.</p>
           </div>
         </ScrollArea>
         <DialogFooter>

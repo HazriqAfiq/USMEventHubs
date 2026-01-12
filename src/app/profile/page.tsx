@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,21 +6,49 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, User, UserPlus, Clock } from 'lucide-react';
+import { Terminal, User, UserPlus, Clock, XCircle } from 'lucide-react';
 import ProfileForm from '@/components/ProfileForm';
 import OrganizerRequestDialog from '@/components/OrganizerRequestDialog';
 import { Button } from '@/components/ui/button';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { OrganizerApplication } from '@/types';
 
 export default function ProfilePage() {
   const { user, userProfile, loading } = useAuth();
   const router = useRouter();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [rejectedApplication, setRejectedApplication] = useState<OrganizerApplication | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+  
+  useEffect(() => {
+    if (user && userProfile?.role === 'student') {
+        const appsRef = collection(db, 'organizer_applications');
+        const q = query(
+            appsRef,
+            where('userId', '==', user.uid),
+            where('status', '==', 'rejected'),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const latestRejectedApp = snapshot.docs[0].data() as OrganizerApplication;
+                setRejectedApplication(latestRejectedApp);
+            } else {
+                setRejectedApplication(null);
+            }
+        });
+
+        return () => unsubscribe();
+    }
+  }, [user, userProfile]);
 
   if (loading) {
     return (
@@ -67,15 +96,6 @@ export default function ProfilePage() {
       <div className="mt-8">
         <ProfileForm />
 
-        {canRequestOrganizer && (
-            <div className="mt-8 text-center">
-                <Button onClick={() => setIsRequestDialogOpen(true)}>
-                    <UserPlus className="mr-2 h-4 w-4"/>
-                    Request to Become an Organizer
-                </Button>
-            </div>
-        )}
-
         {isPendingOrganizer && (
             <Alert className="mt-8 bg-blue-500/10 border-blue-500/30">
                 <Clock className="h-4 w-4 text-blue-400" />
@@ -85,6 +105,27 @@ export default function ProfilePage() {
                 </AlertDescription>
             </Alert>
         )}
+        
+        {rejectedApplication && userProfile?.role === 'student' && (
+             <Alert variant="destructive" className="mt-8">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Organizer Application Rejected</AlertTitle>
+                <AlertDescription>
+                    Your recent application was not approved for the following reason:
+                    <p className="font-semibold mt-2 pl-4 border-l-2 border-destructive/50">{rejectedApplication.rejectionReason}</p>
+                </AlertDescription>
+            </Alert>
+        )}
+
+        {canRequestOrganizer && (
+            <div className="mt-8 text-center">
+                <Button onClick={() => setIsRequestDialogOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4"/>
+                    Request to Become an Organizer
+                </Button>
+            </div>
+        )}
+
       </div>
     </div>
     <OrganizerRequestDialog isOpen={isRequestDialogOpen} onClose={() => setIsRequestDialogOpen(false)} />

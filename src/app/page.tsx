@@ -39,7 +39,6 @@ export default function Home() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
-    // Redirect admins to their dashboards
     if (!authLoading && isSuperAdmin) {
       router.replace('/superadmin');
       return;
@@ -49,7 +48,6 @@ export default function Home() {
       return;
     }
     
-    // Check session storage to see if welcome screen should be skipped
     const welcomeDismissed = sessionStorage.getItem('welcomeDismissed');
     if (welcomeDismissed === 'true') {
       setShowWelcome(false);
@@ -62,7 +60,6 @@ export default function Home() {
     }
   }, [user, authLoading, router]);
 
-  // Set up an interval to update the current time every minute
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
@@ -74,7 +71,6 @@ export default function Home() {
   useEffect(() => {
     if (authLoading || !user || isSuperAdmin || isAdmin) return;
 
-    // Only fetch events that are 'approved'.
     const q = query(
       collection(db, 'events'), 
       where('status', '==', 'approved')
@@ -86,7 +82,6 @@ export default function Home() {
         const event = { id: doc.id, ...doc.data() } as Event;
         eventsData.push(event);
       });
-      // Sort events by date client-side
       eventsData.sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime());
       setEvents(eventsData);
       setLoadingEvents(false);
@@ -98,60 +93,49 @@ export default function Home() {
     return () => unsubscribe();
   }, [user, authLoading, isSuperAdmin, isAdmin]);
 
-  // Hide splash screen after a delay
   useEffect(() => {
     if (!authLoading && user) {
       const timer = setTimeout(() => {
         setShowSplash(false);
-      }, 1700); // Same duration as splash screen animation
+      }, 1700);
       return () => clearTimeout(timer);
     }
   }, [authLoading, user]);
 
-  // A base list of events that the current user is eligible to see and are not over.
   const eligibleEvents = useMemo(() => {
-    // Filter out events where registration is closed.
     const activeEvents = events.filter(event => {
-      if (event.date && event.startTime) {
-        const eventDate = event.date.toDate();
-        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
-        
-        // Registration is considered closed 15 minutes after the event starts.
-        const registrationDeadline = addMinutes(startDateTime, 15);
-        
-        // Also check against event end time for good measure.
-        const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-        const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
+      if (!event.date || !event.startTime || !event.endTime) return false;
 
-        return now < registrationDeadline && now < endDateTime;
-      }
-      return false; // Don't show events without a valid date/time
+      const eventStartDate = event.date.toDate();
+      const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+      const startDateTime = new Date(eventStartDate.getFullYear(), eventStartDate.getMonth(), eventStartDate.getDate(), startHours, startMinutes);
+      
+      const registrationDeadline = addMinutes(startDateTime, 15);
+
+      const eventEndDate = event.endDate?.toDate() || eventStartDate;
+      const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+      const endDateTime = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate(), endHours, endMinutes);
+
+      return now < registrationDeadline && now < endDateTime;
     });
     
-    // Admins and Organizers can see all active events.
     if (isOrganizer || isSuperAdmin || isAdmin) {
       return activeEvents;
     }
     
-    // Students only see events they are eligible for.
     return activeEvents.filter(event => {
-      // If eligibleCampuses is not set or is empty, assume it's open to all.
       if (!event.eligibleCampuses || event.eligibleCampuses.length === 0) {
         return true;
       }
-      // Otherwise, check if the user's campus is in the list.
       return event.eligibleCampuses.includes(userProfile?.campus || '');
     });
   }, [events, now, isOrganizer, isAdmin, isSuperAdmin, userProfile]);
   
 
-  // Featured events are derived from the eligible list.
   const featuredEvents = useMemo(() => {
     return eligibleEvents.slice(0, 5);
   }, [eligibleEvents]);
 
-  // The final grid of events is filtered from the pre-vetted eligible list.
   const filteredEvents = useMemo(() => {
     return eligibleEvents.filter(event => {
       const priceMatch =
@@ -196,7 +180,6 @@ export default function Home() {
 
 
   if (authLoading || !user || isSuperAdmin || isAdmin) {
-    // Show a skeleton loader while checking for auth, redirecting, etc.
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
@@ -229,7 +212,6 @@ export default function Home() {
     <>
       <GlobalBanner />
       <div className="container mx-auto px-4 pt-8 pb-8">
-        {/* Featured Events Carousel */}
         {featuredEvents.length > 0 && (
           <ScrollAnimation delay={200}>
             <h1 className="text-4xl font-bold font-headline text-center text-white mb-2 [text-shadow:0_2px_4px_rgba(0,0,0,0.7)]">
@@ -300,7 +282,6 @@ export default function Home() {
           </div>
         </ScrollAnimation>
 
-        {/* Campus Filter Section */}
         <AnimatePresence>
           {isCampusFilterVisible && (
             <motion.div

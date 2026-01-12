@@ -42,12 +42,16 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { sendNotificationToUsers } from '@/lib/notifications';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { DateRange } from 'react-day-picker';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"] as const;
 
 const formSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters.' }),
-  date: z.date({ required_error: 'A date is required.' }),
+  dateRange: z.object({
+    from: z.date({ required_error: 'A start date is required.' }),
+    to: z.date().optional(),
+  }),
   startTime: z.string({ required_error: 'A start time is required.' }).min(1, { message: 'Start time is required.' }),
   endTime: z.string({ required_error: 'An end time is required.' }).min(1, { message: 'End time is required.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
@@ -82,7 +86,7 @@ const formSchema = z.object({
     message: 'Please upload a QR code for paid events.',
     path: ['qrCodeUrl'],
 }).refine((data) => {
-    if (!data.startTime || !data.endTime) return true; // Don't validate if either is missing
+    if (!data.startTime || !data.endTime) return true;
     const [startHours, startMinutes] = data.startTime.split(':').map(Number);
     const [endHours, endMinutes] = data.endTime.split(':').map(Number);
     
@@ -94,14 +98,13 @@ const formSchema = z.object({
     message: 'End time must be after start time.',
     path: ['endTime'],
 }).refine((data) => {
-    if (!data.startTime || !data.endTime) return true; // Don't validate if either is missing
+    if (!data.startTime || !data.endTime) return true;
     const [startHours, startMinutes] = data.startTime.split(':').map(Number);
     const [endHours, endMinutes] = data.endTime.split(':').map(Number);
     
     const startTimeInMinutes = startHours * 60 + startMinutes;
     const endTimeInMinutes = endHours * 60 + endMinutes;
     
-    // Check if end time is at least 15 minutes after start time
     return (endTimeInMinutes - startTimeInMinutes) >= 15;
 }, {
     message: 'Event must be at least 15 minutes long.',
@@ -203,8 +206,11 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode && event ? {
       ...event,
+      dateRange: {
+        from: event.date?.toDate(),
+        to: event.endDate?.toDate(),
+      },
       isFree: event.isFree ? 'free' : 'paid',
-      date: event.date?.toDate(),
       groupLink: event.groupLink || '',
       qrCodeUrl: event.qrCodeUrl || '',
       videoUrl: event.videoUrl || '',
@@ -218,7 +224,7 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     } : {
       title: '',
       description: '',
-      date: undefined,
+      dateRange: { from: undefined, to: undefined },
       startTime: '',
       endTime: '',
       imageUrl: '',
@@ -241,14 +247,12 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     if (isSuperAdmin) return true;
     if (isAdmin && event && userProfile?.campus === event.conductingCampus) return true;
     if (isOrganizer && event) {
-      // Organizers can edit their own events
       return true;
     }
     if ((isOrganizer || isAdmin) && !isEditMode) return true; // Can create new
     return false;
   }, [isEditable, isSuperAdmin, isAdmin, isOrganizer, event, isEditMode, userProfile]);
   
-  // Set conducting campus when user profile loads for a new form
   useEffect(() => {
     if (!isEditMode && userProfile?.campus) {
       form.setValue('conductingCampus', userProfile.campus, { shouldValidate: true });
@@ -270,7 +274,6 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     const storageRef = ref(storage, path);
     const resizedDataUrl = await resizeImage(file, type === 'event' ? 800 : 400);
     
-    // Using uploadString for data URLs
     const uploadTask = await uploadString(storageRef, resizedDataUrl, 'data_url');
     return getDownloadURL(uploadTask.ref);
   };
@@ -286,9 +289,7 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on('state_changed', 
-            (snapshot) => {
-                // Optional: handle progress
-            }, 
+            (snapshot) => {}, 
             (error) => {
                 console.error("Video upload failed:", error);
                 reject(error);
@@ -312,16 +313,18 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     try {
         const eventData: any = {
             ...data,
+            date: data.dateRange.from,
+            endDate: data.dateRange.to || null,
             isFree: data.isFree === 'free',
             price: data.isFree === 'paid' ? data.price : 0,
             qrCodeUrl: data.isFree === 'paid' ? data.qrCodeUrl : '',
         };
+        delete eventData.dateRange;
 
         if (isEditMode && event) {
              const docRef = doc(db, 'events', event.id);
              
              if (isOrganizer) {
-                // Logic for status transitions when an organizer edits an event
                 if (event.status === 'approved' || event.status === 'pending-update' || (event.status === 'rejected' && event.isApprovedOnce)) {
                     eventData.status = 'pending-update';
                     eventData.updateReason = reason;
@@ -460,7 +463,7 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
     form.reset({
         title: '',
         description: '',
-        date: undefined,
+        dateRange: { from: undefined, to: undefined },
         startTime: '',
         endTime: '',
         imageUrl: '',
@@ -486,7 +489,7 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
   };
 
   const isPaid = form.watch('isFree') === 'paid';
-  const selectedDate = form.watch('date');
+  const selectedDateRange = form.watch('dateRange');
   const previewImage = form.watch('imageUrl');
   const previewQr = form.watch('qrCodeUrl');
   const previewVideo = form.watch('videoUrl');
@@ -552,9 +555,9 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
                       </FormItem>
                   )}
                 />
-                <FormField
+                 <FormField
                   control={form.control}
-                  name="date"
+                  name="dateRange"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel className="text-white">Event Date</FormLabel>
@@ -563,25 +566,33 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
                           <FormControl>
                             <Button
                               variant={'outline'}
-                              className={cn('w-full pl-3 text-left font-normal group-disabled:cursor-not-allowed group-disabled:opacity-50',!field.value && 'text-muted-foreground')}
+                              className={cn('w-full justify-start text-left font-normal group-disabled:cursor-not-allowed group-disabled:opacity-50', !field.value?.from && 'text-muted-foreground')}
                             >
-                              {field.value ? format(field.value, 'PPP') : (<span>Pick a date</span>)}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value?.from ? (
+                                field.value.to ? (
+                                  `${format(field.value.from, "LLL dd, y")} - ${format(field.value.to, "LLL dd, y")}`
+                                ) : (
+                                  format(field.value.from, "LLL dd, y")
+                                )
+                              ) : (
+                                <span>Pick a date range</span>
+                              )}
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            today={getMalaysiaTimeNow()}
+                            mode="range"
+                            selected={{ from: field.value?.from, to: field.value?.to }}
+                            onSelect={(range) => field.onChange(range)}
+                            numberOfMonths={2}
                             disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                             initialFocus
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormMessage />
+                      <FormMessage>{form.formState.errors.dateRange?.from?.message || form.formState.errors.dateRange?.to?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -593,7 +604,7 @@ export default function EventForm({ event, isEditable = true, isInDialog = false
                         <FormItem>
                           <FormLabel className="text-white">Start Time</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} min={selectedDate && isTodayInMalaysia(selectedDate) ? getCurrentTime() : undefined}/>
+                            <Input type="time" {...field} min={selectedDateRange?.from && isTodayInMalaysia(selectedDateRange.from) ? getCurrentTime() : undefined}/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

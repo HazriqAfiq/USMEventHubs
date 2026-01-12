@@ -15,6 +15,7 @@ export interface Event {
   id: string;
   title: string;
   date: Timestamp;
+  endDate?: Timestamp;
   startTime: string;
   endTime: string;
   description: string;

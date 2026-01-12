@@ -50,6 +50,18 @@ const formatTime = (timeString: string) => {
   return format(malaysianDate, 'p');
 };
 
+const formatDateRange = (start: Date, end: Date | undefined) => {
+  const startDate = format(toMalaysiaTime(start), 'MMM d, yyyy');
+  if (end) {
+    const endDate = format(toMalaysiaTime(end), 'MMM d, yyyy');
+    if (startDate === endDate) {
+      return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
+    }
+    return `${format(toMalaysiaTime(start), 'MMM d')} - ${format(toMalaysiaTime(end), 'MMM d, yyyy')}`;
+  }
+  return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
+}
+
 const truncateWords = (text: string, limit: number) => {
   if (!text) return '';
   const words = text.split(' ');
@@ -218,12 +230,7 @@ export default function EventCard({ event }: EventCardProps) {
 
                 <CardDescription className="flex items-center text-sm pt-1">
                   <Calendar className="h-4 w-4 mr-2" />
-                  {event.date
-                    ? format(
-                        toMalaysiaTime(event.date.toDate()),
-                        'EEEE, MMMM d, yyyy'
-                      )
-                    : 'Date not set'}
+                  {event.date ? formatDateRange(event.date.toDate(), event.endDate?.toDate()) : 'Date not set'}
                 </CardDescription>
 
                 <CardDescription className="flex items-center text-sm pt-1">

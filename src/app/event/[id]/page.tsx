@@ -50,6 +50,18 @@ const formatTime = (timeString: string) => {
   return format(date, 'p');
 };
 
+const formatDateRange = (start: Date, end: Date | undefined) => {
+  const startDate = format(toMalaysiaTime(start), 'MMM d, yyyy');
+  if (end) {
+    const endDate = format(toMalaysiaTime(end), 'MMM d, yyyy');
+    if (startDate === endDate) {
+      return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
+    }
+    return `${format(toMalaysiaTime(start), 'MMM d')} - ${format(toMalaysiaTime(end), 'MMM d, yyyy')}`;
+  }
+  return format(toMalaysiaTime(start), 'EEEE, MMMM d, yyyy');
+}
+
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -71,7 +83,6 @@ export default function EventDetailPage() {
   
   const viewCountIncremented = useRef(false);
 
-  // Set up an interval to update the current time every second for real-time checks
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
@@ -91,8 +102,9 @@ export default function EventDetailPage() {
     const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(startHours), parseInt(startMinutes));
     const registrationDeadline = addMinutes(startDateTime, 15);
 
+    const endDateTimeSource = event.endDate?.toDate() || eventDate;
     const [endHours, endMinutes] = event.endTime.split(':');
-    const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), parseInt(endHours), parseInt(endMinutes));
+    const endDateTime = new Date(endDateTimeSource.getFullYear(), endDateTimeSource.getMonth(), endDateTimeSource.getDate(), parseInt(endHours), parseInt(endMinutes));
     
     return {
       isRegistrationClosed: now > registrationDeadline || now > endDateTime,
@@ -132,7 +144,6 @@ export default function EventDetailPage() {
   }, [eventId, isAdmin, isOrganizer, isSuperAdmin]);
 
   useEffect(() => {
-    // Increment view count logic
     if (eventId && user && !isOrganizer && !isAdmin && !viewCountIncremented.current) {
       const docRef = doc(db, 'events', eventId);
       updateDoc(docRef, { viewCount: increment(1) })
@@ -145,7 +156,6 @@ export default function EventDetailPage() {
           errorEmitter.emit('permission-error', permissionError);
         });
       
-      // Set the ref to true to prevent further increments on this mount
       viewCountIncremented.current = true;
     }
   }, [eventId, user, isOrganizer, isAdmin]);
@@ -251,12 +261,10 @@ export default function EventDetailPage() {
     
     if (event.status !== 'approved') return false;
 
-    // Organizer, Admin, or Superadmin can always see the chat (past or present)
     if (isEventOrganizer || isSuperAdmin || isAdmin) {
       return true;
     }
     
-    // Participants can only see the chat for events that are not over
     if (isRegistered && !isEventOver) {
       return true;
     }
@@ -370,7 +378,7 @@ export default function EventDetailPage() {
             <div className="flex-shrink-0 grid gap-2 text-sm text-muted-foreground w-full md:w-auto">
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <span>{event.date ? format(toMalaysiaTime(event.date.toDate()), 'EEEE, MMMM d, yyyy') : 'Date not set'}</span>
+                  <span>{event.date ? formatDateRange(event.date.toDate(), event.endDate?.toDate()) : 'Date not set'}</span>
                 </div>
                  <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-2" />

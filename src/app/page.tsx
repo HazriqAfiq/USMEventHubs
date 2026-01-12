@@ -110,17 +110,23 @@ export default function Home() {
 
   // A base list of events that the current user is eligible to see and are not over.
   const eligibleEvents = useMemo(() => {
-    // First, filter out past events
+    // Filter out events where registration is closed.
     const activeEvents = events.filter(event => {
-      if (event.date && event.startTime && event.endTime) {
+      if (event.date && event.startTime) {
         const eventDate = event.date.toDate();
+        const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+        const startDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), startHours, startMinutes);
         
+        // Registration is considered closed 15 minutes after the event starts.
+        const registrationDeadline = addMinutes(startDateTime, 15);
+        
+        // Also check against event end time for good measure.
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         const endDateTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), endHours, endMinutes);
 
-        return now < endDateTime;
+        return now < registrationDeadline && now < endDateTime;
       }
-      return false;
+      return false; // Don't show events without a valid date/time
     });
     
     // Admins and Organizers can see all active events.

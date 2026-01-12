@@ -97,12 +97,12 @@ export default function SuperAdminPage() {
         </div>
         <Separator />
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-           <Card>
+           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center"><CheckSquare className="mr-2 h-5 w-5"/>Event Approvals &amp; Requests</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="flex flex-col flex-grow">
+              <p className="text-muted-foreground mb-4 flex-grow">
                 Review and approve or reject new events submitted by organizers.
               </p>
               <Button asChild>
@@ -112,12 +112,12 @@ export default function SuperAdminPage() {
               </Button>
             </CardContent>
            </Card>
-            <Card>
+            <Card className="flex flex-col">
             <CardHeader>
                 <CardTitle className="flex items-center"><UserPlus className="mr-2 h-5 w-5"/>Organizer Requests</CardTitle>
             </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground mb-4">
+            <CardContent className="flex flex-col flex-grow">
+                <p className="text-muted-foreground mb-4 flex-grow">
                 Review and approve users to become event organizers.
                 </p>
                 <Button asChild>
@@ -127,12 +127,12 @@ export default function SuperAdminPage() {
                 </Button>
             </CardContent>
             </Card>
-           <Card>
+           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5"/>Manage All Users</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="flex flex-col flex-grow">
+              <p className="text-muted-foreground mb-4 flex-grow">
                 View, edit, disable, or delete user accounts.
               </p>
               <Button asChild>
@@ -142,12 +142,12 @@ export default function SuperAdminPage() {
               </Button>
             </CardContent>
            </Card>
-           <Card>
+           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5"/>Manage All Events</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="flex flex-col flex-grow">
+              <p className="text-muted-foreground mb-4 flex-grow">
                 Review, edit, or delete any event on the platform.
               </p>
               <Button asChild>

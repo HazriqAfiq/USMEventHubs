@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import Image from 'next/image';
 import { ArrowLeft, QrCode, Upload, Loader2 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { storage } from '@/lib/firebase';
@@ -54,9 +55,21 @@ interface RegistrationFormProps {
   eventId?: string;
 }
 
-const faculties = [
-  "School of Biological Sciences", "School of Chemical Sciences", "School of Communication", "School of Computer Sciences", "School of Educational Studies", "School of Housing, Building and Planning", "School of Humanities", "School of Industrial Technology", "School of Language, Literacies and Translation", "School of Management", "School of Mathematical Sciences", "School of Physics", "School of Social Sciences", "School of The Arts", "Other",
-];
+const campusSchools = {
+  "Main Campus": [
+    "School of Biological Sciences", "School of Chemical Sciences", "School of Communication", "School of Computer Sciences", "School of Educational Studies", "School of Housing, Building and Planning", "School of Humanities", "School of Industrial Technology", "School of Language, Literacies and Translation", "School of Management", "School of Mathematical Sciences", "School of Physics", "School of Social Sciences", "School of The Arts",
+  ],
+  "Health Campus": [
+    "School of Medical Sciences", "School of Dental Sciences", "School of Health Sciences",
+  ],
+  "Engineering Campus": [
+    "School of Electrical & Electronic Engineering", "School of Mechanical Engineering", "School of Civil Engineering", "School of Chemical Engineering", "School of Materials & Mineral Resources Engineering", "School of Aerospace Engineering",
+  ],
+  "AMDI / IPPT": [
+    "Institute of Postgraduate Studies", "Institute of Professional Development",
+  ],
+};
+
 
 async function resizeImage(file: File, maxSize: number): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -104,7 +117,7 @@ async function resizeImage(file: File, maxSize: number): Promise<string> {
 export default function RegistrationForm({ 
   isOpen, onClose, onSubmit, isSubmitting, eventPrice, eventQrCodeUrl, isRegistrationClosed, eventId
 }: RegistrationFormProps) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const isPaidEvent = eventPrice !== undefined && eventQrCodeUrl;
   const [step, setStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
@@ -120,6 +133,15 @@ export default function RegistrationForm({
     resolver: zodResolver(dynamicFormSchema),
     defaultValues: { name: '', matricNo: '', faculty: '', otherFaculty: '', paymentProofUrl: '' },
   });
+  
+  const facultyOptions = useMemo(() => {
+    const campus = userProfile?.campus as keyof typeof campusSchools;
+    if (campus && campusSchools[campus]) {
+      return [...campusSchools[campus], "Other"];
+    }
+    // Fallback to a default list if campus is not found or not set
+    return [...campusSchools["Main Campus"], ...campusSchools["Health Campus"], ...campusSchools["Engineering Campus"], ...campusSchools["AMDI / IPPT"], "Other"];
+  }, [userProfile?.campus]);
 
   useEffect(() => {
     if (isOpen && isRegistrationClosed) {
@@ -194,7 +216,28 @@ export default function RegistrationForm({
         <div className="space-y-4 py-4">
           <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter your full name" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="matricNo" render={({ field }) => (<FormItem><FormLabel>Matriculation Number</FormLabel><FormControl><Input placeholder="Enter your matric no." {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="faculty" render={({ field }) => (<FormItem><FormLabel>Faculty / School</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select your faculty/school" /></SelectTrigger></FormControl><SelectContent>{faculties.map((faculty) => (<SelectItem key={faculty} value={faculty}>{faculty}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+          <FormField
+              control={form.control}
+              name="faculty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Faculty / School</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your faculty/school" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {facultyOptions.map((faculty) => (
+                        <SelectItem key={faculty} value={faculty}>{faculty}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           {facultyValue === 'Other' && (<FormField control={form.control} name="otherFaculty" render={({ field }) => (<FormItem><FormLabel>Please Specify Your Faculty</FormLabel><FormControl><Input placeholder="Enter your faculty/school" {...field} /></FormControl><FormMessage /></FormItem>)} />)}
         </div>
       </>);

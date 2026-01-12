@@ -18,6 +18,7 @@ import { Skeleton } from './ui/skeleton';
 import { Check, Eye, X, FileClock, XCircle, CheckCircle, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Textarea } from './ui/textarea';
+import Image from 'next/image';
 
 const campuses = ["All Campuses", "Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
@@ -78,11 +79,11 @@ export default function OrganizerApplications() {
     const userRef = doc(db, 'users', app.userId);
     
     batch.update(appRef, { status: 'approved', rejectionReason: '' });
-    batch.update(userRef, { role: 'organizer' });
+    batch.update(userRef, { role: 'organizer', disabled: false });
     
     try {
       await batch.commit();
-      toast({ title: 'Application Approved', description: `${app.userName} is now an organizer.` });
+      toast({ title: 'Application Approved', description: `${app.userName} is now an organizer and their account is enabled.` });
       handleCloseDetail();
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
@@ -101,6 +102,8 @@ export default function OrganizerApplications() {
     const userRef = doc(db, 'users', selectedApp.userId);
 
     batch.update(appRef, { status: 'rejected', rejectionReason: rejectionReason.trim() });
+    // Revert user role to student but keep them disabled, so they can't re-apply immediately
+    // or access the system if their initial account creation was part of this flow.
     batch.update(userRef, { role: 'student' });
     
     try {
@@ -201,7 +204,7 @@ export default function OrganizerApplications() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-6">
-            <h4 className="font-semibold">Organization Description</h4>
+            <h4 className="font-semibold">Description</h4>
             <p className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">{selectedApp?.organizationDesc}</p>
             {selectedApp?.socialLink && (
               <div>

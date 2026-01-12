@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from './ui/skeleton';
@@ -22,6 +22,8 @@ import Image from 'next/image';
 import type { Registration, UserProfile } from '@/types';
 import { GlowingSearchBar } from './GlowingSearchBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 interface AttendeesDialogProps {
   isOpen: boolean;
@@ -31,6 +33,8 @@ interface AttendeesDialogProps {
   isPaidEvent: boolean;
 }
 
+type AttendanceFilter = 'all' | 'attended' | 'absent';
+
 const campuses = ["all", "Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
 export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, isPaidEvent }: AttendeesDialogProps) {
@@ -39,6 +43,8 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [campusFilter, setCampusFilter] = useState('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('all');
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isOpen) {
@@ -47,13 +53,13 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
       setUserProfiles({});
       setSearchQuery('');
       setCampusFilter('all');
+      setAttendanceFilter('all');
       return;
     }
 
-    const fetchAttendees = async () => {
+    const regsRef = collection(db, 'events', eventId, 'registrations');
+    const unsubscribe = onSnapshot(regsRef, async (regsSnapshot) => {
         setLoading(true);
-        const regsRef = collection(db, 'events', eventId, 'registrations');
-        const regsSnapshot = await getDocs(regsRef);
         const fetchedRegistrations = regsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Registration));
         setRegistrations(fetchedRegistrations);
 
@@ -61,7 +67,6 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
             const userIds = fetchedRegistrations.map(reg => reg.id);
             const profiles: Record<string, UserProfile> = {};
             
-            // Fetch users in chunks of 10 to stay within 'in' query limits if needed, though here we fetch one by one
             for (const userId of userIds) {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', userId));
@@ -75,10 +80,12 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
             setUserProfiles(profiles);
         }
         setLoading(false);
-    };
+    }, (error) => {
+        console.error("Error fetching attendees:", error);
+        setLoading(false);
+    });
 
-    fetchAttendees();
-
+    return () => unsubscribe();
   }, [isOpen, eventId]);
 
   const filteredAttendees = useMemo(() => {
@@ -91,15 +98,34 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
       
       const campusMatch = campusFilter === 'all' || (profile && profile.campus === campusFilter);
 
-      return searchMatch && campusMatch;
+      const attendanceMatch = attendanceFilter === 'all' ||
+        (attendanceFilter === 'attended' && reg.attended) ||
+        (attendanceFilter === 'absent' && !reg.attended);
+
+      return searchMatch && campusMatch && attendanceMatch;
     });
-  }, [registrations, userProfiles, searchQuery, campusFilter]);
+  }, [registrations, userProfiles, searchQuery, campusFilter, attendanceFilter]);
+
+  const handleAttendanceChange = async (registrationId: string, attended: boolean) => {
+    const regRef = doc(db, 'events', eventId, 'registrations', registrationId);
+    try {
+        await updateDoc(regRef, { attended: attended });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not update attendance status.",
+        });
+        // Revert UI change on failure
+        setRegistrations(prev => prev.map(r => r.id === registrationId ? { ...r, attended: !attended } : r));
+    }
+  };
 
 
   const handleGenerateReport = () => {
     if (filteredAttendees.length === 0) return;
 
-    const headers = ['Name', 'Matric No', 'Faculty', 'Campus', 'Registered At'];
+    const headers = ['Name', 'Matric No', 'Faculty', 'Campus', 'Registered At', 'Attended'];
     if (isPaidEvent) {
       headers.push('Payment Proof URL');
     }
@@ -112,7 +138,8 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
           `"${reg.matricNo}"`,
           `"${reg.faculty}"`,
           `"${profile?.campus || 'N/A'}"`,
-          `"${reg.registeredAt ? format(reg.registeredAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}"`
+          `"${reg.registeredAt ? format(reg.registeredAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}"`,
+          `"${reg.attended ? 'Yes' : 'No'}"`
         ];
         if (isPaidEvent) {
           row.push(`"${reg.paymentProofUrl || 'N/A'}"`);
@@ -127,7 +154,7 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
     link.setAttribute('href', url);
     
     const safeTitle = eventName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    link.setAttribute('download', `attendees_${safeTitle}.csv`);
+    link.setAttribute('download', `attendees_${safeTitle}_${attendanceFilter}.csv`);
     
     document.body.appendChild(link);
     link.click();
@@ -140,7 +167,7 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
         <DialogHeader>
           <DialogTitle>Attendees for: {eventName} ({filteredAttendees.length})</DialogTitle>
           <DialogDescription>
-            Search, filter, and view the list of registered attendees.
+            Search, filter, and manage attendance for registered attendees.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col sm:flex-row gap-4 py-4">
@@ -149,6 +176,16 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                 onChange={setSearchQuery}
                 placeholder="Search by name or matric no..."
             />
+            <Select value={attendanceFilter} onValueChange={(val) => setAttendanceFilter(val as AttendanceFilter)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by attendance" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Registered</SelectItem>
+                    <SelectItem value="attended">Attended Only</SelectItem>
+                    <SelectItem value="absent">Absent Only</SelectItem>
+                </SelectContent>
+            </Select>
             <Select value={campusFilter} onValueChange={setCampusFilter}>
                 <SelectTrigger className="w-full sm:w-[240px]">
                     <SelectValue placeholder="Filter by campus" />
@@ -175,6 +212,7 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                             <TableHead>Faculty</TableHead>
                             <TableHead>Campus</TableHead>
                             {isPaidEvent && <TableHead>Payment</TableHead>}
+                            <TableHead>Attendance</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -215,6 +253,13 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                                 )}
                                 </TableCell>
                             )}
+                            <TableCell>
+                                <Switch
+                                    checked={reg.attended}
+                                    onCheckedChange={(checked) => handleAttendanceChange(reg.id, checked)}
+                                    aria-label={`Mark ${reg.name} as attended`}
+                                />
+                            </TableCell>
                             </TableRow>
                            )
                         })}
@@ -222,7 +267,9 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
                     </Table>
                 ) : (
                     <p className='text-muted-foreground text-center py-10'>
-                        {searchQuery || campusFilter !== 'all' ? 'No attendees match your filters.' : 'No one has registered for this event yet.'}
+                        {searchQuery || campusFilter !== 'all' || attendanceFilter !== 'all' 
+                         ? 'No attendees match your filters.' 
+                         : 'No one has registered for this event yet.'}
                     </p>
                 )}
             </ScrollArea>

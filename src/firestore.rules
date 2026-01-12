@@ -86,9 +86,6 @@ service cloud.firestore {
 
     // Allow students to query for their own registrations across all events.
     match /{path=**}/registrations/{registrationId} {
-       // THIS RULE IS NO LONGER USED, but kept for reference.
-       // The new model queries the user's own subcollection.
-       // allow list: if request.auth != null && request.query.where.id == request.auth.uid;
        allow list: if false;
     }
 
@@ -190,6 +187,13 @@ service cloud.firestore {
           isCampusAdmin(request.auth.uid, get(/databases/$(database)/documents/events/$(eventId)).data.conductingCampus) ||
           (isOrganizer(request.auth.uid) && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid)
         );
+
+        // Allow organizer/admin to update attendance
+        allow update: if request.auth != null && (
+          isSuperAdmin(request.auth.uid) ||
+          isCampusAdmin(request.auth.uid, getEvent(eventId).data.conductingCampus) ||
+          (isOrganizer(request.auth.uid) && getEvent(eventId).data.organizerId == request.auth.uid)
+        ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attended']);
       }
       
       // Rules for event chat messages

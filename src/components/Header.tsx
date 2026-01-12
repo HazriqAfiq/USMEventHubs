@@ -86,6 +86,10 @@ export function Header() {
                           <Users className="mr-2 h-4 w-4" />
                           <span>Manage Users</span>
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/superadmin/organizers')}>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          <span>Organizer Requests</span>
+                        </DropdownMenuItem>
                          <DropdownMenuItem onClick={() => router.push('/superadmin/approvals')}>
                           <CheckSquare className="mr-2 h-4 w-4" />
                           <span>Event Approvals &amp; Requests</span>

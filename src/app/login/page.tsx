@@ -174,10 +174,16 @@ export default function LoginPage() {
     } catch (error: any)
 {
       console.error('Registration error:', error);
+      let errorMessage = 'There was a problem with your registration request.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email address is already in use. Please try logging in or use a different email.';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
-        description: error.message || 'There was a problem with your registration request.',
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);

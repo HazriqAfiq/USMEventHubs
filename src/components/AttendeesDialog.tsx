@@ -142,9 +142,6 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
     if (filteredAttendees.length === 0) return;
 
     const headers = ['Name', 'Matric No', 'Faculty', 'Campus', 'Registered At', 'Attended'];
-    if (isPaidEvent) {
-      headers.push('Payment Proof URL');
-    }
     const csvContent = [
       headers.join(','),
       ...filteredAttendees.map(reg => {
@@ -157,9 +154,6 @@ export default function AttendeesDialog({ isOpen, onClose, eventId, eventName, i
           `"${reg.registeredAt ? format(reg.registeredAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}"`,
           `"${reg.attended ? 'Yes' : 'No'}"`
         ];
-        if (isPaidEvent) {
-          row.push(`"${reg.paymentProofUrl || 'N/A'}"`);
-        }
         return row.join(',');
       })
     ].join('\n');

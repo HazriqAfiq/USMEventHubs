@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collectionGroup, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, getMonth, getYear, startOfToday, isWithinInterval, startOfMonth, endOfMonth, parse, isAfter, isBefore, isSameYear } from 'date-fns';
@@ -46,51 +47,52 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   useEffect(() => {
     if (!userId) {
-      setLoading(false);
-      return;
+        setLoading(false);
+        return;
     }
+    setLoading(true);
 
-    const fetchRegisteredEvents = async () => {
-      setLoading(true);
-      try {
-        const eventsQuery = query(collection(db, 'events'));
-        const eventsSnapshot = await getDocs(eventsQuery);
+    // Query the 'registrations' collection group to find all registrations for the current user.
+    const registrationsQuery = query(
+        collectionGroup(db, 'registrations'),
+        where('id', '==', userId)
+    );
+
+    const unsubscribe = onSnapshot(registrationsQuery, async (snapshot) => {
+        if (snapshot.empty) {
+            setEvents([]);
+            setLoading(false);
+            return;
+        }
         
-        const registeredEventsPromises = eventsSnapshot.docs.map(async (eventDoc) => {
-          const eventId = eventDoc.id;
-          const registrationRef = doc(db, 'events', eventId, 'registrations', userId);
-          const registrationSnap = await getDoc(registrationRef).catch(() => null);
-          
-          if (registrationSnap && registrationSnap.exists()) {
-            return { id: eventId, ...eventDoc.data() } as Event;
-          }
-          return null;
+        const eventPromises = snapshot.docs.map(regDoc => {
+            const parentEventRef = regDoc.ref.parent.parent;
+            if (!parentEventRef) return Promise.resolve(null);
+            return getDoc(parentEventRef);
         });
 
-        const registeredEvents = (await Promise.all(registeredEventsPromises)).filter(event => event !== null && event.status === 'approved') as Event[];
+        const eventDocs = await Promise.all(eventPromises);
+        
+        const registeredEvents = eventDocs
+            .filter(doc => doc && doc.exists() && doc.data().status === 'approved')
+            .map(doc => ({ id: doc!.id, ...doc!.data() } as Event));
         
         setEvents(registeredEvents);
-
-      } catch (serverError) {
-         const permissionError = new FirestorePermissionError({
-            path: 'events', 
-            operation: 'list',
-          }, serverError);
-          errorEmitter.emit('permission-error', permissionError);
-      } finally {
         setLoading(false);
-      }
-    };
-    
-    fetchRegisteredEvents();
-    
-    const unsubscribe = onSnapshot(collection(db, 'events'), () => {
-        fetchRegisteredEvents();
+
+    }, (error) => {
+        console.error("Error fetching registered events:", error);
+        const permissionError = new FirestorePermissionError({
+            path: `registrations collection group for user ${userId}`, 
+            operation: 'list',
+        }, error);
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
     });
 
     return () => unsubscribe();
-
   }, [userId]);
+
 
   const getEventEndTime = (event: Event): Date | null => {
     if (event.date && event.endTime) {
@@ -488,3 +490,5 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
+
+    

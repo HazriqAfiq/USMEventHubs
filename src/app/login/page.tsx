@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlowEffect } from '@/components/GlowEffect';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TermsDialog } from '@/components/TermsDialog';
 
 const campuses = ["Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
@@ -43,6 +45,8 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -136,6 +140,14 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!termsAccepted) {
+      toast({
+        variant: 'destructive',
+        title: 'Terms and Conditions',
+        description: 'You must accept the terms and conditions to create an account.',
+      });
+      return;
+    }
     if (!registerName) {
       toast({
         variant: 'destructive',
@@ -242,6 +254,7 @@ export default function LoginPage() {
 
 
   return (
+    <>
     <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] py-12">
       <GlowEffect active intensity="medium" className="w-full max-w-sm">
         <Card className="mx-auto w-full">
@@ -437,7 +450,21 @@ export default function LoginPage() {
                           </Button>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={isLoading}>
+                      <div className="items-top flex space-x-2">
+                          <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked as boolean)} />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor="terms"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              I agree to the{' '}
+                                <button type="button" onClick={() => setIsTermsDialogOpen(true)} className="text-primary hover:underline font-semibold">
+                                Terms and Conditions
+                                </button>
+                            </label>
+                          </div>
+                      </div>
+                      <Button type="submit" className="w-full" disabled={isLoading || !termsAccepted}>
                       {isLoading ? 'Registering...' : 'Create Account'}
                       </Button>
                   </form>
@@ -447,5 +474,7 @@ export default function LoginPage() {
         </Card>
       </GlowEffect>
     </div>
+    <TermsDialog isOpen={isTermsDialogOpen} onClose={() => setIsTermsDialogOpen(false)} />
+    </>
   );
 }

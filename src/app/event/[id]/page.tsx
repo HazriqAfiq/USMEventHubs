@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, setDoc, deleteDoc, serverTimestamp, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import { format, addMinutes } from 'date-fns';
@@ -198,15 +198,29 @@ export default function EventDetailPage() {
     }
 
     setIsSubmitting(true);
-    const regRef = doc(db, 'events', event.id, 'registrations', user.uid);
-    try {
-      const registrationData: any = {
+    
+    // Create a batch to write to both locations atomically
+    const batch = writeBatch(db);
+
+    // 1. Reference to the registration document in the event's subcollection
+    const eventRegRef = doc(db, 'events', event.id, 'registrations', user.uid);
+    const registrationData: any = {
         ...data,
-        id: user.uid,
+        id: user.uid, // a.k.a registrationId
         registeredAt: serverTimestamp(),
-      };
-      
-      await setDoc(regRef, registrationData);
+    };
+    batch.set(eventRegRef, registrationData);
+
+    // 2. Reference to the registration document in the user's subcollection
+    const userRegRef = doc(db, 'users', user.uid, 'registrations', event.id);
+    const userRegistrationData = {
+        eventId: event.id,
+        registeredAt: serverTimestamp(),
+    };
+    batch.set(userRegRef, userRegistrationData);
+
+    try {
+      await batch.commit();
       
       setCommunityLink(event.groupLink);
       setIsSuccessDialogOpen(true);
@@ -214,10 +228,12 @@ export default function EventDetailPage() {
 
     } catch (error: any) {
       console.error("Error submitting registration:", error);
+      // Since this is a batch, it's hard to know which write failed.
+      // We can create a more generic permission error.
       const permissionError = new FirestorePermissionError({
-          path: regRef.path,
+          path: `batch write for event ${event.id} and user ${user.uid}`,
           operation: 'create',
-          requestResourceData: { ...data, id: user.uid },
+          requestResourceData: { eventRegistration: registrationData, userRegistration: userRegistrationData },
       }, error);
       errorEmitter.emit('permission-error', permissionError);
       

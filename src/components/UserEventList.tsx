@@ -1,17 +1,17 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collectionGroup, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
-import { format, getMonth, getYear, startOfToday, isWithinInterval, startOfMonth, endOfMonth, parse, isAfter, isBefore, isSameYear } from 'date-fns';
+import { format, getMonth, getYear, isSameYear, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Event } from '@/types';
-import Link from 'next/link';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle, FilePenLine, Building } from 'lucide-react';
+import { CalendarCheck, CalendarX, Eye, MessageSquare, Package, XCircle, Building } from 'lucide-react';
 import { Button } from './ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -52,38 +52,37 @@ export default function UserEventList({ userId }: UserEventListProps) {
     }
     setLoading(true);
 
-    // Query the 'registrations' collection group to find all registrations for the current user.
-    const registrationsQuery = query(
-        collectionGroup(db, 'registrations'),
-        where('id', '==', userId)
-    );
+    const registrationsRef = collection(db, 'users', userId, 'registrations');
+    const q = query(registrationsRef);
 
-    const unsubscribe = onSnapshot(registrationsQuery, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
             setEvents([]);
             setLoading(false);
             return;
         }
         
-        const eventPromises = snapshot.docs.map(regDoc => {
-            const parentEventRef = regDoc.ref.parent.parent;
-            if (!parentEventRef) return Promise.resolve(null);
-            return getDoc(parentEventRef);
-        });
+        const eventIds = snapshot.docs.map(doc => doc.id);
 
-        const eventDocs = await Promise.all(eventPromises);
-        
-        const registeredEvents = eventDocs
-            .filter(doc => doc && doc.exists() && doc.data().status === 'approved')
-            .map(doc => ({ id: doc!.id, ...doc!.data() } as Event));
-        
-        setEvents(registeredEvents);
-        setLoading(false);
+        try {
+            const eventPromises = eventIds.map(id => getDoc(doc(db, 'events', id)));
+            const eventDocs = await Promise.all(eventPromises);
+            
+            const registeredEvents = eventDocs
+                .filter(doc => doc.exists() && doc.data().status === 'approved')
+                .map(doc => ({ id: doc!.id, ...doc!.data() } as Event));
+            
+            setEvents(registeredEvents);
+        } catch(e) {
+            console.error("Error fetching event details from registrations:", e);
+        } finally {
+            setLoading(false);
+        }
 
     }, (error) => {
-        console.error("Error fetching registered events:", error);
+        console.error("Error fetching user registrations:", error);
         const permissionError = new FirestorePermissionError({
-            path: `registrations collection group for user ${userId}`, 
+            path: `users/${userId}/registrations`, 
             operation: 'list',
         }, error);
         errorEmitter.emit('permission-error', permissionError);
@@ -96,7 +95,7 @@ export default function UserEventList({ userId }: UserEventListProps) {
 
   const getEventEndTime = (event: Event): Date | null => {
     if (event.date && event.endTime) {
-        const eventEndDate = event.date.toDate();
+        const eventEndDate = event.endDate?.toDate() ?? event.date.toDate();
         const [endHours, endMinutes] = event.endTime.split(':').map(Number);
         eventEndDate.setHours(endHours, endMinutes, 0, 0);
         return eventEndDate;
@@ -490,4 +489,3 @@ export default function UserEventList({ userId }: UserEventListProps) {
     </>
   );
 }
-

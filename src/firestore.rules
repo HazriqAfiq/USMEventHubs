@@ -1,4 +1,5 @@
 
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -85,7 +86,10 @@ service cloud.firestore {
 
     // Allow students to query for their own registrations across all events.
     match /{path=**}/registrations/{registrationId} {
-      allow list: if request.auth != null && request.query.where.id == request.auth.uid;
+       // THIS RULE IS NO LONGER USED, but kept for reference.
+       // The new model queries the user's own subcollection.
+       // allow list: if request.auth != null && request.query.where.id == request.auth.uid;
+       allow list: if false;
     }
 
 
@@ -311,6 +315,12 @@ service cloud.firestore {
         (isSuperAdmin(request.auth.uid) && resource.data.role != 'superadmin') ||
         (isCampusAdmin(request.auth.uid, resource.data.campus) && resource.data.role != 'admin' && resource.data.role != 'superadmin')
       );
+
+       // Rules for the user's registrations subcollection
+      match /registrations/{eventId} {
+        // A user can read, write, and delete their own registration records.
+        allow read, write, delete: if request.auth.uid == userId;
+      }
 
        // Define rules for the 'notifications' subcollection
       match /notifications/{notificationId} {

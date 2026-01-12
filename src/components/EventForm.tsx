@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Trash2, Upload, Loader2, Check, ChevronsUpDown, Video, Building2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, uploadString } from 'firebase/storage';
@@ -86,28 +86,25 @@ const formSchema = z.object({
     message: 'Please upload a QR code for paid events.',
     path: ['qrCodeUrl'],
 }).refine((data) => {
-    if (!data.startTime || !data.endTime) return true;
-    const [startHours, startMinutes] = data.startTime.split(':').map(Number);
-    const [endHours, endMinutes] = data.endTime.split(':').map(Number);
+    if (!data.startTime || !data.endTime) return true; // Let required check handle this
     
-    const startTimeInMinutes = startHours * 60 + startMinutes;
-    const endTimeInMinutes = endHours * 60 + endMinutes;
+    // Check if it's a single day event
+    const isSingleDay = !data.dateRange.to || isSameDay(data.dateRange.from, data.dateRange.to);
 
-    return endTimeInMinutes > startTimeInMinutes;
+    if (isSingleDay) {
+        const [startHours, startMinutes] = data.startTime.split(':').map(Number);
+        const [endHours, endMinutes] = data.endTime.split(':').map(Number);
+        const startTimeInMinutes = startHours * 60 + startMinutes;
+        const endTimeInMinutes = endHours * 60 + endMinutes;
+
+        // For single-day events, end time must be after start time.
+        return endTimeInMinutes > startTimeInMinutes;
+    }
+
+    // For multi-day events, this validation is skipped.
+    return true;
 }, {
-    message: 'End time must be after start time.',
-    path: ['endTime'],
-}).refine((data) => {
-    if (!data.startTime || !data.endTime) return true;
-    const [startHours, startMinutes] = data.startTime.split(':').map(Number);
-    const [endHours, endMinutes] = data.endTime.split(':').map(Number);
-    
-    const startTimeInMinutes = startHours * 60 + startMinutes;
-    const endTimeInMinutes = endHours * 60 + endMinutes;
-    
-    return (endTimeInMinutes - startTimeInMinutes) >= 15;
-}, {
-    message: 'Event must be at least 15 minutes long.',
+    message: 'For single-day events, end time must be after start time.',
     path: ['endTime'],
 });
 

@@ -560,10 +560,10 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-               <BarChart data={organizerEventData} onClick={handleOrganizerBarClick}>
+             <ResponsiveContainer width="100%" height={350}>
+               <BarChart data={organizerEventData} margin={{ top: 5, right: 20, left: 0, bottom: 50 }} onClick={handleOrganizerBarClick}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" name="Organizer" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                <XAxis dataKey="name" name="Organizer" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
                  <Tooltip 
                   contentStyle={{
@@ -681,4 +681,3 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
     </>
   );
 }
-

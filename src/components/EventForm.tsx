@@ -86,9 +86,8 @@ const formSchema = z.object({
     message: 'Please upload a QR code for paid events.',
     path: ['qrCodeUrl'],
 }).refine((data) => {
-    if (!data.startTime || !data.endTime) return true; // Let required check handle this
-    
-    // Check if it's a single day event
+    if (!data.startTime || !data.endTime) return true;
+
     const isSingleDay = !data.dateRange.to || isSameDay(data.dateRange.from, data.dateRange.to);
 
     if (isSingleDay) {
@@ -96,15 +95,13 @@ const formSchema = z.object({
         const [endHours, endMinutes] = data.endTime.split(':').map(Number);
         const startTimeInMinutes = startHours * 60 + startMinutes;
         const endTimeInMinutes = endHours * 60 + endMinutes;
-
-        // For single-day events, end time must be after start time.
-        return endTimeInMinutes > startTimeInMinutes;
+        
+        return endTimeInMinutes >= startTimeInMinutes + 15;
     }
 
-    // For multi-day events, this validation is skipped.
     return true;
 }, {
-    message: 'For single-day events, end time must be after start time.',
+    message: 'For single-day events, end time must be at least 15 minutes after start time.',
     path: ['endTime'],
 });
 

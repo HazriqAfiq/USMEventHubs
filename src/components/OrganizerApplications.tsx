@@ -216,7 +216,9 @@ export default function OrganizerApplications() {
               <h4 className="font-semibold">Proof of Legitimacy</h4>
               <a href={selectedApp?.proofUrl} target="_blank" rel="noopener noreferrer">
                 <div className="mt-2 relative aspect-video w-full rounded-md overflow-hidden border bg-muted cursor-pointer">
-                    <Image src={selectedApp?.proofUrl || ''} alt="Proof of legitimacy" layout="fill" objectFit='contain' />
+                  {selectedApp?.proofUrl && (
+                    <Image src={selectedApp.proofUrl} alt="Proof of legitimacy" layout="fill" objectFit='contain' />
+                  )}
                 </div>
               </a>
             </div>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -54,7 +55,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
   const { toast } = useToast();
   const { user: currentUser, isSuperAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'admin' | 'superadmin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'admin' | 'superadmin' | 'pending-organizer'>('all');
   const [localCampusFilter, setLocalCampusFilter] = useState<'all' | string>(campusFilter || 'all');
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
@@ -108,12 +109,35 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
       toast({ variant: 'destructive', title: 'Permission Denied' });
       return;
     }
+    
+    const userToUpdate = users.find(u => u.uid === userId);
+    if (!userToUpdate) return;
+    
+    const batch = writeBatch(db);
     const userDocRef = doc(db, 'users', userId);
+    
     try {
-      await updateDoc(userDocRef, { role: newRole });
-      toast({ title: 'Role Updated', description: `User role has been changed to ${newRole}.` });
+        // Update the user's role
+        batch.update(userDocRef, { role: newRole });
+
+        // If promoting a 'pending-organizer' to 'organizer', approve their application
+        if (userToUpdate.role === 'pending-organizer' && newRole === 'organizer') {
+            const appsRef = collection(db, 'organizer_applications');
+            const q = query(appsRef, where('userId', '==', userId), where('status', '==', 'pending'));
+            const appSnapshot = await getDocs(q);
+
+            if (!appSnapshot.empty) {
+                const appDoc = appSnapshot.docs[0];
+                batch.update(appDoc.ref, { status: 'approved', rejectionReason: '' });
+                toast({ title: 'Application Auto-Approved', description: `Pending organizer request for ${userToUpdate.name} was automatically approved.`});
+            }
+        }
+        
+        await batch.commit();
+        toast({ title: 'Role Updated', description: `User role has been changed to ${newRole}.` });
+
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }
   };
 
@@ -274,6 +298,7 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                       <SelectItem value="all">All Roles</SelectItem>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="organizer">Organizer</SelectItem>
+                      <SelectItem value="pending-organizer">Pending Organizer</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="superadmin">Super Admin</SelectItem>
                   </SelectContent>
@@ -344,7 +369,9 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'organizer' || user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>
+                    <Badge variant={user.role === 'organizer' || user.role === 'admin' || user.role === 'superadmin' ? 'default' : (user.role === 'pending-organizer' ? 'outline' : 'secondary')}
+                      className={user.role === 'pending-organizer' ? 'text-yellow-400 border-yellow-400/50' : ''}
+                    >
                       {user.role}
                     </Badge>
                   </TableCell>
@@ -430,3 +457,4 @@ export default function UserManagementTable({ campusFilter, onClearCampusFilter 
     </Card>
   );
 }
+

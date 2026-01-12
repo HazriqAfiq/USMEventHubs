@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, updateDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from './ui/button';
 import { Trash2, UserX, Shield, UserPlus } from 'lucide-react';
@@ -47,7 +47,7 @@ export default function AdminUserTable() {
   const { toast } = useToast();
   const { user: currentUser, userProfile: adminProfile, isAdmin, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'organizer' | 'student' | 'pending-organizer'>('all');
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   useEffect(() => {
@@ -93,12 +93,32 @@ export default function AdminUserTable() {
   }, [users, searchQuery, roleFilter]);
 
   const handleRoleChange = async (userId: string, newRole: 'organizer' | 'student') => {
+    const userToUpdate = users.find(u => u.uid === userId);
+    if (!userToUpdate) return;
+
+    const batch = writeBatch(db);
     const userDocRef = doc(db, 'users', userId);
+
     try {
-      await updateDoc(userDocRef, { role: newRole });
-      toast({ title: 'Role Updated', description: `User role has been changed to ${newRole}.` });
+        batch.update(userDocRef, { role: newRole });
+
+        if (userToUpdate.role === 'pending-organizer' && newRole === 'organizer') {
+            const appsRef = collection(db, 'organizer_applications');
+            const q = query(appsRef, where('userId', '==', userId), where('status', '==', 'pending'));
+            const appSnapshot = await getDocs(q);
+
+            if (!appSnapshot.empty) {
+                const appDoc = appSnapshot.docs[0];
+                batch.update(appDoc.ref, { status: 'approved', rejectionReason: '' });
+                toast({ title: 'Application Auto-Approved', description: `${userToUpdate.name}'s pending request was approved.`});
+            }
+        }
+        
+        await batch.commit();
+        toast({ title: 'Role Updated', description: `User role has been changed to ${newRole}.` });
+
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     }
   };
 
@@ -161,6 +181,7 @@ export default function AdminUserTable() {
                       <SelectItem value="all">All Roles</SelectItem>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="organizer">Organizer</SelectItem>
+                      <SelectItem value="pending-organizer">Pending Organizer</SelectItem>
                   </SelectContent>
               </Select>
             </div>
@@ -192,7 +213,9 @@ export default function AdminUserTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'organizer' ? 'default' : 'secondary'}>
+                    <Badge variant={user.role === 'organizer' ? 'default' : (user.role === 'pending-organizer' ? 'outline' : 'secondary')}
+                      className={user.role === 'pending-organizer' ? 'text-yellow-400 border-yellow-400/50' : ''}
+                    >
                       {user.role}
                     </Badge>
                   </TableCell>
@@ -243,3 +266,4 @@ export default function AdminUserTable() {
     </Card>
   );
 }
+

@@ -230,7 +230,7 @@ export default function OrganizerApplications() {
                     <Button variant="destructive" size="sm" onClick={() => { setSelectedApp(app); openRejectDialog();}}><X className="mr-2 h-4 w-4"/>Reject</Button>
                   </>
                 )}
-                {app.status !== 'pending' && (
+                {app.status === 'rejected' && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4"/>Delete</Button>
@@ -321,4 +321,3 @@ export default function OrganizerApplications() {
     </>
   );
 }
-

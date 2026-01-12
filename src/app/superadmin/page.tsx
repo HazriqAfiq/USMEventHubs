@@ -96,7 +96,7 @@ export default function SuperAdminPage() {
           <GlobalBannerForm />
         </div>
         <Separator />
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
            <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><CheckSquare className="mr-2 h-5 w-5"/>Event Approvals &amp; Requests</CardTitle>

@@ -367,7 +367,9 @@ export default function LoginPage() {
               <TabsContent value="register">
                    <CardHeader className="text-center">
                       <CardTitle className="text-2xl font-bold font-headline">Create an Account</CardTitle>
-                      <CardDescription>Register as a student to join events.</CardDescription>
+                      <CardDescription>
+                        All users register as a student first. To host events, apply to be an organizer from your profile page after registering.
+                      </CardDescription>
                   </CardHeader>
                   <CardContent>
                   <form onSubmit={handleRegister} className="space-y-4">

@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { getMonth, getYear, format, isSameYear, parse } from 'date-fns';
 import { Users, Calendar, BarChart2, ShieldCheck, Building, PieChartIcon, UserCheck, FileClock } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
-import type { Event, UserProfile } from '@/types';
+import type { Event, UserProfile, OrganizerApplication } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
@@ -59,6 +59,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: SuperAdminDashboardProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [applications, setApplications] = useState<OrganizerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const [userDistributionFilter, setUserDistributionFilter] = useState<'all' | 'student' | 'organizer'>('all');
@@ -99,6 +100,8 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
 
     const eventsQuery = query(collection(db, 'events'));
     const usersQuery = query(collection(db, 'users'));
+    const appsQuery = query(collection(db, 'organizer_applications'));
+
 
     const unsubEvents = onSnapshot(eventsQuery, (snapshot) => {
       const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
@@ -109,12 +112,19 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
       const usersData = snapshot.docs.map(doc => doc.data() as UserProfile);
       setUsers(usersData);
     }, (error) => console.error("Error fetching users:", error));
+    
+    const unsubApps = onSnapshot(appsQuery, (snapshot) => {
+        const appsData = snapshot.docs.map(doc => doc.data() as OrganizerApplication);
+        setApplications(appsData);
+    }, (error) => console.error("Error fetching applications:", error));
+
 
     Promise.all([new Promise(res => setTimeout(res, 500))]).then(() => setLoading(false));
 
     return () => {
       unsubEvents();
       unsubUsers();
+      unsubApps();
     };
   }, [user, isSuperAdmin, authLoading]);
 
@@ -129,6 +139,7 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
     campusEventData,
     organizerEventData,
     eventStatusData,
+    applicationStatusData,
   } = useMemo(() => {
     const approvedEvents = events.filter(e => e.status === 'approved');
 
@@ -212,6 +223,15 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
         name: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '),
         value,
     }));
+
+    const applicationStatusCounts: { [key: string]: number } = {};
+    applications.forEach(app => {
+        applicationStatusCounts[app.status] = (applicationStatusCounts[app.status] || 0) + 1;
+    });
+    const applicationStatusData = Object.entries(applicationStatusCounts).map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value,
+    }));
     
     const pendingEventsCount = (eventStatusCounts['pending'] || 0) + (eventStatusCounts['pending-update'] || 0) + (eventStatusCounts['pending-deletion'] || 0);
 
@@ -227,8 +247,9 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
       campusEventData,
       organizerEventData,
       eventStatusData,
+      applicationStatusData,
     };
-  }, [events, users, selectedYear, userDistributionFilter]);
+  }, [events, users, applications, selectedYear, userDistributionFilter]);
 
   if (loading || authLoading) {
     return (
@@ -286,6 +307,11 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
         break;
     }
   };
+
+  const handleApplicationStatusPieClick = (data: any) => {
+    const status = data.name.toLowerCase();
+    router.push(`/superadmin/organizers?status=${status}`);
+  }
   
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -336,7 +362,7 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
         </Card>
       </div>
 
-       <div className="grid md:grid-cols-2 gap-8 mt-8">
+       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
         <Card>
            <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -407,6 +433,47 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
                             dataKey="value"
                         >
                             {roleData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Legend />
+                        <Tooltip
+                             contentStyle={{
+                                background: "hsl(var(--background))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "var(--radius)",
+                            }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
+            </CardContent>
+         </Card>
+         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <PieChartIcon className="mr-2 h-5 w-5" />
+                    Organizer Application Status
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Click a slice to view applications.
+                </p>
+            </CardHeader>
+            <CardContent>
+                 <ResponsiveContainer width="100%" height={350}>
+                    <PieChart>
+                        <Pie
+                            data={applicationStatusData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            outerRadius={120}
+                            dataKey="value"
+                            nameKey="name"
+                            onClick={handleApplicationStatusPieClick}
+                            className="cursor-pointer"
+                        >
+                            {applicationStatusData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
@@ -614,3 +681,4 @@ export default function SuperAdminDashboard({ onCampusClick, onMonthClick }: Sup
     </>
   );
 }
+

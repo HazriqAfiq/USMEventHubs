@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from './ui/textarea';
 import Image from 'next/image';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const campuses = ["All Campuses", "Main Campus", "Engineering Campus", "Health Campus", "AMDI / IPPT"];
 
@@ -37,7 +39,13 @@ export default function OrganizerApplications() {
   const { user, userProfile, isSuperAdmin, isAdmin } = useAuth();
   const [applications, setApplications] = useState<OrganizerApplication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const statusParam = searchParams.get('status');
+  
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>(
+    statusParam && ['pending', 'approved', 'rejected', 'all'].includes(statusParam) ? statusParam as any : 'pending'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [campusFilter, setCampusFilter] = useState('All Campuses');
   
@@ -73,6 +81,12 @@ export default function OrganizerApplications() {
 
     return () => unsubscribe();
   }, [isSuperAdmin, isAdmin, userProfile]);
+  
+  useEffect(() => {
+    if (statusParam && ['pending', 'approved', 'rejected', 'all'].includes(statusParam)) {
+      setStatusFilter(statusParam as any);
+    }
+  }, [statusParam]);
 
   const filteredApps = useMemo(() => {
     return applications.filter(app => {
@@ -152,6 +166,15 @@ export default function OrganizerApplications() {
     setIsRejectDialogOpen(true);
     setRejectionReason('');
   }
+  
+  const handleStatusFilterChange = (value: string) => {
+    if (value) {
+      const newStatus = value as 'pending' | 'approved' | 'rejected' | 'all';
+      setStatusFilter(newStatus);
+      const currentPath = window.location.pathname;
+      router.push(`${currentPath}?status=${newStatus}`);
+    }
+  }
 
   const getStatusBadge = (status: OrganizerApplication['status']) => {
     switch (status) {
@@ -178,7 +201,7 @@ export default function OrganizerApplications() {
           )}
         </div>
         <div className="flex justify-center">
-            <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => { if (v) setStatusFilter(v as any)}}>
+            <ToggleGroup type="single" value={statusFilter} onValueChange={handleStatusFilterChange}>
                 <ToggleGroupItem value="pending">Pending</ToggleGroupItem>
                 <ToggleGroupItem value="approved">Approved</ToggleGroupItem>
                 <ToggleGroupItem value="rejected">Rejected</ToggleGroupItem>
@@ -207,7 +230,7 @@ export default function OrganizerApplications() {
                     <Button variant="destructive" size="sm" onClick={() => { setSelectedApp(app); openRejectDialog();}}><X className="mr-2 h-4 w-4"/>Reject</Button>
                   </>
                 )}
-                {app.status === 'rejected' && (
+                {app.status !== 'pending' && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4"/>Delete</Button>
@@ -298,3 +321,4 @@ export default function OrganizerApplications() {
     </>
   );
 }
+

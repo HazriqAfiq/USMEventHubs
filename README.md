@@ -123,8 +123,8 @@ Ensure you have the following installed:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/usm-event-hub.git
-   cd usm-event-hub
+   git clone https://github.com/HazriqAfiq/USMEventHubs.git
+   cd USMEventHubs
    ```
 
 2. **Install dependencies**
@@ -347,7 +347,7 @@ Contributions are what make the open-source community amazing! Any contributions
 
 - Follow the existing code style
 - Write meaningful commit messages
-- Add comments for complex logic
+- Add comments for complex.
 - Test your changes thoroughly
 - Update documentation as needed
 
@@ -361,13 +361,13 @@ Distributed under the MIT License. See `LICENSE` file for more information.
 
 ## 📧 Contact
 
-**Project Maintainer**: Your Name
+**Project Maintainer**: Muhammad Hazriq Afiq bin Saharudin
 
-- 📧 Email: your.email@example.com
-- 🐙 GitHub: [@yourusername](https://github.com/yourusername)
-- 💼 LinkedIn: [Your Name](https://linkedin.com/in/yourprofile)
+- 📧 Email: hazriqafiq22@gmail.com
+- 🐙 GitHub: [@HazriqAfiq](https://github.com/HazriqAfiq)
+- 💼 LinkedIn: [Muhammad Hazriq Afiq bin Saharudin](https://www.linkedin.com/in/muhammad-hazriq-afiq-saharudin-534133248/)
 
-**Project Link**: [https://github.com/yourusername/usm-event-hub](https://github.com/yourusername/usm-event-hub)
+**Project Link**: [https://github.com/HazriqAfiq/USMEventHubs](https://github.com/HazriqAfiq/USMEventHubs)
 
 ---
 
